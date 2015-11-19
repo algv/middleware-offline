@@ -57,12 +57,13 @@
        <string notr="true">background-image: url(:/images/Images/bg_Empty.png);</string>
       </property>
       <property name="currentIndex">
-       <number>1</number>
+       <number>6</number>
       </property>
       <widget class="QWidget" name="page_Wellcome"/>
       <widget class="QWidget" name="page_Identity">
        <property name="styleSheet">
-        <string notr="true">background-image: url(:/images/Images/Page_background_Identity.png);</string>
+        <string notr="true">background-image: url(:/images/Images/Page_background_Identity.png);
+</string>
        </property>
        <widget class="QLineEdit" name="txtIdentity_Name">
         <property name="geometry">
@@ -400,26 +401,51 @@
          <rect>
           <x>430</x>
           <y>310</y>
-          <width>171</width>
+          <width>181</width>
           <height>41</height>
          </rect>
         </property>
-         <property name="visible">
-           <bool>false</bool>
-         </property>
         <property name="styleSheet">
-         <string notr="true">color: rgb(108, 108, 108);
-font: 75 12pt &quot;Arial&quot;;
-background-image: url(:/images/Images/backgrounds/bg_toolbarMenu2.png);</string>
+         <string notr="true">
+color: rgb(108, 108, 108);
+font: 75 12pt Arial;
+background-image: url(:/images/Images/backgrounds/bg_toolbarMenu2.png);          </string>
         </property>
         <property name="text">
          <string>Universal Signature</string>
         </property>
+        <property name="checkable">
+         <bool>false</bool>
+        </property>
+        <property name="flat">
+         <bool>false</bool>
+        </property>
        </widget>
-       <widget class="QPushButton" name="btnShortcut_PdfSign">
+        <widget class="QPushButton" name="btnShortcut_VerifSign">
+            <property name="geometry">
+             <rect>
+              <x>430</x>
+              <y>360</y>
+              <width>362</width>
+              <height>41</height>
+            </rect>
+          </property>
+              <property name="styleSheet">
+            <string notr="true">
+              color: rgb(108, 108, 108);
+              font: 75 12pt Arial;
+              background-image: url(:/images/Images/backgrounds/bg_toolbarMenu2.png);
+            </string>
+            
+          </property>
+              <property name="text">
+              <string>Verify Signature</string>
+          </property>
+            </widget>
+        <widget class="QPushButton" name="btnShortcut_PdfSign">
         <property name="geometry">
          <rect>
-          <x>430</x>
+          <x>620</x>
           <y>310</y>
           <width>171</width>
           <height>41</height>
@@ -427,38 +453,16 @@ background-image: url(:/images/Images/backgrounds/bg_toolbarMenu2.png);</string>
         </property>
         <property name="styleSheet">
          <string notr="true">color: rgb(108, 108, 108);
-font: 75 12pt &quot;Arial&quot;;
+font: 75 12pt Arial;
 background-image: url(:/images/Images/backgrounds/bg_toolbarMenu2.png);</string>
         </property>
         <property name="text">
          <string>PDF Signature</string>
         </property>
-       </widget>
-       <widget class="QPushButton" name="btnShortcut_VerifSign">
-        <property name="geometry">
-         <rect>
-          <x>430</x>
-          <y>360</y>
-          <width>351</width>
-          <height>41</height>
-         </rect>
-        </property>
-          <property name="enabled">
+        <property name="flat">
          <bool>false</bool>
         </property>
-         <property name="visible">
-           <bool>false</bool>
-         </property>
-        <property name="styleSheet">
-         <string notr="true">color: rgb(211, 211, 211);
-font: 75 12pt &quot;Arial&quot;;
-background-image: url(:/images/Images/backgrounds/bg_toolbarMenu2.png);</string>
-        </property>
-        <property name="text">
-         <string>Verify Signature</string>
-        </property>
        </widget>
-
       </widget>
       <widget class="QWidget" name="page_IdentityExtra">
        <property name="styleSheet">
@@ -704,7 +708,8 @@ background-image: url(:/images/Images/backgrounds/bg_toolbarMenu2.png);</string>
       </widget>
       <widget class="QWidget" name="page_Address">
        <property name="styleSheet">
-        <string notr="true">background-image: url(:/images/Images/tab-backgrounds/bg_address.png);</string>
+        <string notr="true">background-image: url(:/images/Images/tab-backgrounds/bg_address.png);
+</string>
        </property>
        <widget class="QLineEdit" name="txtAddress_District">
         <property name="geometry">
@@ -1116,10 +1121,10 @@ background-image: url(:/images/Images/backgrounds/bg_toolbarMenu2.png);</string>
          </rect>
         </property>
         <property name="styleSheet">
-         <string notr="true">color: rgb(108, 108, 108);
-          font: 75 12pt &quot;Arial&quot;;
-          background-image: url(:/images/Images/backgrounds/bg_toolbarMenu2.png);
-        </string>
+         <string notr="true">
+color: rgb(108, 108, 108);
+font: 75 12pt Arial;
+background-image: url(:/images/Images/backgrounds/bg_toolbarMenu2.png);          </string>
         </property>
         <property name="text">
          <string>Address Confirmation</string>
@@ -1257,14 +1262,26 @@ image: url(:/images/Images/bg-Light-Blue.png);</string>
        <widget class="QPushButton" name="btnCert_Register">
         <property name="geometry">
          <rect>
-          <x>400</x>
+          <x>410</x>
           <y>340</y>
-          <width>85</width>
-          <height>27</height>
+          <width>111</width>
+          <height>30</height>
          </rect>
         </property>
         <property name="font">
-         <font/>
+         <font>
+          <family>Arial</family>
+          <pointsize>12</pointsize>
+          <weight>9</weight>
+          <italic>false</italic>
+          <bold>false</bold>
+         </font>
+        </property>
+        <property name="styleSheet">
+         <string notr="true">
+color: rgb(108, 108, 108);
+font: 75 12pt Arial;
+background-image: url(:/images/Images/backgrounds/bg_toolbarMenu2.png);          </string>
         </property>
         <property name="text">
          <string>&amp;Register</string>
@@ -1273,14 +1290,26 @@ image: url(:/images/Images/bg-Light-Blue.png);</string>
        <widget class="QPushButton" name="btnCert_Details">
         <property name="geometry">
          <rect>
-          <x>400</x>
-          <y>370</y>
-          <width>85</width>
-          <height>27</height>
+          <x>410</x>
+          <y>380</y>
+          <width>111</width>
+          <height>31</height>
          </rect>
         </property>
         <property name="font">
-         <font/>
+         <font>
+          <family>Arial</family>
+          <pointsize>12</pointsize>
+          <weight>9</weight>
+          <italic>false</italic>
+          <bold>false</bold>
+         </font>
+        </property>
+        <property name="styleSheet">
+         <string notr="true">
+color: rgb(108, 108, 108);
+font: 75 12pt Arial;
+background-image: url(:/images/Images/backgrounds/bg_toolbarMenu2.png);          </string>
         </property>
         <property name="text">
          <string>&amp;Details &gt;&gt;</string>
@@ -1290,7 +1319,7 @@ image: url(:/images/Images/bg-Light-Blue.png);</string>
         <property name="geometry">
          <rect>
           <x>410</x>
-          <y>300</y>
+          <y>310</y>
           <width>175</width>
           <height>20</height>
          </rect>
@@ -1302,23 +1331,11 @@ image: url(:/images/Images/bg-Light-Blue.png);</string>
          <bool>true</bool>
         </property>
        </widget>
-       <widget class="QLabel" name="label_14">
-        <property name="geometry">
-         <rect>
-          <x>410</x>
-          <y>280</y>
-          <width>171</width>
-          <height>21</height>
-         </rect>
-        </property>
-        <property name="text">
-         <string>Estado do certificado</string>
-        </property>
-       </widget>
       </widget>
       <widget class="QWidget" name="page_PINCodes">
        <property name="styleSheet">
-        <string notr="true">background-image: url(:/images/Images/tab-backgrounds/bg_pinCodes.png);</string>
+        <string notr="true">background-image: url(:/images/Images/tab-backgrounds/bg_pinCodes.png);
+</string>
        </property>
        <widget class="QLineEdit" name="txtPIN_Name">
         <property name="geometry">
@@ -1394,8 +1411,8 @@ image: url(:/images/Images/bg-Light-Blue.png);</string>
           </color>
          </property>
          <property name="foreground">
-          <brush>
-           <color>
+          <brush brushstyle="NoBrush">
+           <color alpha="255">
             <red>0</red>
             <green>0</green>
             <blue>0</blue>
@@ -1416,22 +1433,23 @@ image: url(:/images/Images/bg-Light-Blue.png);</string>
         <property name="font">
          <font>
           <family>Arial</family>
-          <pointsize>11</pointsize>
-          <weight>50</weight>
+          <pointsize>12</pointsize>
+          <weight>9</weight>
           <italic>false</italic>
           <bold>false</bold>
          </font>
         </property>
         <property name="styleSheet">
-         <string notr="true">background-image: url(:/images/Images/bt_Pin-Check.png);
-font: 11pt &quot;Arial&quot;;
-color: rgb(255, 102, 0);</string>
+         <string notr="true">
+color: rgb(108, 108, 108);
+font: 75 12pt Arial;
+background-image: url(:/images/Images/backgrounds/bg_toolbarMenu2.png);          </string>
         </property>
         <property name="text">
          <string>Test PIN</string>
         </property>
         <property name="flat">
-         <bool>true</bool>
+         <bool>false</bool>
         </property>
        </widget>
        <widget class="QPushButton" name="btnPIN_Change">
@@ -1439,32 +1457,36 @@ color: rgb(255, 102, 0);</string>
          <rect>
           <x>540</x>
           <y>180</y>
-          <width>121</width>
-          <height>27</height>
+          <width>131</width>
+          <height>31</height>
          </rect>
         </property>
         <property name="font">
          <font>
           <family>Arial</family>
-          <pointsize>11</pointsize>
-          <weight>50</weight>
+          <pointsize>12</pointsize>
+          <weight>9</weight>
           <italic>false</italic>
           <bold>false</bold>
          </font>
         </property>
         <property name="styleSheet">
-         <string notr="true">background-image: url(:/images/Images/bt_Pin-Check.png);
-font: 11pt &quot;Arial&quot;;
-color: rgb(255, 102, 0);</string>
+         <string notr="true">color: rgb(108, 108, 108);
+font: 75 12pt Arial;
+background-image: url(:/images/Images/backgrounds/bg_toolbarMenu2.png);          </string>
         </property>
         <property name="text">
          <string>Change PIN</string>
+        </property>
+        <property name="flat">
+         <bool>false</bool>
         </property>
        </widget>
       </widget>
       <widget class="QWidget" name="page_Notes">
        <property name="styleSheet">
-        <string notr="true">background-image: url(:/images/Images/tab-backgrounds/bg_notes.png);</string>
+        <string notr="true">background-image: url(:/images/Images/tab-backgrounds/bg_notes.png);
+</string>
        </property>
        <widget class="QPlainTextEdit" name="txtPersoData">
         <property name="geometry">
@@ -1498,9 +1520,10 @@ color: rgb(255, 102, 0);</string>
          </rect>
         </property>
         <property name="styleSheet">
-         <string notr="true">background-image: url(:/images/Images/bt_Pin-Check.png);
-font: 11pt &quot;Arial&quot;;
-color: rgb(255, 102, 0);</string>
+         <string notr="true">
+color: rgb(108, 108, 108);
+font: 75 12pt Arial;
+background-image: url(:/images/Images/backgrounds/bg_toolbarMenu2.png);   </string>
         </property>
         <property name="text">
          <string>Save</string>
@@ -1748,9 +1771,9 @@ font: 10pt &quot;Arial&quot;;</string>
     <widget class="QPushButton" name="btn_menu_tools">
      <property name="geometry">
       <rect>
-       <x>127</x>
+       <x>120</x>
        <y>-2</y>
-       <width>127</width>
+       <width>145</width>
        <height>58</height>
       </rect>
      </property>
@@ -1771,44 +1794,12 @@ font: 10pt &quot;Arial&quot;;</string>
       <bool>true</bool>
      </property>
     </widget>
-    <widget class="QLabel" name="label_2">
-     <property name="geometry">
-      <rect>
-       <x>254</x>
-       <y>0</y>
-       <width>5</width>
-       <height>61</height>
-      </rect>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">background-image: url(:/images/Images/menu_separator.png);</string>
-     </property>
-     <property name="text">
-      <string/>
-     </property>
-    </widget>
-    <widget class="QLabel" name="label_3">
-     <property name="geometry">
-      <rect>
-       <x>127</x>
-       <y>0</y>
-       <width>5</width>
-       <height>61</height>
-      </rect>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">background-image: url(:/images/Images/menu_separator.png);</string>
-     </property>
-     <property name="text">
-      <string/>
-     </property>
-    </widget>
     <widget class="QPushButton" name="btn_menu_settings">
      <property name="geometry">
       <rect>
-       <x>254</x>
+       <x>260</x>
        <y>-2</y>
-       <width>127</width>
+       <width>145</width>
        <height>58</height>
       </rect>
      </property>
@@ -1832,26 +1823,10 @@ font: 10pt &quot;Arial&quot;;</string>
       <bool>true</bool>
      </property>
     </widget>
-    <widget class="QLabel" name="label">
-     <property name="geometry">
-      <rect>
-       <x>381</x>
-       <y>0</y>
-       <width>5</width>
-       <height>61</height>
-      </rect>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">background-image: url(:/images/Images/menu_separator.png);</string>
-     </property>
-     <property name="text">
-      <string/>
-     </property>
-    </widget>
     <widget class="QPushButton" name="btn_menu_help">
      <property name="geometry">
       <rect>
-       <x>381</x>
+       <x>410</x>
        <y>-2</y>
        <width>108</width>
        <height>58</height>
@@ -1872,70 +1847,6 @@ font: 10pt &quot;Arial&quot;;</string>
      </property>
      <property name="flat">
       <bool>true</bool>
-     </property>
-    </widget>
-    <widget class="QLabel" name="label_4">
-     <property name="geometry">
-      <rect>
-       <x>110</x>
-       <y>25</y>
-       <width>7</width>
-       <height>5</height>
-      </rect>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">background-image: url(:/images/Images/buttons/btn_arrow.png);</string>
-     </property>
-     <property name="text">
-      <string/>
-     </property>
-    </widget>
-    <widget class="QLabel" name="label_6">
-     <property name="geometry">
-      <rect>
-       <x>240</x>
-       <y>25</y>
-       <width>7</width>
-       <height>5</height>
-      </rect>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">background-image: url(:/images/Images/buttons/btn_arrow.png);</string>
-     </property>
-     <property name="text">
-      <string/>
-     </property>
-    </widget>
-    <widget class="QLabel" name="label_7">
-     <property name="geometry">
-      <rect>
-       <x>360</x>
-       <y>25</y>
-       <width>7</width>
-       <height>5</height>
-      </rect>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">background-image: url(:/images/Images/buttons/btn_arrow.png);</string>
-     </property>
-     <property name="text">
-      <string/>
-     </property>
-    </widget>
-    <widget class="QLabel" name="label_8">
-     <property name="geometry">
-      <rect>
-       <x>470</x>
-       <y>25</y>
-       <width>7</width>
-       <height>5</height>
-      </rect>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">background-image: url(:/images/Images/buttons/btn_arrow.png);</string>
-     </property>
-     <property name="text">
-      <string/>
      </property>
     </widget>
     <widget class="QPushButton" name="btn_menu_language">
@@ -1982,17 +1893,10 @@ font: 10pt &quot;Arial&quot;;</string>
       <bool>true</bool>
      </property>
     </widget>
-    <zorder>label</zorder>
     <zorder>btn_menu_help</zorder>
-    <zorder>label_2</zorder>
     <zorder>btn_menu_settings</zorder>
-    <zorder>label_3</zorder>
     <zorder>btn_menu_tools</zorder>
     <zorder>btn_menu_card</zorder>
-    <zorder>label_4</zorder>
-    <zorder>label_6</zorder>
-    <zorder>label_8</zorder>
-    <zorder>label_7</zorder>
     <zorder>btn_menu_language</zorder>
    </widget>
    <widget class="QWidget" name="wdg_submenu_card" native="true">
@@ -2096,25 +2000,7 @@ font: 10pt &quot;Arial&quot;;</string>
       <string>Export / Print</string>
      </property>
     </widget>
-    <widget class="QLabel" name="lbl_menuCard_Read_2">
-     <property name="geometry">
-      <rect>
-       <x>15</x>
-       <y>65</y>
-       <width>16</width>
-       <height>17</height>
-      </rect>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">background-image: url(:/images/Images/alpha.png);
-color: rgb(108, 108, 108);
-font: 10pt &quot;Arial&quot;;</string>
-     </property>
-     <property name="text">
-      <string>»</string>
-     </property>
-    </widget>
-    <widget class="QLabel" name="lbl_menuCard_Read_3">
+    <widget class="QLabel" name="lbl_menuCard_Read_18">
      <property name="geometry">
       <rect>
        <x>15</x>
@@ -2132,7 +2018,25 @@ font: 10pt &quot;Arial&quot;;</string>
       <string>»</string>
      </property>
     </widget>
-    <widget class="QLabel" name="lbl_menuCard_Read_4">
+    <widget class="QLabel" name="lbl_menuCard_Read_19">
+     <property name="geometry">
+      <rect>
+       <x>15</x>
+       <y>65</y>
+       <width>16</width>
+       <height>17</height>
+      </rect>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">background-image: url(:/images/Images/alpha.png);
+color: rgb(108, 108, 108);
+font: 10pt &quot;Arial&quot;;</string>
+     </property>
+     <property name="text">
+      <string>»</string>
+     </property>
+    </widget>
+    <widget class="QLabel" name="lbl_menuCard_Read_20">
      <property name="geometry">
       <rect>
        <x>15</x>
@@ -2154,10 +2058,10 @@ font: 10pt &quot;Arial&quot;;</string>
     <zorder>lbl_menuCard_Quit</zorder>
     <zorder>label_11</zorder>
     <zorder>lbl_menuCard_Pdf</zorder>
-    <zorder>lbl_menuCard_Read_2</zorder>
-    <zorder>lbl_menuCard_Read_3</zorder>
-    <zorder>lbl_menuCard_Read_4</zorder>
     <zorder>lbl_menuCard</zorder>
+    <zorder>lbl_menuCard_Read_18</zorder>
+    <zorder>lbl_menuCard_Read_19</zorder>
+    <zorder>lbl_menuCard_Read_20</zorder>
    </widget>
    <widget class="QWidget" name="wdg_submenu_tools" native="true">
     <property name="geometry">
@@ -2215,6 +2119,9 @@ background-image: url(:/images/Images/alpha.png);</string>
        <height>17</height>
       </rect>
      </property>
+     <property name="visible">
+      <bool>true</bool>
+     </property>
      <property name="styleSheet">
       <string notr="true">background-image: url(:/images/Images/alpha.png);
 color: rgb(108, 108, 108);
@@ -2223,9 +2130,6 @@ font: 10pt &quot;Arial&quot;;</string>
      <property name="text">
       <string>Universal Signature</string>
      </property>
-      <property name="visible">
-        <bool>false</bool>
-      </property>
     </widget>
     <widget class="QLabel" name="lbl_menuTools_VerifySignature">
      <property name="geometry">
@@ -2236,12 +2140,12 @@ font: 10pt &quot;Arial&quot;;</string>
        <height>17</height>
       </rect>
      </property>
-      <property name="visible">
-        <bool>false</bool>
-      </property>
+     <property name="visible">
+      <bool>true</bool>
+     </property>
      <property name="styleSheet">
       <string notr="true">background-image: url(:/images/Images/alpha.png);
-color: rgb(211, 211, 211);
+color: rgb(108, 108, 108);
 font: 10pt &quot;Arial&quot;;</string>
      </property>
      <property name="text">
@@ -2288,7 +2192,7 @@ font: 10pt &quot;Arial&quot;;</string>
      <property name="geometry">
       <rect>
        <x>25</x>
-       <y>45</y>
+       <y>65</y>
        <width>131</width>
        <height>17</height>
       </rect>
@@ -2324,7 +2228,7 @@ font: 10pt &quot;Arial&quot;;</string>
    <widget class="QWidget" name="wdg_submenu_help" native="true">
     <property name="geometry">
      <rect>
-      <x>420</x>
+      <x>440</x>
       <y>760</y>
       <width>171</width>
       <height>111</height>
@@ -2404,60 +2308,6 @@ font: 10pt &quot;Arial&quot;;</string>
       <string>Updates</string>
      </property>
     </widget>
-    <widget class="QLabel" name="lbl_menuCard_Read_10">
-     <property name="geometry">
-      <rect>
-       <x>10</x>
-       <y>65</y>
-       <width>16</width>
-       <height>17</height>
-      </rect>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">background-image: url(:/images/Images/alpha.png);
-color: rgb(108, 108, 108);
-font: 10pt &quot;Arial&quot;;</string>
-     </property>
-     <property name="text">
-      <string>»</string>
-     </property>
-    </widget>
-    <widget class="QLabel" name="lbl_menuCard_Read_11">
-     <property name="geometry">
-      <rect>
-       <x>10</x>
-       <y>85</y>
-       <width>16</width>
-       <height>17</height>
-      </rect>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">background-image: url(:/images/Images/alpha.png);
-color: rgb(108, 108, 108);
-font: 10pt &quot;Arial&quot;;</string>
-     </property>
-     <property name="text">
-      <string>»</string>
-     </property>
-    </widget>
-    <widget class="QLabel" name="lbl_menuCard_Read_19">
-     <property name="geometry">
-      <rect>
-       <x>10</x>
-       <y>45</y>
-       <width>16</width>
-       <height>17</height>
-      </rect>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">background-image: url(:/images/Images/alpha.png);
-color: rgb(108, 108, 108);
-font: 10pt &quot;Arial&quot;;</string>
-     </property>
-     <property name="text">
-      <string>»</string>
-     </property>
-    </widget>
     <widget class="QLabel" name="lbl_menuHelp_documentation">
      <property name="geometry">
       <rect>
@@ -2476,13 +2326,67 @@ font: 10pt &quot;Arial&quot;;</string>
       <string>Online Documentation</string>
      </property>
     </widget>
+    <widget class="QLabel" name="lbl_menuCard_Read_21">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>85</y>
+       <width>16</width>
+       <height>17</height>
+      </rect>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">background-image: url(:/images/Images/alpha.png);
+color: rgb(108, 108, 108);
+font: 10pt &quot;Arial&quot;;</string>
+     </property>
+     <property name="text">
+      <string>»</string>
+     </property>
+    </widget>
+    <widget class="QLabel" name="lbl_menuCard_Read_22">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>65</y>
+       <width>16</width>
+       <height>17</height>
+      </rect>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">background-image: url(:/images/Images/alpha.png);
+color: rgb(108, 108, 108);
+font: 10pt &quot;Arial&quot;;</string>
+     </property>
+     <property name="text">
+      <string>»</string>
+     </property>
+    </widget>
+    <widget class="QLabel" name="lbl_menuCard_Read_23">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>45</y>
+       <width>16</width>
+       <height>17</height>
+      </rect>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">background-image: url(:/images/Images/alpha.png);
+color: rgb(108, 108, 108);
+font: 10pt &quot;Arial&quot;;</string>
+     </property>
+     <property name="text">
+      <string>»</string>
+     </property>
+    </widget>
    </widget>
    <widget class="QWidget" name="wdg_submenu_settings" native="true">
     <property name="geometry">
      <rect>
-      <x>300</x>
+      <x>320</x>
       <y>760</y>
-      <width>121</width>
+      <width>151</width>
       <height>71</height>
      </rect>
     </property>
@@ -2784,7 +2688,6 @@ font: 10pt &quot;Arial&quot;;</string>
   <tabstop>txtIdentity_AccidentalIndications</tabstop>
   <tabstop>btnShortcut_UnivSign</tabstop>
   <tabstop>btnShortcut_PdfSign</tabstop>
-  <tabstop>btnShortcut_VerifSign</tabstop>
   <tabstop>txtIdentityExtra_SocialSecurityNo</tabstop>
   <tabstop>txtIdentityExtra_TaxNo</tabstop>
   <tabstop>txtIdentityExtra_CardVersion</tabstop>

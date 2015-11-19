@@ -70,7 +70,7 @@ int release;
 
 
 AutoUpdates::AutoUpdates(QWidget *parent)
-: QDialog(parent)
+: QDialog(parent, Qt::WindowTitleHint | Qt::WindowSystemMenuHint)
 {
 	QString ddtitle = tr("Auto-update");
 	statusLabel = new QLabel(tr("Do you want to check for updates?"));
@@ -100,6 +100,8 @@ AutoUpdates::AutoUpdates(QWidget *parent)
 	mainLayout->addWidget(buttonBox);
 	setLayout(mainLayout);
 
+	const QIcon app_icon = QIcon(":/images/Images/Icons/ICO_CARD_EID_PLAIN_16x16.png");
+	setWindowIcon(app_icon);
 	setWindowTitle(ddtitle);
 }
 

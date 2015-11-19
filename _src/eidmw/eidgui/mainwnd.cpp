@@ -26,6 +26,7 @@
 #include <QEvent>
 #include <QPixmap>
 #include <QImage>
+#include <QFileInfo>
 #include <QProcess>
 #include <stdlib.h>
 #ifndef _WIN32
@@ -189,7 +190,6 @@ MainWnd::MainWnd( GUISettings& settings, QWidget *parent )
 
 	m_ui.setupUi(this);
 
-
 	if (m_Settings.getGuiLanguageCode() == GenPur::LANG_NL)
 		setLanguageNl();
 	else
@@ -215,15 +215,15 @@ MainWnd::MainWnd( GUISettings& settings, QWidget *parent )
 	m_progress->setMinimum(0);
 	m_progress->setMaximum(0);
 
-
+	connect(m_ui.btnPersoDataSave, SIGNAL(clicked()), this, SLOT(PersoDataSaveButtonClicked()));
 	connect(&this->FutureWatcher, SIGNAL(finished()), m_progress, SLOT(cancel()));
 
 	//------------------------------------
 	//
 	// set the window Icon (as it appears in the left corner of the window)
 	//------------------------------------
-    const QIcon Ico = QIcon( ":/images/Images/Icons/ICO_CARD_EID_PLAIN_16x16.png" );
-    //const QIcon Ico = QIcon( ":/images/Images/Icons/pteid.ico" );
+    //const QIcon Ico = QIcon( ":/images/Images/Icons/ICO_CARD_EID_PLAIN_16x16.png" );
+    const QIcon Ico = QIcon( ":/images/Images/Icons/pteid.ico" );
 	this->setWindowIcon( Ico );
 
 	m_pPrinter	= new QPrinter();
@@ -402,8 +402,6 @@ void MainWnd::hide_submenus()
 	m_ui.wdg_submenu_help->setVisible(false);
 }
 
-
-
 //******************************************************^M
 // Buttons to control Shortcuts 
 //******************************************************^M
@@ -422,13 +420,6 @@ void MainWnd::on_btnShortcut_VerifSign_clicked()
 {
 	actionVerifySignature_eID_triggered();
 }
-
-/*
-void MainWnd::on_btnShortcut_LaunchJava_clicked()
-{
-	launchJavaProcess();
-}
-*/
 
 /*
 // Change Address functionality triggered by a button in the Address tab
@@ -556,7 +547,7 @@ void MainWnd::showJavaLaunchError(QProcess::ProcessError error)
 	if (error == QProcess::FailedToStart)
 	{
 		QMessageBox *msgBox = new QMessageBox(QMessageBox::Warning,
-			"TITLE", "Error launching Java application! Make sure you have a working JRE installed.",
+			QString::fromUtf8("Cart\xc3\xa3o de Cidad\xc3\xa3o"), tr("Error launching Java application! Make sure you have a working JRE installed."),
 			QMessageBox::Ok, this);
 		msgBox->setModal(true);
 		msgBox->show();
@@ -564,37 +555,83 @@ void MainWnd::showJavaLaunchError(QProcess::ProcessError error)
 
 }
 
-/*
-void MainWnd::launchJavaProcess(QString &application_jar, QString &classpath)
+#ifdef _WIN32
+QString MainWnd::findJavaHomeOnWindows()
 {
+	QVariant current_version;
+	const QString CURRENT_VERSION_KEY("CurrentVersion");
+    QSettings javaSetting("HKEY_LOCAL_MACHINE\\SOFTWARE\\JavaSoft\\Java Runtime Environment", QSettings::NativeFormat);
+	current_version = javaSetting.value(CURRENT_VERSION_KEY);
+
+	if (current_version == QVariant())
+	{
+		PTEID_LOG(PTEID_LOG_LEVEL_DEBUG, "eidgui", "Couldn't find first Java registry key...");	
+
+		//Check WoW32Node values
+		QSettings javaSetting2("HKEY_LOCAL_MACHINE\\SOFTWARE\\Wow6432Node\\JavaSoft\\Java Runtime Environment", QSettings::NativeFormat);
+		current_version = javaSetting2.value(CURRENT_VERSION_KEY);
+		if (current_version == QVariant())
+		{
+			PTEID_LOG(PTEID_LOG_LEVEL_DEBUG, "eidgui", "Couldn't find second Java registry key, Java is not installed!");
+
+			return QString();
+		}
+		else
+			return javaSetting2.value(current_version.toString() + "/JavaHome").toString();
+	}
+
+	return javaSetting.value(current_version.toString() + "/JavaHome").toString();
+	
+}
+#endif
+
+void MainWnd::launchJavaProcess(const QString &application_jar, const QString jvm_args, const QString &classpath)
+{
+	QStringList arguments;
 
 #ifdef __APPLE__
-//TODO
-//Call /usr/libexec/java_home to find JRE dir
 
+	//Using the current Oracle JRE this is always the path to the JRE dir
+	QString program = QString("/Library/Internet Plug-Ins/JavaAppletPlugin.plugin/Contents/Home/bin/") +
+					  "java";
 #elif WIN32
-	QString program = "javaw";
-	
+	QString java_home = findJavaHomeOnWindows();
+	if (java_home.isEmpty())
+	{
+		showJavaLaunchError(QProcess::FailedToStart);
+		return;
+	}
+
+	QString program = java_home + "\\bin\\javaw";
 #else
-	 QString program = "java";
-	 QStringList arguments;
-	 arguments <<
-     arguments << "-jar" << "/home/agrr/Downloads/pdfvole_20110411_bin/pdfvole_20110411.jar";
+	//On Linux there's always a java binary in the PATH at least using proper packages...
+	QString program = "java";
 #endif
-	 QObject *parent = this;
-	 arguments << "-jar" << application_jar;
+	QObject *parent = this;
 
-	 if (classpath.length() > 0)
-		 arguments << "-cp" << classpath;
+	if (jvm_args.size() > 0)
+		arguments << jvm_args;
+	arguments << "-jar" << application_jar;
 
-	 QProcess *myProcess = new QProcess(parent);
-	 connect(myProcess, SIGNAL(error(QProcess::ProcessError)),
+	if (classpath.length() > 0)
+		arguments << "-cp" << classpath;
+
+	QString language = m_Settings.getGuiLanguageString() == "nl" ? QString("pt") : m_Settings.getGuiLanguageString();
+	//Add language code as args[0]
+	arguments << language;
+
+	QProcess *myProcess = new QProcess(parent);
+	myProcess->setProcessChannelMode(QProcess::MergedChannels);
+	QFileInfo fileinfo(application_jar);
+
+	//Set working directory to where the jar file is located
+	myProcess->setWorkingDirectory(fileinfo.dir().absolutePath());
+	connect(myProcess, SIGNAL(error(QProcess::ProcessError)),
 			 this, SLOT(showJavaLaunchError(QProcess::ProcessError)));
 
-	 myProcess->start(program, arguments);
+	myProcess->start(program, arguments);
 	 
 }
-*/
 
 void MainWnd::setup_addressChange_progress_bar()
 {
@@ -670,16 +707,16 @@ void MainWnd::on_btn_menu_tools_clicked()
 	m_ui.wdg_submenu_tools->setVisible(true);
 	//If defined language is portuguese, then the dialog needs to be larger
 	if (m_Settings.getGuiLanguageCode() == GenPur::LANG_NL)
-		m_ui.wdg_submenu_tools->setGeometry(127,4,155,71);
+		m_ui.wdg_submenu_tools->setGeometry(127,4,155,110);
 	else
-		m_ui.wdg_submenu_tools->setGeometry(127,4,145,71);
+		m_ui.wdg_submenu_tools->setGeometry(127,4,145,110);
 
 }
 
 void MainWnd::on_btn_menu_settings_clicked()
 {
 	m_ui.wdg_submenu_settings->setVisible(true);
-	m_ui.wdg_submenu_settings->setGeometry(254,4,126,75);
+	m_ui.wdg_submenu_settings->setGeometry(260,4,151,75);
 }
 
 void MainWnd::on_btn_menu_language_clicked()
@@ -694,7 +731,7 @@ void MainWnd::on_btn_menu_language_clicked()
 void MainWnd::on_btn_menu_help_clicked()
 {
 	m_ui.wdg_submenu_help->setVisible(true);
-	m_ui.wdg_submenu_help->setGeometry(381,4,165,110);
+	m_ui.wdg_submenu_help->setGeometry(410,4,165,110);
 }
 
 
@@ -1237,6 +1274,7 @@ bool MainWnd::ImportSelectedCertificate( void )
 			{
 				if(StoreUserCerts (Card, pCertContext, KeyUsageBits, (*item->getCert()), m_CurrReaderName.toLatin1().data()))
 				{
+					PTEID_LOG(PTEID_LOG_LEVEL_DEBUG, "eidgui", "Successfully stored UserCert with subject: %s", item->getCert()->getOwnerName());
 
 					//now store each time the issuer until we're done
 					// an exception is thrown when there is no issuer
@@ -1251,6 +1289,7 @@ bool MainWnd::ImportSelectedCertificate( void )
 
 							pCertContext = CertCreateCertificateContext(X509_ASN_ENCODING | PKCS_7_ASN_ENCODING, certData.GetBytes(), certData.Size());
 							StoreAuthorityCerts (pCertContext, KeyUsageBits, m_CurrReaderName.toLatin1().data());
+							PTEID_LOG(PTEID_LOG_LEVEL_DEBUG, "eidgui", "Successfully stored CA Cert with subject: %s", issuer->getOwnerName());
 							currCert	 = issuer;
 						}
 						catch (PTEID_ExCertNoIssuer& e)
@@ -1978,10 +2017,15 @@ void MainWnd::loadCardData( void )
 			strCaption = strCaption.remove(QChar('&'));
 			QString strMessage(tr("No card found"));
 			m_ui.statusBar->showMessage(strCaption+":"+strMessage,m_STATUS_MSG_TIME);
+
+			QString caption  = tr("Warning");
+	  		QString msg = tr("Please insert your card on the smart card reader");
+	  		QMessageBox msgBoxp(QMessageBox::Warning, caption, msg, 0, this);
+	  		msgBoxp.exec();
 		}
 		else if (lastFoundCardType == PTEID_CARDTYPE_UNKNOWN)
 		{
-			QString msg(tr("Unknown card type"));
+			QString msg(tr("Card read error or unknown card type"));
 			ShowPTEIDError( 0, msg );
 			clearGuiContent();
 		}
@@ -2135,7 +2179,7 @@ void MainWnd::loadCardDataAddress( void )
 		}
 		else if (lastFoundCardType == PTEID_CARDTYPE_UNKNOWN)
 		{
-			QString msg(tr("Unknown card type"));
+			QString msg(tr("Card read error or unknown card type"));
 			ShowPTEIDError( 0, msg );
 			clearGuiContent();
 		}
@@ -2286,7 +2330,7 @@ bool MainWnd::loadCardDataPersoData( void )
 		}
 		else if (lastFoundCardType == PTEID_CARDTYPE_UNKNOWN)
 		{
-			QString msg(tr("Unknown card type"));
+			QString msg(tr("Card read error or unknown card type"));
 			ShowPTEIDError( 0, msg );
 			clearGuiContent();
 		}
@@ -2439,7 +2483,7 @@ void MainWnd::loadCardDataCertificates( void )
 		}
 		else if (lastFoundCardType == PTEID_CARDTYPE_UNKNOWN)
 		{
-			QString msg(tr("Unknown card type"));
+			QString msg(tr("Card read error or unknown card type"));
 			ShowPTEIDError( 0, msg );
 			clearGuiContent();
 		}
@@ -2552,14 +2596,14 @@ void MainWnd::show_window_parameters(){
 		this->showNormal(); // Otherwise the application will end if the options dialog gets closed
 	}
 
-	dlgOptions* dlg = new dlgOptions( m_Settings, this );
-	dlg->setShowToolbar( m_Settings.getShowToolbar() );
-	dlg->setShowPicture( m_Settings.getShowPicture() );
-	dlg->setShowNotification( m_Settings.getShowNotification() );
+	dlgOptions* dlg = new dlgOptions(m_Settings, this);
+	dlg->setShowToolbar(m_Settings.getShowToolbar());
+	dlg->setShowPicture(m_Settings.getShowPicture());
+	dlg->setShowNotification(m_Settings.getShowNotification());
 
 	m_ui.actionOptions->setEnabled(false);
 
-	if( dlg->exec() )
+	if(dlg->exec())
 	{
 		m_ui.actionShow_Toolbar->setChecked( m_Settings.getShowToolbar() );
 
@@ -2581,10 +2625,9 @@ void MainWnd::on_actionOptions_triggered(void)
 void MainWnd::actionSignature_eID_triggered()
 {
 	tFieldMap& CardFields = m_CI_Data.m_CardInfo.getFields();
-	QString cardTypeText = GetCardTypeText(CardFields[CARD_TYPE]);
 	if(m_CI_Data.isDataLoaded())
 	{
-		dlgSignature* dlgsig = new dlgSignature( this, m_CI_Data);
+		dlgSignature* dlgsig = new dlgSignature(this, m_Settings.getSelectedReader(), m_CI_Data);
 		dlgsig->exec();
 		delete dlgsig;
 	} else {
@@ -2598,12 +2641,11 @@ void MainWnd::actionSignature_eID_triggered()
 void MainWnd::actionPDFSignature_triggered()
 {
 	tFieldMap& CardFields = m_CI_Data.m_CardInfo.getFields();
-	QString cardTypeText = GetCardTypeText(CardFields[CARD_TYPE]);
 
 	if(m_CI_Data.isDataLoaded())
 	{
 
- 		m_pdf_signature_dialog = new PDFSignWindow(this, m_CI_Data);
+		m_pdf_signature_dialog = new PDFSignWindow(this, m_Settings.getSelectedReader(), m_CI_Data);
  		m_pdf_signature_dialog->exec();
  		delete m_pdf_signature_dialog;
 		m_pdf_signature_dialog = NULL;
@@ -2619,15 +2661,45 @@ void MainWnd::actionPDFSignature_triggered()
 
 }
 
+
 //*****************************************************
 // VerifySignature clicked
 //*****************************************************
 void MainWnd::actionVerifySignature_eID_triggered()
 {
-    // dlgVerifySignature* dlgversig = new dlgVerifySignature( this);
-    // dlgversig->exec();
-    // delete dlgversig;
+	QString DSS_JAR("dss-standalone-app-3.0.3.jar");
+
+	//Launch the exe wrapper on Windows, we need it for the file association
+#ifdef _WIN32
+	QStringList arguments;
+	QObject *parent = this;
+
+	QString language = m_Settings.getGuiLanguageString() == "nl" ? QString("pt") : m_Settings.getGuiLanguageString();
+	//Add language code as args[0]
+	arguments << language;
+
+	QProcess *myProcess = new QProcess(parent);
+	myProcess->setProcessChannelMode(QProcess::MergedChannels);
+
+	myProcess->start(m_Settings.getExePath()+"/DSS/dss-standalone.exe", arguments);
+#elif __APPLE__
+	launchJavaProcess(QString::fromUtf8("/Applications/Validacao de assinaturas.app/Contents/Java/") + DSS_JAR,
+			 QString::fromUtf8("-Xdock:name=Validação de assinatura"),  "");
+#else
+	launchJavaProcess(m_Settings.getExePath() + "/DSS/" + DSS_JAR , "", "");
+#endif
 }
+
+//void MainWnd::on_btnShortcut_SCAP_clicked()
+//{
+//	QString SCAP_JAR("/SCAP/SCAP-Signature-runnable.jar");
+//
+//#ifdef __APPLE__
+//	launchJavaProcess("/usr/local/bin/" + SCAP_JAR, "-Xdock:name=Assinatura na qualidade", "");
+//#else
+//	launchJavaProcess(m_Settings.getExePath() + SCAP_JAR, "", "");
+//#endif
+//}
 
 //*****************************************************
 // Print clicked
@@ -2635,10 +2707,10 @@ void MainWnd::actionVerifySignature_eID_triggered()
 void MainWnd::on_actionPrint_eID_triggered()
 {
 	tFieldMap& CardFields = m_CI_Data.m_CardInfo.getFields();
-	QString cardTypeText = GetCardTypeText(CardFields[CARD_TYPE]);
+	
 	if(m_CI_Data.isDataLoaded())
 	{
-	  	dlgPrint* dlg = new dlgPrint( this, m_CI_Data, m_Language, cardTypeText);
+	  	dlgPrint* dlg = new dlgPrint( this, m_CI_Data, m_Language);
 		dlg->exec();
 		delete dlg;
 	} else {
@@ -2841,7 +2913,7 @@ void MainWnd::on_actionPINRequest_triggered()
 			PTEID_Pin &pin = ReaderContext.getEIDCard().getPins().getPinByPinRef(pinRef);
 
 			unsigned long triesLeft = -1;
-			bool bResult   = pin.verifyPin("",triesLeft);
+			bool bResult = pin.verifyPin("",triesLeft);
 
 			if (!bResult && -1 == triesLeft)
 				return;
@@ -2860,6 +2932,10 @@ void MainWnd::on_actionPINRequest_triggered()
 				msg = tr("PIN verification failed");
 				msg += "\n";
 				msg += status;
+				
+				//Reset the user notes flag
+				if (pinRef == PTEID_Pin::AUTH_PIN)
+					pinNotes = 1;
 			}
 
 			m_ui.txtPIN_Status->setText(status);
@@ -3023,6 +3099,8 @@ void MainWnd::ChangeAuthPin(PTEID_ReaderContext &ReaderContext, unsigned int pin
 	    return;
 
 	}
+
+	pinNotes = 1;
 	QString msg_tmp(tr("PIN change passed"));
 	QMessageBox::information( this, dialog_title, msg_tmp, QMessageBox::Ok );
 
@@ -3367,7 +3445,8 @@ void MainWnd::fillPinList()
 	m_ui.treePIN->setCurrentItem (m_ui.treePIN->topLevelItem(0));
 }
 
-void MainWnd::loadPinData(PTEID_EIDCard& Card){
+void MainWnd::loadPinData(PTEID_EIDCard& Card)
+{
 
 	PTEID_Pins& Pins = Card.getPins();
 
@@ -3470,6 +3549,21 @@ void MainWnd::refreshTabIdentity( void )
 	m_ui.txtIdentity_AccidentalIndications->setAccessibleName( QString::fromUtf8(PersonFields[ACCIDENTALINDICATIONS].toStdString().c_str()) );
 }
 
+QString MainWnd::translateCardValidation(QString &card_validation)
+{
+	if (m_Settings.getGuiLanguageString() == "en")
+	{
+		if (card_validation.contains("inactivo"))
+			return "The Citizen Card is inactive.";
+		else 
+			return "The Citizen Card is active.";
+
+	}
+	else
+		return card_validation;
+
+}
+
 //*****************************************************
 // refresh the tab with the ID extra info (card back side)
 //*****************************************************
@@ -3492,30 +3586,16 @@ void MainWnd::refreshTabIdentityExtra()
 	m_ui.txtIdentityExtra_IssuingEntity->setText	( QString::fromUtf8(PersonFields[ISSUINGENTITY].toStdString().c_str()) );
 	m_ui.txtIdentityExtra_IssuingEntity->setAccessibleName	( QString::fromUtf8(PersonFields[ISSUINGENTITY].toStdString().c_str()) );
 
-	m_ui.txtIdentityExtra_LocalofRequest->setText	( QString::fromUtf8(PersonFields[LOCALOFREQUEST].toStdString().c_str()) );
+	m_ui.txtIdentityExtra_LocalofRequest->setText( QString::fromUtf8(PersonFields[LOCALOFREQUEST].toStdString().c_str()) );
 	m_ui.txtIdentityExtra_LocalofRequest->setAccessibleName	( QString::fromUtf8(PersonFields[LOCALOFREQUEST].toStdString().c_str()) );
-
-	m_ui.txtIdentityExtra_Validate->setText ( QString::fromUtf8(PersonFields[VALIDATION].toStdString().c_str()) );
-	m_ui.txtIdentityExtra_Validate->setAccessibleName ( QString::fromUtf8(PersonFields[VALIDATION].toStdString().c_str()) );
-
-	QString cardNumber = m_CI_Data.m_CardInfo.formatCardNumber(CardFields[CARD_NUMBER]);
-
-	QString nationalNumber = m_CI_Data.m_PersonInfo.formatNationalNumber( PersonFields[NATIONALNUMBER]);
+	//Hackish translation
+	QString card_validation = QString::fromUtf8(PersonFields[VALIDATION].toStdString().c_str());
+	card_validation = translateCardValidation(card_validation);
+	m_ui.txtIdentityExtra_Validate->setText (card_validation);
+	m_ui.txtIdentityExtra_Validate->setAccessibleName ( QString::fromUtf8(PersonFields[VALIDATION].toStdString().c_str()));
 
 	m_ui.txtIdentityExtra_ValidFrom->setText( QString::fromUtf8(CardFields[CARD_VALIDFROM].toStdString().c_str()));
 	m_ui.txtIdentityExtra_ValidFrom->setAccessibleName( QString::fromUtf8(CardFields[CARD_VALIDFROM].toStdString().c_str()));
-
-	tFieldMap& PersonExtraFields = m_CI_Data.m_PersonInfo.m_PersonExtraInfo.getFields();
-
-	QMap<QString,QString> SpecialStatus;
-	SpecialStatus["0"] = tr("none");
-	SpecialStatus["1"] = tr("white cane");
-	SpecialStatus["2"] = tr("extended minority");
-	SpecialStatus["3"] = tr("white cane/extended minority");
-	SpecialStatus["4"] = tr("yellow cane");
-	SpecialStatus["5"] = tr("yellow cane/extended minority");
-
-	tFieldMap& MiscFields = m_CI_Data.m_MiscInfo.getFields();
 
 }
 
@@ -3670,48 +3750,9 @@ void MainWnd::refreshTabPersoData( void )
 	m_ui.txtPersoData->clear();
 	m_ui.txtPersoData->insertPlainText (QString::fromUtf8(PersoDataFields[PERSODATA_INFO].toStdString().c_str()));
 
+}
 
-	connect(m_ui.btnPersoDataSave, SIGNAL(clicked()), this, SLOT( PersoDataSaveButtonClicked()));
-}
-//*****************************************************
-// get the text for the type of card 
-//*****************************************************
-QString MainWnd::GetCardTypeText(QString const& cardType)
-{
-	QString strCardType;
-	int iDocType = cardType.toInt();
-	switch (iDocType)
-	{
-	case 11:
-		strCardType	= tr("A. Bewijs van inschrijving in het vreemdelingenregister - Tijdelijk verblijf");
-		break;
-	case 12:
-		strCardType	= tr("B. Bewijs van inschrijving in het vreemdelingenregister");
-		break;
-	case 13:
-		strCardType	= tr("C. Identiteitskaart voor vreemdeling");
-		break;
-	case 14:
-		strCardType	= tr("D. EG - langdurig ingezetene");
-		break;
-	case 15:
-		strCardType	= tr("E. Verklaring van inschrijving");
-		break;
-	case 16:
-		strCardType	= tr("E+. Verklaring van inschrijving");
-		break;
-	case 17:
-		strCardType	= tr("F. Verblijfskaart van een familielid van een burger van de Unie");
-		break;
-	case 18:
-		strCardType	= tr("F+. Verblijfskaart van een familielid van een burger van de Unie");
-		break;
-	default:
-		strCardType = tr("Unknown");
-		break;
-	}
-	return strCardType;
-}
+
 QString MainWnd::getSpecialOrganizationText( QString const& code)
 {
 	QString trSpecialOrganization;
@@ -4202,14 +4243,19 @@ void MainWnd::customEvent( QEvent* pEvent )
 						//------------------------------------
 						// register certificates when needed
 						//------------------------------------
+						/*
 						if (m_Settings.getRegCert())
 						{
+							//XXX: Move this from here
+							/*
 							bool bImported = ImportCertificates(cardReader);
 							if (!isHidden())
 							{
 								showCertImportMessage(bImported);
 							}
+						
 						}
+						*/
 						if (isHidden())
 						{
 							break;
@@ -4222,6 +4268,8 @@ void MainWnd::customEvent( QEvent* pEvent )
 						{
 							m_CI_Data.Reset(); 
 							loadCardData();
+							//Clear the Auth PIN verification flag
+							pinNotes = 1;
 						}
 
 
@@ -4234,7 +4282,7 @@ void MainWnd::customEvent( QEvent* pEvent )
 					case PTEID_CARDTYPE_UNKNOWN:
 					{
 						clearGuiContent();
-						QString msg(tr("Unknown card type"));
+						QString msg(tr("Card read error or unknown card type"));
 						ShowPTEIDError( 0, msg );
 					}
 					default:
@@ -4448,10 +4496,9 @@ void MainWnd::ShowPTEIDError( unsigned long ErrCode, QString const& msg )
 		return;
 	}
 	QString strCaption(tr("Error"));
-	QString strMessage;
-	strMessage = strMessage.setNum(ErrCode,16);
-	strMessage += ": ";
-	strMessage += msg;
+	QString strMessage(msg);
+	//strMessage = strMessage.setNum(ErrCode,16);
+	//strMessage += ": ";
 	QMessageBox::warning( this, strCaption,  strMessage, QMessageBox::Ok );
 }
 
@@ -4515,6 +4562,17 @@ void CardDataLoader::Load()
 	this->information.LoadData(card, readerName);
 	if (this->mwnd)
 		this->mwnd->loadPinData(this->card);
+
+	//Import certificates after loading data in the same thread
+	if (this->mwnd->m_Settings.getRegCert())
+	{
+		bool bImported = MainWnd::ImportCertificates(this->mwnd->m_CurrReaderName);
+
+		if (!this->mwnd->isHidden())
+		{
+			this->mwnd->showCertImportMessage(bImported);
+		}
+	}
 }
 
 void CardDataLoader::LoadPersoData()

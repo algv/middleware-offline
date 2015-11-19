@@ -80,23 +80,28 @@ class ImageCanvas : public QWidget
 {
 	Q_OBJECT
 public:
-	ImageCanvas(QWidget *parent): QWidget(parent) 
-	{  small_sig_format = false; }
+	ImageCanvas(QWidget *parent): QWidget(parent), small_sig_format(false), previewVisible(false) 
+	{
+		initDateString();
+	}
 	QImage drawToImage();
 
 	void setSmallSignature(bool isEnabled) { small_sig_format = isEnabled; }
-
+	void setPreviewEnabled(bool value) { previewVisible = value; this->update(); }
 	void setCitizenName(QString name) { citizen_name = name; }
 	void setCitizenNIC(QString nic) { citizen_nic = nic; }
 	void setLocation(QString loc) { sig_location = loc; }
 	void setReason(QString reason) { sig_reason = reason; }
 	void setCustomPixmap(QPixmap pixmap) { user_pixmap = pixmap; }
+	
 
 protected:
 	void paintEvent(QPaintEvent *);
+	void initDateString();
 
 	QPixmap user_pixmap;
-	QString citizen_name, citizen_nic, sig_location, sig_reason;
+	QString date_str, citizen_name, citizen_nic, sig_location, sig_reason;
+	bool previewVisible;
 	bool small_sig_format;
 
 };
@@ -213,7 +218,7 @@ class PDFSignWindow : public QDialog
 	    void disableSignButton();
 	    void setPosition(QPointF new_pos);
         void setSelectedSector(int sector);
-	    PDFSignWindow(QWidget * parent, CardInformation &ci);
+	    PDFSignWindow(QWidget * parent, int selected_reader, CardInformation &ci);
 	    ~PDFSignWindow();
 
 
@@ -223,6 +228,8 @@ class PDFSignWindow : public QDialog
 	    void clear_sig_position();
 	    QString composeCitizenFullName();
 	    QString getCitizenNIC();
+		PTEID_EIDCard &getNewCard();
+
 	    
 	    // bool validateSelectedSector();
 	    void invertSelectionMode();
@@ -248,6 +255,7 @@ class PDFSignWindow : public QDialog
 	    bool card_present;
 	    bool horizontal_page_flag;
 	    bool m_small_signature;
+		int m_selected_reader;
 
     	CardInformation const& m_CI_Data;
 	    QAbstractItemModel *list_model;

@@ -31,36 +31,40 @@
 #include <QGraphicsScene>
 #include <QGraphicsItem>
 #include <QFileInfo>
+#include <QDateTime>
+//For std::min_element()
+#include <algorithm>
 
 #include <eidlib.h>
+#include "eidErrors.h"
 #include "PDFSignWindow.h"
-//#include "FreeSelectionDialog.h"
 #include "mylistview.h"
 
 using namespace eIDMW;
 
-PDFSignWindow::PDFSignWindow( QWidget* parent, CardInformation& CI_Data)
-	: m_CI_Data(CI_Data), m_selected_sector(0), card_present(true), my_scene(NULL)
+PDFSignWindow::PDFSignWindow(QWidget* parent, int selected_reader, CardInformation& CI_Data)
+	: m_CI_Data(CI_Data), m_selected_reader(selected_reader), m_selected_sector(0), card_present(true), my_scene(NULL)
 {
 
 	ui.setupUi(this);
+	
+	Qt::WindowFlags flags = windowFlags();
+	flags ^= Qt::WindowMaximizeButtonHint;
+	//Remove the Context Help Window button
+	flags = flags & (~Qt::WindowContextHelpButtonHint);
+	setWindowFlags( flags );
+
 	//Set icon
 	const QIcon Ico = QIcon(":/images/Images/Icons/ICO_CARD_EID_PLAIN_16x16.png");
+
 	this->setWindowIcon(Ico);
 	int i=0, j=0;
-
-/*
-	ui.label_choose_sector->setText(tr(
-	"Choose the page sector where you want your signature to appear.\n"
-	"The grey sectors are already filled with other signatures."));
-	ui.label_choose_sector->setWordWrap(true);
-	*/
 
 	//DEBUG
 	//ui.label_selectedsector->setWordWrap(true);	
 
 	m_pdf_sig = NULL;
-	//m_selection_dialog = NULL;
+
 	table_lines = 6;
 	table_columns = 3;
 	sig_coord_x = -1, sig_coord_y = -1;
@@ -72,14 +76,14 @@ PDFSignWindow::PDFSignWindow( QWidget* parent, CardInformation& CI_Data)
 	ui.pdf_listview->setModel(list_model);
 	ui.pdf_listview->enableNotify();
 
-	int items = ui.horizontalLayout_3->count();
+	// int items = ui.horizontalLayout_3->count();
 
-	for (int i = 0; i!= items; i++)
-	{
-		ui.horizontalLayout_3->itemAt(i)->setAlignment(Qt::AlignLeft);
-	}
+	// for (int i = 0; i!= items; i++)
+	// {
+	// 	ui.horizontalLayout_3->itemAt(i)->setAlignment(Qt::AlignLeft);
+	// }
 
-	ui.verticalLayout->setContentsMargins(15,15,15,15);
+	// ui.verticalLayout->setContentsMargins(15,15,15,15);
 
 	//save the default background to use in clearAllSectors()
 	// m_default_background = ui.tableWidget->item(0,0)->background();
@@ -93,18 +97,18 @@ PDFSignWindow::PDFSignWindow( QWidget* parent, CardInformation& CI_Data)
 	// image_canvas->setLayout(ui.verticalLayout);
 	//image_canvas->show();
 
-	items = ui.verticalLayout->count();
+	// items = ui.verticalLayout->count();
 
-	for (int i = 0; i!= items; i++)
-	{
-		ui.verticalLayout->itemAt(i)->setAlignment(Qt::AlignTop);
-	}
+	// for (int i = 0; i!= items; i++)
+	// {
+	// 	ui.verticalLayout->itemAt(i)->setAlignment(Qt::AlignTop);
+	// }
 
 	ui.verticalLayout1->setSpacing(5);	
 
-	ui.verticalLayout_2->setSpacing(10);
+	// ui.verticalLayout_2->setSpacing(10);
 
-	items = ui.verticalLayout_4->count();
+	int items = ui.verticalLayout_4->count();
 
 	for (int i = 0; i!= items; i++)
 	{
@@ -148,7 +152,7 @@ PDFSignWindow::~PDFSignWindow()
 {
 
 	delete list_model;
-	// delete m_selection_dialog;
+
 	// if (m_pdf_sig)
 	// 	delete m_pdf_sig;
 }
@@ -175,6 +179,14 @@ void PDFSignWindow::disableSignButton()
 }
 
 
+void ImageCanvas::initDateString()
+{
+	QDateTime now = QDateTime::currentDateTime();
+
+	this->date_str = now.toString("yyyy.MM.dd hh:mm:ss");
+
+}
+
 QImage ImageCanvas::drawToImage()
 {
 	// const int spacing = 10;
@@ -200,7 +212,7 @@ QImage ImageCanvas::drawToImage()
 	// if (scaled.width() > img_width)
 	// {
 	// 	scaled = scaled.scaledToWidth(img_width, Qt::SmoothTransformation);
-	// } 
+	// }
     
    	painter.drawPixmap(0, 0, scaled);
 
@@ -214,6 +226,9 @@ void ImageCanvas::paintEvent(QPaintEvent *)
 	int line_count = 0;
 	int current_y_pos = 5;
 
+	if (!this->previewVisible)
+		return;
+
 	QPainter painter(this);
 	painter.setRenderHint(QPainter::Antialiasing);
 
@@ -221,7 +236,12 @@ void ImageCanvas::paintEvent(QPaintEvent *)
 	QPixmap default_icon(":/images/Images/Icons/pteid_signature_banner.jpg");
 
 	QFont current_font = painter.font();
+#ifdef __APPLE__
+	current_font.setPointSize(10);
+#else
 	current_font.setPointSize(9);
+#endif
+
 	painter.setFont(current_font);
 	
 	int line_height = fontMetrics().height();
@@ -257,7 +277,44 @@ void ImageCanvas::paintEvent(QPaintEvent *)
 	QFont my_font = painter.font();
 	my_font.setBold(true);
 	painter.setFont(my_font);
-	painter.drawText(bounding_rect.width()+ 5, current_y_pos, citizen_name);
+	
+	QRect citizen_name_rect = fontMetrics().boundingRect(citizen_name);
+	
+	int available_width = this->width()-40 - bounding_rect.width()-5;
+
+	//Check if 2 lines are needed for longer names
+	if (citizen_name_rect.width() > available_width)
+	{
+		//Add words one by one until we run out of space
+		QStringList words = citizen_name.split(" ");
+		QString tmp, first_line, second_line;
+		for (int i = 0; i < words.size(); ++i)
+		{
+			if (i > 0)
+				tmp += " ";
+			QString new_string = tmp + words.at(i);
+			if (fontMetrics().boundingRect(new_string).width() > available_width)
+			{
+				first_line = tmp;
+				second_line = QStringList(words.mid(i)).join(" ");
+				break;
+			}
+			else
+			{
+				tmp = new_string;
+			}
+
+		}
+		painter.drawText(bounding_rect.width()+ 5, current_y_pos, first_line);
+
+		current_y_pos += line_height + line_spacing;
+		painter.drawText(5, current_y_pos, second_line);
+	}
+	else
+	{
+		painter.drawText(bounding_rect.width()+ 5, current_y_pos, citizen_name);
+	}
+
 	my_font.setBold(false);
 	painter.setFont(my_font);
 
@@ -266,12 +323,12 @@ void ImageCanvas::paintEvent(QPaintEvent *)
 
 	
 	current_y_pos += line_height + line_spacing;
-	painter.drawText(5, current_y_pos, "Date: 06 de Outubro de 2014 11:20:22");
+	painter.drawText(5, current_y_pos, "Data: " + this->date_str);
 
 	if (!small_sig_format && !sig_location.isEmpty())
 	{
 		current_y_pos += line_height + line_spacing;
-		painter.drawText(5, current_y_pos, "Location: " + sig_location);
+		painter.drawText(5, current_y_pos, "Local: " + sig_location);
 	}
 
 	
@@ -420,6 +477,8 @@ void PDFSignWindow::on_visible_checkBox_toggled(bool checked)
 		my_rectangle->hide();
 		clearAllSectors();
 	}
+
+	this->image_canvas->setPreviewEnabled(checked);
 		
 }
 
@@ -432,7 +491,10 @@ void PDFSignWindow::on_pushButton_imgChooser_clicked()
 	m_custom_image = QImage(image_file);
 
 	if (!m_custom_image.isNull())
+	{
 		this->image_canvas->setCustomPixmap(QPixmap::fromImage(m_custom_image));
+		this->image_canvas->update();
+	}
 	// ui.image_canvas->setCustomPixmap(QPixmap::fromImage(original_image));
 }
 
@@ -462,39 +524,89 @@ void PDFSignWindow::ShowErrorMsgBox(QString msg)
   	msgBoxp.exec();
 }
 
+PTEID_EIDCard& PDFSignWindow::getNewCard()
+{
+		unsigned long	ReaderStartIdx = m_selected_reader;
+		bool			bRefresh	   = false;
+		unsigned long	ReaderEndIdx   = ReaderSet.readerCount(bRefresh);
+		unsigned long	ReaderIdx	   = 0;
+
+		if (ReaderStartIdx!=(unsigned long)-1)
+		{
+			ReaderEndIdx = ReaderStartIdx+1;
+		}
+		else
+		{
+			ReaderStartIdx=0;
+		}
+
+		for (ReaderIdx=ReaderStartIdx; ReaderIdx<ReaderEndIdx; ReaderIdx++)
+		{
+			PTEID_ReaderContext& ReaderContext = ReaderSet.getReaderByNum(ReaderIdx);
+			if (ReaderContext.isCardPresent())
+			{
+					try
+					{
+						PTEID_EIDCard& Card = ReaderContext.getEIDCard();
+						return Card;
+						
+					}
+					catch (PTEID_ExCardBadType const& e) {
+
+					}
+			}
+		}
+
+}
+
 void PDFSignWindow::run_sign(int selected_page, QString &savefilepath,
 	       	char *location, char *reason)
 {
 
 	PTEID_EIDCard* card = dynamic_cast<PTEID_EIDCard*>(m_CI_Data.m_pCard);
 	int sign_rc = 0;
+	bool keepTrying = true;
 	char * save_path = strdup(getPlatformNativeString(savefilepath));
-	try
+
+	do
 	{
-		//printf("@PDFSignWindow::run_sign:\n");
-		//printf("x=%f, y=%f\n", sig_coord_x, sig_coord_y);
-		//printf("selected_page=%d, selected_sector=%d\n", selected_page, m_selected_sector);
+		try
+		{
+			//printf("@PDFSignWindow::run_sign:\n");
+			//printf("x=%f, y=%f\n", sig_coord_x, sig_coord_y);
+			//printf("selected_page=%d, selected_sector=%d\n", selected_page, m_selected_sector);
 
-		if (sig_coord_x != -1 && sig_coord_y != -1)
-			sign_rc = card->SignPDF(*m_pdf_sig, selected_page,
-			sig_coord_x, sig_coord_y, location, reason, save_path);
-		else
-			sign_rc = card->SignPDF(*m_pdf_sig, selected_page,
-                m_selected_sector, m_landscape_mode, location, reason, save_path);
+			if (sig_coord_x != -1 && sig_coord_y != -1)
+				sign_rc = card->SignPDF(*m_pdf_sig, selected_page,
+				sig_coord_x, sig_coord_y, location, reason, save_path);
+			else
+				sign_rc = card->SignPDF(*m_pdf_sig, selected_page,
+				m_selected_sector, m_landscape_mode, location, reason, save_path);
+			
+			keepTrying = false;
+			if (sign_rc == 0)
+				this->success = SIG_SUCCESS;
+			else
+				this->success = TS_WARNING;
 
-		if (sign_rc == 0)
-			this->success = SIG_SUCCESS;
-		else
-			this->success = TS_WARNING;
+		}
+		catch (PTEID_Exception &e)
+		{
+			this->success = SIG_ERROR;
+			PTEID_LOG(PTEID_LOG_LEVEL_ERROR, "eidgui", "Caught exception in signPDF() method. Error code: 0x%08x\n", 
+				(unsigned int)e.GetError());
 
+			if (e.GetError() == EIDMW_ERR_CARD_RESET)
+			{
+				PTEID_EIDCard &new_card = getNewCard();
+				card = &new_card;
+
+			}
+			else
+				keepTrying = false;
+		}
 	}
-
-	catch (PTEID_Exception &e)
-	{
-		this->success = SIG_ERROR;
-		fprintf(stderr, "Caught exception in some SDK method. Error code: 0x%08x\n", 
-			(unsigned int)e.GetError());
-	}
+	while(keepTrying);
 
 	free(save_path);
 
@@ -510,6 +622,12 @@ void PDFSignWindow::on_button_sign_clicked()
 	//Read Page
 	if (ui.visible_checkBox->isChecked())
 	{
+		//Validate if any location was chosen
+		if (sig_coord_x == -1 && m_selected_sector == 0)
+		{
+			ShowErrorMsgBox(tr("You must choose a location for visible signature!"));
+			return;
+		}
 
 		if (ui.radioButton_firstpage->isChecked())
 			selected_page = 1;
@@ -531,8 +649,6 @@ void PDFSignWindow::on_button_sign_clicked()
 
 	if (model->rowCount() > 1)
 	{
-		//TODO: The batch signing is all very hackish with validations missing
-		// and this awkward API...
 		//First we need to free the first instance that was created unless we want to leak the file handle...
 		delete m_pdf_sig;
 		m_pdf_sig = new PTEID_PDFSignature();
@@ -1078,8 +1194,8 @@ void PDFSignWindow::addSquares()
     double scene_height = ui.scene_view->height()-2*margin;
     double scene_width = ui.scene_view->width()-2*margin;
 
-    qDebug() << "scene_height: " << scene_height;
-    qDebug() << "scene_width: " << scene_width;
+    // qDebug() << "scene_height: " << scene_height;
+    // qDebug() << "scene_width: " << scene_width;
 
     int h_lines = 0, v_lines = 0;
 
@@ -1213,16 +1329,19 @@ void PDFSignWindow::addFileToListView(QStringList &str)
 	// QString sectors = QString::fromAscii(m_pdf_sig->getOccupiedSectors(1));
 	// highlightSectors(sectors);
 
+	//Enable sign button now that we have data and a card inserted
+	if (!str.isEmpty() && this->card_present)
+	{
+		ui.button_sign->setEnabled(true);
+		ui.visible_checkBox->setEnabled(true);
+	}
+
+	if (!my_scene)
+    	buildLocationTab();
+
 	if (list_model->rowCount() > 1)
 	{
 		clearAllSectors();
 	}
-
-	//Enable sign button now that we have data and a card inserted
-	if (!str.isEmpty() && this->card_present)
-		ui.button_sign->setEnabled(true);
-
-	if (!my_scene)
-    	buildLocationTab();
 
 }

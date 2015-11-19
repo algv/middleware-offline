@@ -25,7 +25,6 @@
 #include <QDialog>
 #include "genpur.h"
 #include "CardInformation.h"
-#include <cairo/cairo.h>
 
 class dlgPrint : public QDialog
 {
@@ -44,7 +43,7 @@ private slots:
 
 
 public:
-    dlgPrint(QWidget* parent , CardInformation& CI_Data, GenPur::UI_LANGUAGE lng, QString const& cardTypeText);
+    dlgPrint(QWidget* parent , CardInformation& CI_Data, GenPur::UI_LANGUAGE lng);
     ~dlgPrint();
 
 private:
@@ -57,13 +56,13 @@ private:
     QByteArray image;
     QFutureWatcher<void> FutureWatcher;
     QProgressDialog *pdialog;
+    double pos_x, pos_y;
 
     bool addressPINRequest_triggered(CardInformation& CI_Data);
     void ShowErrorMsgBox();	 
     void ShowSuccessMsgBox();	 
     const char * persodata_triggered();
-    bool drawpdf(CardInformation& CI_Data, int format, const char *filepath);
-    cairo_t *createPage(int format, bool firstPage, const char *filepath, cairo_t *crt);
+    bool drawpdf(CardInformation& CI_Data, const char *filepath);
 };
 
 #endif

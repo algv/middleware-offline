@@ -20,6 +20,7 @@
  **************************************************************************** */
 
 #include <iostream>
+#include <algorithm>
 
 #include <QtGui>
 #include <QtNetwork>
@@ -42,7 +43,7 @@ std::string getdistro;
 QString fileName;
 
 HttpWindow::HttpWindow(std::string uri, std::string distro, QWidget *parent)
-: QDialog(parent)
+: QDialog(parent, Qt::WindowTitleHint | Qt::WindowSystemMenuHint)
 {
     urli = uri;
     getdistro = distro;
@@ -77,7 +78,8 @@ HttpWindow::HttpWindow(std::string uri, std::string distro, QWidget *parent)
     mainLayout->addWidget(textEditor);
     mainLayout->addWidget(buttonBox);
     setLayout(mainLayout);
-
+	const QIcon app_icon = QIcon(":/images/Images/Icons/ICO_CARD_EID_PLAIN_16x16.png");
+	setWindowIcon(app_icon);
     setWindowTitle(tr("Auto-Update"));
 
     //statusLabel = new QLabel(tr("There are updates available press Install do perform the updates."));
@@ -106,6 +108,7 @@ QString HttpWindow::GetReleaseNotes()
         return "Get Release Notes failed";
 
     QTextStream in(&file);
+    in.setCodec("UTF-8");
 
     while (!in.atEnd())
     {
@@ -142,15 +145,6 @@ void HttpWindow::downloadFile()
 	}
 
 	QFile::remove(fileName);
-	/*if (QFile::exists(fileName)) {
-		if (QMessageBox::question(this, QString::fromUtf8(dtitle.c_str()),
-				tr("There already exists a file called %1 in "
-						"the current directory. Overwrite?").arg(fileName),
-						QMessageBox::Yes|QMessageBox::No, QMessageBox::No)
-		== QMessageBox::No)
-			return;
-		QFile::remove(fileName);
-	}*/
 
 	std::string tmpfile;
 	tmpfile.append(QDir::tempPath().toStdString());
@@ -278,8 +272,7 @@ void HttpWindow::RunPackage(std::string pkg, std::string distro)
 
 	std::string winpath;
     winpath.append("C:\\Windows\\system32\\msiexec.exe /i");
-	//TODO: Verificar a path do msi em Windows
-	//C:\\Users\\Luis\\AppData\\Local\\Temp\\PteidMW35-Basic-en.msi
+
     QString s = QDir::toNativeSeparators(QString::fromStdString(pkgpath));
     winpath.append(s.toStdString());
     winpath.append(" /L*v ");
@@ -294,18 +287,22 @@ void HttpWindow::RunPackage(std::string pkg, std::string distro)
 
 #else
 
+    //Normalize distro string to lowercase
+    std::transform(distro.begin(), distro.end(), distro.begin(), ::tolower);
+
 	std::cout << "pkgpath " << pkgpath << " distro " << distro << std::endl;
-	if (distro == "debian")
+    
+	if (distro == "debian" || distro == "ubuntu" || distro == "caixamagica")
 	{
 	  	execl ("/usr/bin/software-center", "software-center", pkgpath.c_str(), NULL);
 	}
 
-	if (distro == "fedora")
+	else if (distro == "fedora")
 	{
 	  	execl ("/usr/bin/gpk-install-local-file", "gpk-install-local-file", pkgpath.c_str(), NULL);
 	}
 
-	if (distro == "suse")
+	else if (distro == "suse")
 	{
 	    	execl ("/usr/bin/gpk-install-local-file", "gpk-install-local-file", pkgpath.c_str(), NULL);
 	}

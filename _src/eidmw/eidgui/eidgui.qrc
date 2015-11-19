@@ -27,6 +27,8 @@
         <file>Images/bg_SelectTabTool.png</file>
         <file>Images/bg_SelectTabButtons.png</file>
         <file>Images/alpha.png</file>
+        <file>Images/din-light.ttf</file>
+        <file>Images/din-medium.ttf</file>
         <file>Images/bg_Toolbar.png</file>
         <file>Images/buttons/button_card.png</file>
         <file>Images/buttons/button_digital_sign.png</file>
@@ -43,6 +45,7 @@
         <file>Images/bg_Pins.png</file>
         <file>Images/bt_Pin-Change.png</file>
         <file>Images/bt_Pin-Check.png</file>
+        <file>Images/pdf_document_header.png</file>
         <file>Images/tab-backgrounds/bg_notes.png</file>
         <file>Images/tab-backgrounds/bg_pinCodes.png</file>
         <file>Images/tab-backgrounds/bg_address.png</file>

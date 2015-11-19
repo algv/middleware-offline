@@ -212,35 +212,6 @@ namespace eIDMW
 
 		return CByteArray(md_value, SHA256_LEN);
 	}
-	
-#ifdef WIN32
-
-	std::wstring utf8_decode(const char *str)
-	{
-		int size_needed = MultiByteToWideChar(CP_UTF8, 0, str, strlen(str), NULL, 0);
-		std::wstring wstrTo(size_needed, 0);
-		MultiByteToWideChar(CP_UTF8, 0, str, strlen(str), &wstrTo[0], size_needed);
-		return wstrTo;
-	}
-
-	const wchar_t * pathToURI(const std::wstring path)
-	{
-		DWORD url_size = MAX_PATH*5;
-		LPWSTR pszUrl = new WCHAR[url_size]; //We have to account for chars that must be escaped into %XX sequences
-
-		HRESULT ret = UrlCreateFromPath(path.c_str(), pszUrl, &url_size, NULL);
-       
-		if (ret != S_OK)
-		{
-	    	MWLOG(LEV_ERROR, MOD_APL, L"XadesSignature: UrlCreateFromPath returned error, \
-			URI is probably wrongly encoded");
-			return std::wstring(L"file://localhost" + path).c_str();
-		}
-		
-		return pszUrl;
-
-	}
-#endif
 
 	int XadesSignature::appendOID(XMLByte *toFill)
 	{
@@ -553,15 +524,6 @@ void XadesSignature::terminateXMLUtils()
 XMLCh* XadesSignature::createURI(const char *path)
 {
 
-// #ifdef WIN32
-// 	XMLCh * uni_reference_uri = (XMLCh*)pathToURI(utf8_decode(path));
-// #else
-// 	string default_uri = string("file://localhost/") + Basename((char *)path);
-// 	//TODO: We also need to URL-encode the path on Unix
-// 	XMLCh * uni_reference_uri = XMLString::transcode(default_uri.c_str());
-// #endif
-// 	return uni_reference_uri;
-
 	string uri = string("./") + Basename((char *)path);
 
 	return XMLString::transcode(uri.c_str());
@@ -699,15 +661,16 @@ X509 * XadesSignature::addCertificateToKeyInfo(CByteArray &cert, DSIGKeyInfoX509
 void XadesSignature::addCertificateChain(DSIGKeyInfoX509 *keyInfo)
 {
 	APL_CryptoFwkPteid *fwk = AppLayer.getCryptoFwk();
-	CByteArray cert1, cc01, cc02, ec_raiz_estado;
+	CByteArray cert1, cc01, cc02, cc03, ec_raiz_estado;
 
 	mp_card->readFile(PTEID_FILE_CERT_ROOT_SIGN, cert1);
 	m_cert_bas.push_back(cert1);
 
 	mp_signature_ca_cert = addCertificateToKeyInfo(cert1, keyInfo);
 
-	cc01 = CByteArray(PTEID_CERTS[20].cert_data, PTEID_CERTS[20].cert_len);
-	cc02 = CByteArray(PTEID_CERTS[21].cert_data, PTEID_CERTS[21].cert_len);
+	cc01 = CByteArray(PTEID_CERTS[22].cert_data, PTEID_CERTS[22].cert_len);
+	cc02 = CByteArray(PTEID_CERTS[23].cert_data, PTEID_CERTS[23].cert_len);
+	cc03 = CByteArray(PTEID_CERTS[24].cert_data, PTEID_CERTS[24].cert_len);
 
 	// Add issuer of Signature SubCA
 	if (fwk->isIssuer(cert1, cc01))
@@ -720,11 +683,16 @@ void XadesSignature::addCertificateChain(DSIGKeyInfoX509 *keyInfo)
 		addCertificateToKeyInfo(cc02, keyInfo);
 		m_cert_bas.push_back(cc02);
 	}
+	else if (fwk->isIssuer(cert1, cc03))
+	{
+		addCertificateToKeyInfo(cc03, keyInfo);
+		m_cert_bas.push_back(cc03);
+	}
 	else 
 		MWLOG(LEV_ERROR, MOD_APL, L"Couldn't find issuer for certificate SIGNATURE_SUBCA.The validation will be broken!");
 
 	// Add ECRaizEstado certificate
-	ec_raiz_estado = CByteArray(PTEID_CERTS[19].cert_data, PTEID_CERTS[19].cert_len);
+	ec_raiz_estado = CByteArray(PTEID_CERTS[21].cert_data, PTEID_CERTS[21].cert_len);
 	m_cert_bas.push_back(ec_raiz_estado);
 	addCertificateToKeyInfo(ec_raiz_estado, keyInfo);
 }

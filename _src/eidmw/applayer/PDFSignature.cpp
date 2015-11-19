@@ -434,13 +434,13 @@ namespace eIDMW
 			else
 			{
 			    double sig_width = (width - lr_margin*2) / 3.0;
+			    double actual_sig_height =  m_small_signature ? sig_height / 2.0 : sig_height;
 			    sig_location.x1 = lr_margin+ (width-lr_margin*2)*location_x;
 			    
 			    //Coordinates from the GUI are inverted => (1- location_y)
-			    sig_location.y1 = tb_margin + (height-tb_margin*2) *(1.0-location_y)-sig_height;  
+			    sig_location.y1 = tb_margin + (height-tb_margin*2) *(1.0-location_y)- actual_sig_height;  
 			    sig_location.x2 = sig_location.x1 + sig_width;
-			    sig_location.y2 = sig_location.y1 + sig_height;
-
+			    sig_location.y2 = sig_location.y1 + actual_sig_height;
 			}
 
 		}
@@ -463,7 +463,24 @@ namespace eIDMW
 			location, reason, m_page, m_sector);
 		unsigned long len = doc->getSigByteArray(&to_sign, incremental);
 
-		int rc = pteid_sign_pkcs7(m_card, to_sign, len, m_timestamp, &signature_contents);
+		int rc = 0;
+		try
+		{
+			rc = pteid_sign_pkcs7(m_card, to_sign, len, m_timestamp, &signature_contents);
+		}
+		catch(CMWException e)
+		{
+			//Throw away the changed PDFDoc object because we might retry the signature 
+			//and this document is "half-signed"...
+			if (e.GetError() == EIDMW_ERR_CARD_RESET)
+			{
+				delete m_doc;
+				if (!m_batch_mode)
+					m_doc = new PDFDoc(new GooString(m_pdf_file_path));
+
+			}
+			throw;
+		}
 
 		if (to_sign)
 			free(to_sign);

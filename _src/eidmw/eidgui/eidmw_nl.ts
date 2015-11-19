@@ -15,6 +15,10 @@
         <source>PDF Signature</source>
         <translation>Assinatura de PDF</translation>
      </message>
+	 <message>
+		<source>Error launching Java application! Make sure you have a working JRE installed.</source>
+		<translation>Erro ao executar aplicação Java! Verifique se o seu sistema tem o software Java instalado.</translation>
+	 </message>
      <message>
      <source>Universal Signature</source>
      <translation>Assinatura Universal</translation>
@@ -26,6 +30,11 @@
      <message>
      <source>Signature Certificate:</source>
      <translation>Certificado de Assinatura:</translation>
+     </message>
+
+     <message>
+        <source>SCAP Signature</source>
+        <translation>Assinatura na qualidade</translation>
      </message>
 	 
 	 <message>
@@ -69,6 +78,7 @@
     <source>Address Changed successfully.</source>
     <translation>A morada foi alterada com sucesso.</translation>
     </message>
+
     <message>
         <source>Error connecting to the Address Change server.\nPlease check if your Internet connection is functional</source>
         <translation>Erro de ligação ao servidor para mudança de morada.\nPor favor verifique se a sua ligação à Internet está funcional</translation>
@@ -85,7 +95,7 @@
         
 <message>
 	<source>Attention: your current authentication PIN will be requested twice in two different dialog boxes.</source>
-	<translation>Atenção: o seu actual PIN de autenticação vai ser requerido duas vezes neste processo.</translation>
+	<translation>Atenção: o seu atual PIN de autenticação vai ser requerido duas vezes neste processo.</translation>
 </message>
 
 	<message>
@@ -100,7 +110,7 @@
 
 	<message>
 	<source>Verification of your current PIN failed</source>
-	<translation>O PIN actual está incorrecto.</translation>
+	<translation>O PIN atual está incorrecto.</translation>
 </message>
 <message>
 	<source>Error connecting to the OTP Server. Please check your internet connection.</source>
@@ -135,6 +145,7 @@
         <source>Reading card data...</source>
         <translation>A ler os dados do cartão...</translation>
     </message>
+
      <message>
         <source>Time for entering PIN expired (30 seconds)</source>
         <translation>O tempo para introdução do PIN expirou (30 segundos)</translation>
@@ -221,7 +232,7 @@
     </message>
     <message>
         <source>Updates</source>
-        <translation>Actualizações</translation>
+        <translation>Atualizações</translation>
     </message>
     <message>
         <source>About</source>
@@ -291,14 +302,7 @@
         <source>Name</source>
         <translation>Nome</translation>
     </message>
-    <message utf8="true">
-        <source>Belgische verblijfstitel - Titre de séjour belge</source>
-        <translation>Belgische verblijfstitel - Titre de séjour belge</translation>
-    </message>
-    <message>
-        <source>Belgischer Aufenthaltstitel - Belgian residence permit</source>
-        <translation>Belgischer Aufenthaltstitel - Belgian residence permit</translation>
-    </message>
+ 
     <message>
         <source>Sis</source>
         <translation>SIS</translation>
@@ -672,8 +676,8 @@ Do you want to accept it?
         </translation>
     </message>
     <message>
-        <source>Unknown card type</source>
-        <translation type="unfinished">Tipo de cartão desconhecido</translation>
+        <source>Card read error or unknown card type</source>
+        <translation>Erro de leitura ou tipo de cartão desconhecido</translation>
     </message>
     <message>
         <source>Index out of range</source>
@@ -896,43 +900,27 @@ Please specify .xml, .csv or .eid</source>
     </message>
     <message>
         <source>Deleting former certificate</source>
-        <translation type="unfinished">Verwijderen oud certificaat</translation>
+        <translation>Apagar antigo certificado</translation>
     </message>
     <message>
         <source>Error deleting former certificate</source>
-        <translation type="unfinished">Fout opgetreden bij het verwijderen van het oud certificaat</translation>
+        <translation>Erro ao apagar antigo certificado</translation>
     </message>
     <message>
         <source>PIN verification passed</source>
-        <translation type="unfinished">PIN introduzido correctamente</translation>
+        <translation>PIN introduzido corretamente</translation>
     </message>
     <message>
         <source>PIN verification failed</source>
-        <translation type="unfinished">O PIN introduzido está errado!</translation>
+        <translation>O PIN introduzido está errado!</translation>
     </message>
     <message>
         <source>PIN change passed</source>
-        <translation type="unfinished">Alteração de PIN efectuada</translation>
+        <translation>Alteração de PIN efetuada</translation>
     </message>
     <message>
         <source>PIN change failed</source>
-        <translation type="unfinished">Alteração de PIN falhou</translation>
-    </message>
-    <message>
-        <source>Belgian eID Runtime</source>
-        <translation>Belgische eID Runtime</translation>
-    </message>
-    <message>
-        <source>Done</source>
-        <translation>Gedaan</translation>
-    </message>
-    <message>
-        <source>Failed</source>
-        <translation>Mislukt</translation>
-    </message>
-    <message>
-        <source>Error opening file</source>
-        <translation>Fout bij het openen van bestand</translation>
+        <translation>Alteração de PIN falhou</translation>
     </message>
     <message>
         <source>Error writing file</source>
@@ -957,6 +945,10 @@ Please specify .xml, .csv or .eid</source>
     <message>
         <source>Readers changed</source>
         <translation>Leitor de cartões alterado</translation>
+    </message>
+    <message>
+        <source>Checking...</source>
+        <translation>A verificar...</translation>
     </message>
     <message>
         <source>Bad transaction</source>
@@ -1072,25 +1064,10 @@ Please specify .xml, .csv or .eid</source>
         <source>OCSP check</source>
         <translation>OCSP check</translation>
     </message>
-    <message>
-        <source>Not allowed yet by user</source>
-        <translation type="unfinished">Niet toegestaan door de gebruiker</translation>
-    </message>
-    <message>
-        <source>OCSP not checked</source>
-        <translation>OCSP niet geverifieerd</translation>
-    </message>
+
     <message>
         <source>Good</source>
         <translation>Goed</translation>
-    </message>
-    <message>
-        <source>Card inserted:</source>
-        <translation>Kaart ingestoken:</translation>
-    </message>
-    <message>
-        <source>Checking certificate OCSP status</source>
-        <translation>Nagaan van de OCSP status van het certificaat</translation>
     </message>
     <message>
         <source>Card reader: </source>
@@ -1149,11 +1126,11 @@ Please specify .xml, .csv or .eid</source>
 	<name>HttpWindow</name>
 	<message>
         <source>Auto-Update</source>
-        <translation>Actualização automática</translation>
+        <translation>Atualização automática</translation>
     </message>
 	<message>
         <source>There are updates available press Install do perform the updates.</source>
-        <translation>Existem Actualizações Disponíves. Clique em Instalar para prosseguir.</translation>
+        <translation>Existem atualizações disponíves. Clique em Instalar para prosseguir.</translation>
     </message>
     <message>
         <source>Unable to download the update please check your Network Connection.</source>
@@ -1180,7 +1157,7 @@ Please specify .xml, .csv or .eid</source>
 	<name>AutoUpdates</name>
 	<message>
 		<source>Auto-update</source>
-		<translation>Actualizações Automáticas</translation>
+		<translation>Atualizações Automáticas</translation>
 	</message>
 	<message>
 		<source>Yes</source>
@@ -1196,15 +1173,15 @@ Please specify .xml, .csv or .eid</source>
 	</message>
 	<message>
 		<source>Your Linux distribution is not supported by Auto-updates</source>
-		<source>A sua distribuição não é suportada pelas Actualizações Automáticas</source>
+		<source>A sua distribuição não é suportada pelas Atualizações Automáticas</source>
 	</message>
 	<message>
 		<source>Do you want to check for updates?</source>
-		<translation>Deseja verificar se existem actualizações disponíveis?</translation>
+		<translation>Deseja verificar se existem atualizações disponíveis?</translation>
 	</message>
 <message>
 	<source>No updates available at the moment</source>
-	<translation>Não existem Actualizações de momento</translation>
+	<translation>Não existem atualizações de momento</translation>
 </message>
 </context>
 <context>
@@ -1364,7 +1341,7 @@ Please specify .xml, .csv or .eid</source>
 <context>
     <name>dlgPrint</name>
     <message>
-        <source>Additional Indications</source>
+        <source>Additional Information</source>
         <translation>Informações Adicionais</translation>
     </message>
     <message>
@@ -1373,8 +1350,8 @@ Please specify .xml, .csv or .eid</source>
         <translation type="unfinished">Selecione os campos pretendidos:</translation>
     </message>
     <message>
-        <source>Basic Indications</source>
-        <translation>Indicações Básicas</translation>
+        <source>Basic Information</source>
+        <translation>Informações Básicas</translation>
     </message>
     <message>
         <source>Address</source>
@@ -1384,10 +1361,197 @@ Please specify .xml, .csv or .eid</source>
         <source>Personal Notes</source>
         <translation>Notas pessoais</translation>
     </message>
-    <message>
+
+      <message>
         <source>Cancel</source>
         <translation>Cancelar</translation>
     </message>
+    
+    <message>
+        <source>PERSONAL DATA</source>
+        <translation>DADOS PESSOAIS</translation>
+    </message>
+    <message>
+        <source>BASIC INFORMATION</source>
+        <translation>INFORMAÇÕES BÁSICAS</translation>
+    </message>
+    <message>
+        <source>Given Name(s)</source>
+        <translation>Nome(s)</translation>
+    </message>
+    <message>
+        <source>Surname(s)</source>
+        <translation>Apelido(s)</translation>
+    </message>
+
+    <message>
+        <source>Gender</source>
+        <translation>Sexo</translation>
+    </message>
+
+    <message>
+        <source>Height</source>
+        <translation>Altura</translation>
+    </message>
+
+      <message>
+        <source>Date of birth</source>
+        <translation>Data de Nascimento</translation>
+    </message>
+
+     <message>
+        <source>Document Number</source>
+        <translation>Número de documento</translation>
+    </message>
+
+     <message>
+        <source>Validity Date</source>
+        <translation>Data de validade</translation>
+    </message>
+
+     <message>
+        <source>Country</source>
+        <translation>País</translation>
+    </message>
+
+     <message>
+        <source>Father</source>
+        <translation>Pai</translation>
+    </message>
+
+     <message>
+        <source>Mother</source>
+        <translation>Mãe</translation>
+    </message>
+
+     <message>
+        <source>Notes</source>
+        <translation>Indicações Eventuais</translation>
+    </message>
+
+    <message>
+        <source>ADDITIONAL INFORMATION</source>
+        <translation>INFORMAÇÕES ADICIONAIS</translation>
+    </message>
+
+    <message>
+        <source>VAT identification no.</source>
+        <translation>Nº Identificação Fiscal</translation>
+    </message>
+
+    <message>
+        <source>Social Security no.</source>
+        <translation>Nº Segurança Social</translation>
+    </message>
+
+    <message>
+        <source>National Health System no.</source>
+        <translation>Nº Utente de Saúde</translation>
+    </message>
+
+     <message>
+        <source>Card Version</source>
+        <translation>Versão do Cartão</translation>
+    </message>
+
+     <message>
+        <source>Delivery Date</source>
+        <translation>Data de emissão</translation>
+    </message>
+
+     <message>
+        <source>Delivery Entity</source>
+        <translation>Entidade Emissora</translation>
+    </message>
+     <message>
+        <source>Delivery Location</source>
+        <translation>Local de pedido</translation>
+    </message>
+     <message>
+        <source>Document type</source>
+        <translation>Tipo de documento</translation>
+    </message>
+     <message>
+        <source>Card State</source>
+        <translation>Estado do cartão</translation>
+    </message>
+     <message>
+        <source>District</source>
+        <translation>Distrito Nacional</translation>
+    </message>
+     <message>
+        <source>Municipality</source>
+        <translation>Concelho</translation>
+    </message>
+     <message>
+        <source>Civil Parish</source>
+        <translation>Freguesia</translation>
+    </message>
+     <message>
+        <source>Ab. street type</source>
+        <translation>Abr. tipo de Via</translation>
+    </message>
+
+    <message>
+        <source>Street type</source>
+        <translation>Tipo de Via</translation>
+    </message>
+    <message>
+        <source>Street Name</source>
+        <translation>Nome da Via</translation>
+    </message>
+    <message>
+        <source>Ab. Building Type</source>
+        <translation>Abr. Tipo de Edifício</translation>
+    </message>
+    <message>
+        <source>Building Type</source>
+        <translation>Tipo de Edifício</translation>
+    </message>
+    <message>
+        <source>House/building no.</source>
+        <translation>Nº da porta</translation>
+    </message>
+    <message>
+        <source>Floor</source>
+        <translation>Andar</translation>
+    </message>
+    <message>
+        <source>Side</source>
+        <translation>Lado</translation>
+    </message>
+    <message>
+        <source>Place</source>
+        <translation>Lugar</translation>
+    </message>
+    <message>
+        <source>Zip Code 4</source>
+        <translation>Cod. Postal 4</translation>
+    </message>
+    <message>
+        <source>Zip Code 3</source>
+        <translation>Cod. Postal 3</translation>
+    </message>
+    <message>
+        <source>Postal Locality</source>
+        <translation>Localidade Postal</translation>
+    </message>
+
+    <message>
+        <source>Locality</source>
+        <translation>Localidade</translation>
+    </message>
+
+     <message>
+        <source>PERSONAL NOTES</source>
+        <translation>NOTAS PESSOAIS</translation>
+    </message>
+
+     <message>
+        <source>ADDRESS</source>
+        <translation>MORADA</translation>
+    </message>
+
     <message>
         <source>Print...</source>
         <translation>Imprimir...</translation>
@@ -1397,8 +1561,8 @@ Please specify .xml, .csv or .eid</source>
         <translation>Gerar PDF...</translation>
     </message>
     <message>
-        <source>Digital Signature (XAdES)</source>
-        <translation>Assinatura Digital (XAdES)</translation>
+        <source>Signed PDF document</source>
+        <translation>Documento PDF assinado</translation>
     </message>
     <message>
         <source>Options:</source>
@@ -1413,15 +1577,19 @@ Please specify .xml, .csv or .eid</source>
         <translation>Guardar ficheiro de assinatura</translation>
     </message>
     <message>
-        <source>Zip files &apos;XAdES&apos; (*.zip)</source>
-        <translation>Ficheiros Zip &apos;XAdES&apos; (*.zip)</translation>
+        <source>Signature Files 'XAdES' (*.ccsigned)</source>
+        <translation>Assinaturas XAdES (*.ccsigned)</translation>
     </message>
     <message>
-        <source>Save Pdf File</source>
+        <source>Save PDF File</source>
         <translation>Guardar ficheiro PDF</translation>
     </message>
+	 <message>
+        <source>Save signed PDF file</source>
+        <translation>Guardar ficheiro PDF assinado</translation>
+    </message>
     <message>
-        <source>Pdf Files (*.pdf)</source>
+        <source>PDF Files (*.pdf)</source>
         <translation>Ficheiros PDF (*.pdf)</translation>
     </message>
     <message>
@@ -1440,10 +1608,9 @@ Please specify .xml, .csv or .eid</source>
         <source>PIN verification failed</source>
         <translation>O PIN introduzido está errado!</translation>
     </message>
-	   <message>
+	<message>
         <source>Export / Print</source>
 		<translation>Exportar/Imprimir</translation>
-
     </message>
 	<message>
 	<source>PDF file successfully generated</source>
@@ -1659,6 +1826,46 @@ Please specify .xml, .csv or .eid</source>
      </message>
 
      <message>
+        <source>You must choose a location for visible signature!</source>
+        <translation>É obrigatório escolher uma localização para a assinatura visível!</translation>
+     </message>
+
+     <message>
+        <source>Free Selection</source>
+        <translation>Posicionamento livre</translation>
+    </message>
+
+     <message>
+        <source>Show sectors</source>
+        <translation>Mostrar Sectores</translation>
+    </message>
+
+     <message>
+        <source>Small signature?</source>
+        <translation>Assinatura reduzida?</translation>
+     </message>
+
+    <message>
+        <source>Reset image</source>
+        <translation>Imagem por omissão</translation>
+     </message>
+
+     <message>
+        <source>Signature preview</source>
+        <translation>Visualização da assinatura</translation>
+     </message>
+
+     <message>
+        <source>Maximum image dimensions: (185x41 px)</source>
+        <translation>Dimensões máximas da imagem: (185x41 px)</translation>
+     </message>
+
+     <message>
+        <source>Preview of the signature image</source>
+        <translation>Visualização do selo de assinatura</translation>
+    </message>
+
+     <message>
         <source>Choose custom image</source>
         <translation>Imagem personalizada</translation>
      </message>
@@ -1708,6 +1915,16 @@ Please specify .xml, .csv or .eid</source>
         <source>Vertical position: %1</source>
         <translation>Na vertical: %1</translation>
     </message>
+    
+    <message>
+        <source>Horizontal position: </source>
+        <translation>Na horizontal: </translation>
+    </message>
+    <message>
+        <source>Vertical position: %1</source>
+        <translation>Na vertical: %1</translation>
+    </message>
+
     <message>
         <source>PDF Signature - Free Positioning</source>
         <translation>Assinatura de PDF - Posicionamento preciso</translation>

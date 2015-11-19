@@ -319,7 +319,7 @@ private slots:
 	void on_btnShortcut_UnivSign_clicked( void );
 	void on_btnShortcut_PdfSign_clicked( void );
 	void on_btnShortcut_VerifSign_clicked( void );
-	// void on_btnShortcut_LaunchJava_clicked();
+	//void on_btnShortcut_SCAP_clicked( void );
 
 //SUBMENUS Toolbar
 	void hide_submenus( void );
@@ -341,7 +341,7 @@ protected:
 
 	void showNormal( void );
 	void showNoReaderMsg( void );
-	// void launchJavaProcess(QString &application_jar, QString &classpath);
+	void launchJavaProcess(const QString &application_jar, const QString jvm_args, const QString &classpath);
 
 
 	// SystemTray
@@ -393,6 +393,8 @@ private:
 	void refreshTabPersoData( void );
 	void refreshTabCertificates( void );
 	void refreshTabCardPin( void );
+
+	QString translateCardValidation(QString &card_validation);
 	//void refreshTabInfo( void );
 
 	//TESTING
@@ -441,12 +443,12 @@ private:
 #ifdef WIN32
 	static BOOL UseMinidriver( void );
 	static bool ProviderNameCorrect (PCCERT_CONTEXT pCertContext );
+	QString findJavaHomeOnWindows();
 #endif
 	void showCertImportMessage(bool bImported);
 	bool saveCardDataToFile(QString const& fileName, PTEID_EIDCard& card );
 	void setEnabledPinButtons( bool bEnabled );
 	void setEnabledCertifButtons( bool bEnabled );
-	QString GetCardTypeText(QString const& cardType);
 	void clearTabCertificates( void );
 	void clearTabAddress( void );
 	void clearTabPins( void );

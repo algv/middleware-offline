@@ -774,6 +774,7 @@ void CPteidCard::SetSecurityEnv(const tPrivKey & key, unsigned long algo,
     unsigned long ulSW12 = getSW12(oResp);
 
     getSW12(oResp, 0x9000);
+
 }
 
 CByteArray CPteidCard::SignInternal(const tPrivKey & key, unsigned long algo,
@@ -786,7 +787,7 @@ CByteArray CPteidCard::SignInternal(const tPrivKey & key, unsigned long algo,
 
     if (pPin != NULL)
     {
-        unsigned long ulRemaining = 0;
+    unsigned long ulRemaining = 0;
 	if (m_poContext->m_bSSO)
 	{
 		std::string cached_pin = "";
@@ -799,12 +800,22 @@ CByteArray CPteidCard::SignInternal(const tPrivKey & key, unsigned long algo,
         	bOK = PinCmd(PIN_OP_VERIFY, *pPin, cached_pin, "", ulRemaining, &key);
 	}
 	else
-	        bOK = PinCmd(PIN_OP_VERIFY, *pPin, "", "", ulRemaining, &key);
+	{
+#ifdef WIN32
+		//Regularly call SCardStatus()
+		MWLOG(LEV_DEBUG, MOD_CAL, L"Starting KeepAliveThread to keep transaction while waiting for user PIN input");
+		eIDMW::KeepAliveThread keepAlive(&(m_poContext->m_oPCSC), m_hCard);
+		keepAlive.Start();
+#endif
+		bOK = PinCmd(PIN_OP_VERIFY, *pPin, "", "", ulRemaining, &key);
+#ifdef WIN32
+		keepAlive.RequestStop();
+#endif
+	}
         if (!bOK)
 		throw CMWEXCEPTION(ulRemaining == 0 ? EIDMW_ERR_PIN_BLOCKED : EIDMW_ERR_PIN_BAD);
     }
 	
-
     SetSecurityEnv(key, algo, oData.Size());
 
     CByteArray oData1;
@@ -1039,6 +1050,8 @@ tCacheInfo CPteidCard::GetCacheInfo(const std::string &csPath)
         return dontCache;
     case 244: // EF05 (Address)
         return dontCache;
+	case 252:  //PrkD 
+		return dontCache;
     case 241: // EF02 (ID)
     case 245: // EF06 (SOD)
         return simpleCache;

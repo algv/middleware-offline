@@ -87,9 +87,8 @@ PTEID_CertifType ConvertCertType(APL_CertifType eType);
 
 
 APL_HashAlgo ConvertHashAlgo(PTEID_HashAlgo eAlgo);
-APL_SaveFileType ConvertFileType(PTEID_FileType fileType);
+
 tLOG_Level ConvertLogLevel(PTEID_LogLevel level);
-APL_ValidationLevel ConvertValidationLevel(PTEID_ValidationLevel eLevel);
 }
 
 #endif //__INTERNALUTIL_H__

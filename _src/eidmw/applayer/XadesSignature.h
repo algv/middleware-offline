@@ -10,7 +10,7 @@
 #include <openssl/evp.h>
 #include <openssl/x509.h>
 
-#include "Export.h" 
+#include "Export.h"
 #include "APLCard.h"
 #include "MiscUtil.h"
 
@@ -33,19 +33,18 @@ namespace eIDMW
 
 	class CByteArray;
 
-	void base64Decode(const char *array, unsigned int inlen, unsigned char *&decoded, unsigned int &decoded_len);
-
 	class XadesSignature
 	{
 		public:
 
-		XadesSignature(APL_Card *card): mp_card(card), mp_cert(NULL), m_digest_state(NULL), m_do_timestamping(false), m_do_long_term_validation(false) 
+		XadesSignature(APL_Card *card): m_do_timestamping(false), m_do_long_term_validation(false), mp_cert(NULL), m_digest_state(NULL), mp_card(card)
 		{ };
-		
+
 		~XadesSignature()
 		{
-			if (mp_cert != NULL)
-				X509_free(mp_cert);
+
+			for (int i = 0; i != m_certs.size(); i++)
+				X509_free(m_certs[i]);
 		};
 
 		CByteArray &SignXades(const char ** paths, unsigned int n_paths);
@@ -64,7 +63,10 @@ namespace eIDMW
 
 		CByteArray &Sign(const char ** paths, unsigned int n_paths);
 		CByteArray HashFile(const char *file_path);
-		
+
+		void addCardSignature(unsigned char *signature, unsigned int siglen, XERCES_NS DOMDocument *doc);
+		void setReferenceHash(XMLByte *hash, unsigned int hash_len, int ref_index, XERCES_NS DOMDocument *doc);
+
 		int HashSignedInfoNode(XERCES_NS DOMDocument *doc, XMLByte *outbuf);
 		int HashSignedPropertiesNode(XERCES_NS DOMDocument *doc, XMLByte *outbuf);
 		DOMNode * addSignatureProperties(DSIGSignature *sig, XMLCh *sig_id, CByteArray &cert_data);
@@ -75,17 +77,17 @@ namespace eIDMW
 		bool AddSigAndRefsTimestamp(XERCES_NS DOMDocument *dom);
 		bool addCompleteCertificateRefs(XERCES_NS DOMDocument *dom);
 
-		CByteArray *WriteToByteArray(XERCES_NS DOMDocument *doc); 
+		CByteArray *WriteToByteArray(XERCES_NS DOMDocument *doc);
 
 		//Utility methods for signature
 		void addCertificateChain(DSIGKeyInfoX509 *keyInfo);
-		X509 * addCertificateToKeyInfo(CByteArray &cert, DSIGKeyInfoX509 *keyInfo);
+		void addCertificateToKeyInfo(const CByteArray &cert, DSIGKeyInfoX509 *keyInfo);
 		void loadSignerCert(CByteArray &ba, EVP_PKEY *pub_key);
 		int appendOID(XMLByte *toFill);
 		void addTimestampNode(XERCES_NS DOMNode *node, unsigned char *timestamp);
 		XMLCh* createURI(const char *path);
 
-		X509 * mp_cert, *mp_signature_ca_cert;
+		X509 * mp_cert;
 		std::vector<X509 *> m_certs;
 		std::vector<CByteArray> m_cert_bas;
 
@@ -95,5 +97,5 @@ namespace eIDMW
 	};
 }
 
-#endif 
+#endif
 

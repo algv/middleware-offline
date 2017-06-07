@@ -151,7 +151,7 @@ const unsigned long DLG_LANG_PT = 0x0816;
  */
 DLGS_EXPORT DlgRet DlgAskPin(DlgPinOperation operation,
 	DlgPinUsage usage, const wchar_t *csPinName,
-	DlgPinInfo pinInfo, wchar_t *csPin, unsigned long ulPinBufferLen);
+	DlgPinInfo pinInfo, wchar_t *csPin, unsigned long ulPinBufferLen, void *wndGeometry = 0 );
 
 /**
  * Ask for 2 PINs, the 2nd PIN should be asked twice for confirmation
@@ -169,18 +169,18 @@ DLGS_EXPORT DlgRet DlgAskPin(DlgPinOperation operation,
 DLGS_EXPORT DlgRet DlgAskPins(DlgPinOperation operation,
 	DlgPinUsage usage, const wchar_t *csPinName,
 	DlgPinInfo pin1Info, wchar_t *csPin1, unsigned long ulPin1BufferLen,
-	DlgPinInfo pin2Info, wchar_t *csPin2, unsigned long ulPin2BufferLen);
+	DlgPinInfo pin2Info, wchar_t *csPin2, unsigned long ulPin2BufferLen, void *wndGeometry = 0 );
 
 /**
  * Display a message, e.g. "Bad PIN, x remaining attempts" or "PIN blocked".
- * - ulRemainingTries: the remaining PIN tries: if 
+ * - ulRemainingTries: the remaining PIN tries: if
  * Returns: DLG_OK if the OK button was pressed,
  *          DLG_CANCEL if the Cancel button was pressed,
  *          DLG_RETRY if the Retry button was pressed
  *          DLG_BAD_PARAM or DLG_ERR otherwise
  */
 DLGS_EXPORT DlgRet DlgBadPin(DlgPinUsage usage, const wchar_t *csPinName,
-	unsigned long ulRemainingTries);
+	unsigned long ulRemainingTries, void *wndGeometry = 0 );
 
 /************************************************************************************
  * Pin pad dialogs
@@ -203,7 +203,7 @@ DLGS_EXPORT DlgRet DlgBadPin(DlgPinUsage usage, const wchar_t *csPinName,
 DLGS_EXPORT DlgRet DlgDisplayPinpadInfo(DlgPinOperation operation,
 	const wchar_t *csReader, DlgPinUsage usage, const wchar_t *csPinName,
 	const wchar_t *csMessage,
-	unsigned long *pulHandle);
+	unsigned long *pulHandle, void *wndGeometry = 0 );
 
 /**
 * Close the pinpad info dialog 
@@ -216,46 +216,6 @@ DLGS_EXPORT void DlgClosePinpadInfo(unsigned long ulHandle);
 */
  DLGS_EXPORT void DlgCloseAllPinpadInfo();
 #endif
-
-/************************************************************************************
- * Generic dialogs
- ************************************************************************************/
-
-/**
- * Display a message and a/some button(s).
- * This dialog is modal.
- * - icon: specifies which icon to display
- * - ulMessageID: specifies the message to be displayed
- * - csMesg: should only be used if ulMessageID is unknown
- * - ulButtons: specifies which button(s) to show
- * - ulEnterButtons: specifies which button is the default one for Enter (0 mean none)
- * - ulCancelButtons: specifies which button is the default one for Cancel (0 mean none)
- * Returns: DLG_BAD_PARAM or DLG_ERR in case of an error,
- *          or otherwise the return code that corresponds
- *          to the button that was clicked.
- */
-DLGS_EXPORT DlgRet DlgDisplayModal(DlgIcon icon,
-	DlgMessageID messageID, const wchar_t *csMesg,
-	unsigned char ulButtons, unsigned char ulEnterButton, 
-	unsigned char ulCancelButton);
-
-/************************************************************************************
- * Privacy filter dialogs
- ************************************************************************************/
-
-/**
- * Ask the user if a certain application (with path 'csAppPath') is allowed
- * to perform a certain operation ('ulOperation') on the card in a certain
- * reader (with name 'csReaderName').
- * The user can answer with 4 buttons: Yes, Cancel (no), Allways, Never;
- * and additionally click a checkbox so that the same answer is valid for
- * all operations (so the user won't be bothered again).
- * - piForAllOperations: [OUT] 1 if the checkbox was checked, 0 otherwise.
- */
-DLGS_EXPORT DlgRet DlgAskAccess(const wchar_t *csAppPath, 
-	const wchar_t *csReaderName,
-	DlgPFOperation ulOperation, int *piForAllOperations);
-
 
 
 #ifndef WIN32
@@ -295,24 +255,6 @@ struct DlgAskPINArguments {
    DlgRet returnValue;
  } ;
 
- struct DlgDisplayModalArguments {
-   DlgIcon icon;
-   wchar_t mesg[500];
-   unsigned char buttons;
-   unsigned char EnterButton;
-   unsigned char CancelButton;
-   DlgRet returnValue;
- } ;
-
- struct DlgAskAccessArguments {
-   wchar_t appPath[100];
-   wchar_t readerName[100];
-   DlgPFOperation operation;
-   long long forAllOperations;
-   DlgRet returnValue;
- };
-
-
  struct DlgDisplayPinpadInfoArguments {
    DlgPinOperation operation;
    wchar_t reader[100];
@@ -330,12 +272,26 @@ struct DlgAskPINArguments {
    pid_t tRunningProcess;
  };
 
+ struct WndGeometry{
+    int x;
+    int y;
+    int width;
+    int height;
+};
+typedef struct WndGeometry Type_WndGeometry;
+
  void InitializeRand();
  std::string RandomFileName();
  std::string CreateRandomFile();
  void DeleteFile(const char *csFilename);
- void CallQTServer(const DlgFunctionIndex index,
-		     const char *csFilename);
+ void CallQTServer(    const DlgFunctionIndex index
+                    ,  const char *csFilename
+                    , void *wndGeometry = 0 );
+
+DLGS_EXPORT bool getWndCenterPos( Type_WndGeometry *pWndGeometry
+                                , int desktop_width, int desktop_height
+                                , int wnd_width, int wnd_height
+                                , Type_WndGeometry *outWndGeometry );
 
 #pragma pack(pop)   /* restore original alignment from stack */
 #endif

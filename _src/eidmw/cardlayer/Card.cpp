@@ -99,11 +99,6 @@ std::string CCard::GetLabel()
 	return "";
 }
 
-CByteArray CCard::GetInfo()
-{
-	return CByteArray();
-}
-
 void CCard::Lock()
 {
 	if (m_ulLockCount == 0){
@@ -327,18 +322,20 @@ CByteArray CCard::RootCAPubKey(){
 	throw CMWEXCEPTION(EIDMW_ERR_NOT_SUPPORTED);
 }
 
-bool CCard::Activate(const char *pinCode, CByteArray &BCDDate){
+bool CCard::Activate(const char *pinCode, CByteArray &BCDDate, bool blockActivationPIN) {
 	throw CMWEXCEPTION(EIDMW_ERR_NOT_SUPPORTED);
 }
 
-bool CCard::unlockPIN(const tPin &pin, const tPin *puk, const char *pszPuk, const char *pszNewPin, unsigned long &triesLeft){
+bool CCard::unlockPIN(const tPin &pin, const tPin *puk, const char *pszPuk, const char *pszNewPin, unsigned long &triesLeft, 
+	unsigned long unblockFlags) 
+{
 	throw CMWEXCEPTION(EIDMW_ERR_NOT_SUPPORTED);
 }
 
 bool CCard::PinCmd(tPinOperation operation, const tPin & Pin,
     const std::string & csPin1, const std::string & csPin2,
     unsigned long & ulRemaining, const tPrivKey *pKey,
-    bool bShowDlg)
+    bool bShowDlg, void *wndGeometry, unsigned long unblockFlags)
 {
 	throw CMWEXCEPTION(EIDMW_ERR_NOT_SUPPORTED);
 }
@@ -355,18 +352,6 @@ unsigned long CCard::GetSupportedAlgorithms()
 
 CByteArray CCard::Sign(const tPrivKey & key, const tPin & Pin,
     unsigned long algo, const CByteArray & oData)
-{
-	throw CMWEXCEPTION(EIDMW_ERR_NOT_SUPPORTED);
-}
-
-CByteArray CCard::Sign(const tPrivKey & key, const tPin & Pin,
-    unsigned long algo, CHash & oHash)
-{
-	throw CMWEXCEPTION(EIDMW_ERR_NOT_SUPPORTED);
-}
-
-CByteArray CCard::Decrypt(const tPrivKey & key, unsigned long algo,
-    const CByteArray & oData)
 {
 	throw CMWEXCEPTION(EIDMW_ERR_NOT_SUPPORTED);
 }
@@ -469,17 +454,6 @@ CByteArray CCard::SendAPDU(unsigned char ucINS, unsigned char ucP1, unsigned cha
     oAPDU.Append(oData);
 
     return SendAPDU(oAPDU);
-}
-
-
-CByteArray CCard::Ctrl(long ctrl, const CByteArray & oCmdData)
-{
-	throw CMWEXCEPTION(EIDMW_ERR_NOT_SUPPORTED);
-}
-
-CP15Correction* CCard::GetP15Correction()
-{
-	return NULL;
 }
 
 unsigned long CCard::Get6CDelay()

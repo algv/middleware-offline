@@ -18,7 +18,6 @@
 
 **************************************************************************** */
 #include <iostream>
-#include "P15Correction.h"
 #include "PKCS15.h"
 #include "PKCS15Parser.h"
 #include "Card.h"
@@ -239,6 +238,8 @@ namespace eIDMW
     case ODF:
       ReadFile(&m_xODF,1);
       // parse
+      m_xODF.byteArray.TrimRight();
+      //Trim trailing NUL bytes (the actual ASN.1 content is 48 bytes)
       resultOdf = m_poParser->ParseOdf(m_xODF.byteArray);
       // propagate the path info  
       m_xAODF.path = resultOdf.csAodfPath;
@@ -260,33 +261,26 @@ namespace eIDMW
   }
 
   void CPKCS15::ReadLevel3(tPKCSFileName name){
-      CP15Correction * p15correction = m_poCard->GetP15Correction();
+     
       switch(name){
       case AODF:
           ReadFile(&m_xAODF,2);
           // parse
+          //Trim trailing NUL bytes (the actual ASN.1 content is 168 bytes)
+          m_xAODF.byteArray.TrimRight();
           m_oPins = m_poParser->ParseAodf(m_xAODF.byteArray);
-          // correct
-          if (p15correction != NULL)
-              p15correction->CheckPINs(m_oPins);
           break;
       case CDF:
           ReadFile(&m_xCDF,2);
           // parse
           m_oCertificates = m_poParser->ParseCdf(m_xCDF.byteArray);
           // correct
-          if (p15correction != NULL)
-              p15correction->CheckCerts(m_oCertificates);
           break;
       case PRKDF:
           ReadFile(&m_xPrKDF,2);
           // parse
           m_oPrKeys = m_poParser->ParsePrkdf(m_xPrKDF.byteArray);
-          //Workaround to fix PrivKey parse - it parses 3 instead of 2.
           m_oPrKeys.pop_back();
-          // correct
-          if (p15correction != NULL)
-              p15correction->CheckPrKeys(m_oPrKeys);
           break;
       default:
           // error: this method can only be called with AODF, CDF or PRKDF

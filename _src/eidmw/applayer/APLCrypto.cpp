@@ -42,12 +42,9 @@ APL_Pins::APL_Pins(APL_SmartCard *card)
 {
 	m_card=card;
 
-	if(!m_card->isVirtualCard())
-	{
-		unsigned long ulCount=m_card->pinCount();
-		for(unsigned long i=0;i<ulCount;i++)
-			addPin(i,NULL);
-	}
+	unsigned long ulCount=m_card->pinCount();
+	for(unsigned long i=0;i<ulCount;i++)
+		addPin(i,NULL);
 }
 
 APL_Pins::~APL_Pins()
@@ -164,13 +161,10 @@ unsigned long APL_Pins::count(bool bFromCard)
 
 APL_Pin *APL_Pins::getPinByNumber(unsigned long ulIndex)
 {
-	if(ulIndex<0)
-		throw CMWEXCEPTION(EIDMW_ERR_CHECK);
-
 	std::map<unsigned long,APL_Pin *>::const_iterator itr;
 
 	itr = m_pins.find(ulIndex);
-	if(itr!=m_pins.end())
+	if (itr!=m_pins.end())
 		return m_pins[ulIndex];
 
 	throw CMWEXCEPTION(EIDMW_ERR_PARAM_RANGE);
@@ -619,38 +613,35 @@ unsigned long APL_Pin::getId()
 
 PinUsage APL_Pin::getUsageCode()
 {
-	if(!m_card->isVirtualCard())
-	{
+
 		BEGIN_CAL_OPERATION(m_card)
 		m_usagecode = m_card->getCalReader()->GetPinUsage(m_pinP15);
 		END_CAL_OPERATION(m_card)
-	}
+	
 
 	return m_usagecode;
 }
 
 long APL_Pin::getTriesLeft()
 {
-	if(!m_card->isVirtualCard())
+	
+	unsigned long status=PIN_STATUS_UNKNOWN;
+
+	try
 	{
-		unsigned long status=PIN_STATUS_UNKNOWN;
-
-		try
-		{
-			status=m_card->pinStatus(m_pinP15);
-		}
-		catch(CMWException & e)
-		{
-			unsigned long err = e.GetError();
-			if (err != EIDMW_ERR_NOT_SUPPORTED)
-				throw e;
- 		}
-
-		if(status==PIN_STATUS_UNKNOWN)
-			m_triesleft=-1;
-		else
-			m_triesleft=status;
+		status=m_card->pinStatus(m_pinP15);
 	}
+	catch(CMWException & e)
+	{
+		unsigned long err = e.GetError();
+		if (err != EIDMW_ERR_NOT_SUPPORTED)
+			throw e;
+		}
+
+	if(status==PIN_STATUS_UNKNOWN)
+		m_triesleft=-1;
+	else
+		m_triesleft=status;
 
 	return m_triesleft;
 }
@@ -665,53 +656,31 @@ const char *APL_Pin::getLabel()
 	return m_pinP15.csLabel.c_str();
 }
 
-const CByteArray &APL_Pin::getSignature()
-{
-	if(!m_signature)
-	{
-		CAutoMutex autoMutex(&m_Mutex);		//We lock for unly one instanciation
-		if(!m_signature)
-		{
-			CByteArray result;
-			CByteArray param(1);
-			param.Append((unsigned char) m_pinP15.ulPinRef);
-
-			BEGIN_CAL_OPERATION(m_card)
-			result = m_card->getCalReader()->Ctrl(CTRL_PTEID_GETSIGNEDPINSTATUS,param);
-			END_CAL_OPERATION(m_card)
-
-			m_signature=new CByteArray(result.GetBytes(1,128));
-		}
-	}
-
-	return *m_signature;
-}
-
-bool APL_Pin::verifyPin(const char *csPin,unsigned long &ulRemaining,bool bShowDlg)
+bool APL_Pin::verifyPin(const char *csPin,unsigned long &ulRemaining,bool bShowDlg, void *wndGeometry )
 {
 
-	return m_card->pinCmd(PIN_OP_VERIFY,m_pinP15,csPin,"",ulRemaining,bShowDlg);
+	return m_card->pinCmd(PIN_OP_VERIFY,m_pinP15,csPin,"",ulRemaining,bShowDlg, wndGeometry );
 
 }
 
-bool APL_Pin::changePin(const char *csPin1,const char *csPin2,unsigned long &ulRemaining, const char *PinName,bool bShowDlg)
+bool APL_Pin::changePin(const char *csPin1,const char *csPin2,unsigned long &ulRemaining, const char *PinName,bool bShowDlg, void *wndGeometry )
 {
 
-	return m_card->pinCmd(PIN_OP_CHANGE,m_pinP15,csPin1,csPin2,ulRemaining, bShowDlg);
+	return m_card->pinCmd(PIN_OP_CHANGE,m_pinP15,csPin1,csPin2,ulRemaining, bShowDlg, wndGeometry );
 }
 
 
-bool APL_Pin::unlockPin(const char *pszPuk, const char *pszNewPin, unsigned long &triesLeft){
+bool APL_Pin::unlockPin(const char *pszPuk, const char *pszNewPin, unsigned long &triesLeft, unsigned long flags) {
 
 	if (m_card->getType() == APL_CARDTYPE_PTEID_IAS07){ //gemsafe
-		return m_card->getCalReader()->unlockPIN(m_pinP15, NULL, pszPuk, pszNewPin, triesLeft);
+		return m_card->getCalReader()->unlockPIN(m_pinP15, NULL, pszPuk, pszNewPin, triesLeft, flags);
 
 	} else if (m_card->getType() == APL_CARDTYPE_PTEID_IAS101){ //ias
 		tPin puk;
 		for (unsigned long idx=0; idx < m_card->pinCount(); idx++){
 			puk = m_card->getPin(idx); // get the puk for this pin
 			if (((puk.ulPinRef & 0x0F) == (m_pinP15.ulPinRef & 0x0F)) && puk.ulPinRef > m_pinP15.ulPinRef){
-				return m_card->getCalReader()->unlockPIN(m_pinP15, &puk, pszPuk, pszNewPin, triesLeft);
+				return m_card->getCalReader()->unlockPIN(m_pinP15, &puk, pszPuk, pszNewPin, triesLeft, flags);
 			}
 		}
 	}

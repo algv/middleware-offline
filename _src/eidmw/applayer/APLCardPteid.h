@@ -43,7 +43,6 @@ class APL_EidFile_Trace;
 class APL_EidFile_ID;
 class APL_EidFile_IDSign;
 class APL_EidFile_Address;
-class APL_EidFile_AddressSign;
 class APL_EidFile_Sod;
 class APL_EidFile_TokenInfo;
 class APL_CardFile_Certificate;
@@ -56,13 +55,7 @@ class APL_DocVersionInfo;
 class APL_XmlUserRequestedInfo;
 class APL_PersonalNotesEId;
 
-enum APL_AccessWarningLevel
-{
-	APL_ACCESSWARNINGLEVEL_BEING_ASKED=-2,
-	APL_ACCESSWARNINGLEVEL_REFUSED=-1,
-	APL_ACCESSWARNINGLEVEL_TO_ASK=0,
-	APL_ACCESSWARNINGLEVEL_ACCEPTED=1,
-};
+typedef void (* t_callback_addr) (void*, int);
 
 /******************************************************************************//**
   * Class that represent a PTEID card
@@ -85,12 +78,6 @@ public:
 	EIDMW_APL_API virtual APL_CardType getType() const;
 
 	/**
-	  * Return true this is a test card.
-	  * This is a test card if one of the certificate is a test one
-	  */
-	EIDMW_APL_API virtual bool isTestCard();
-
-	/**
 	  * Read a file on the card 
 	  *
 	  * @param csPath is the path of the file to be read
@@ -102,6 +89,10 @@ public:
 	  * Return the number of certificate on the card
 	  */
 	EIDMW_APL_API virtual unsigned long certificateCount();
+
+	
+
+	EIDMW_APL_API void ChangeAddress(char *secret_code, char *process, t_callback_addr, void *);
 
 	/** 
 	 * Return a document from the card
@@ -147,10 +138,6 @@ public:
 	  */
 	EIDMW_APL_API APL_DocVersionInfo& getDocInfo();	
 
-	EIDMW_APL_API const CByteArray &getCardInfoSignature();			/**< Return the signature of the card info */
-
-	EIDMW_APL_API static bool isApplicationAllowed();					/**< Return true if the user allow the application */
-
  	/** 
 	 * Return rawdata from the card
 	 */
@@ -160,12 +147,9 @@ public:
 	EIDMW_APL_API const CByteArray& getRawData_IdSig();			/**< Get the IdSig RawData */
 	EIDMW_APL_API const CByteArray& getRawData_Trace();			/**< Get the IdSig RawData */
  	EIDMW_APL_API const CByteArray& getRawData_Addr();			/**< Get the Addr RawData */
- 	EIDMW_APL_API const CByteArray& getRawData_AddrSig();		/**< Get the AddrSig RawData */
  	EIDMW_APL_API const CByteArray& getRawData_Sod();			/**< Get the Sod RawData */
  	EIDMW_APL_API const CByteArray& getRawData_CardInfo();		/**< Get the Card Info RawData */
  	EIDMW_APL_API const CByteArray& getRawData_TokenInfo();		/**< Get the Token Info RawData */
- 	EIDMW_APL_API const CByteArray& getRawData_Challenge();		/**< Get the challenge RawData */
- 	EIDMW_APL_API const CByteArray& getRawData_Response();		/**< Get the response RawData */
  	EIDMW_APL_API const CByteArray& getRawData_PersoData();		/**< Get the response RawData */
  	EIDMW_APL_API void doSODCheck(bool check);
 
@@ -173,7 +157,6 @@ public:
 	APL_EidFile_ID *getFileID();					/**< Return a pointer to the file ID (NOT EXPORTED) */
 	APL_EidFile_IDSign *getFileIDSign();			/**< Return a pointer to the file ID signature (NOT EXPORTED) */
 	APL_EidFile_Address *getFileAddress();			/**< Return a pointer to the file Address (NOT EXPORTED) */
-	APL_EidFile_AddressSign *getFileAddressSign();	/**< Return a pointer to the file Address signature (NOT EXPORTED) */
 	APL_EidFile_Sod *getFileSod();				/**< Return a pointer to the file Photo (NOT EXPORTED) */
 	EIDMW_APL_API APL_EidFile_PersoData *getFilePersoData();				/**< Return a pointer to the file PersoData (NOT EXPORTED) */
 	APL_EidFile_TokenInfo *getFileTokenInfo();		/**< Return a pointer to the file Token Info (NOT EXPORTED) */
@@ -181,12 +164,7 @@ public:
 	const char *getTokenLabel();					/**< Return the token label (pkcs15 parse) (NOT EXPORTED) */
 	APLPublicKey *getRootCAPubKey();						/**< Get the CVC CA public key that this card uses to verify the CVC key (NOT EXPORTED)*/
 	EIDMW_APL_API bool isActive();
-	EIDMW_APL_API bool Activate(const char *pinCode, CByteArray &BCDDate);						/**< Activate the pteid card (NOT EXPORTED)*/
-
-
-	static void askWarningLevel();
-	static void setWarningLevel(APL_AccessWarningLevel lWarningLevel);
-	static APL_AccessWarningLevel getWarningLevel();
+	EIDMW_APL_API bool Activate(const char *pinCode, CByteArray &BCDDate, bool blockActivationPIN);						/**< Activate the pteid card */
 
 protected:
 	/**
@@ -196,23 +174,12 @@ protected:
 	//MARTINHO: APL_EIDCard(APL_ReaderContext *reader);
 	APL_EIDCard(APL_ReaderContext *reader, APL_CardType cardType);
 
-	virtual bool initVirtualReader();
-	virtual bool isCardForbidden();
 
-	/**
-	  * Read a file from a virtual reader
-	  *
-	  * @param fileID : is the name/path of the file
-	  * @param in : will return the content of the file
-	  */
-	static unsigned long readVirtualFileRAW(APL_SuperParser *parser,const char *fileID, CByteArray &in,unsigned long idx);
-	static unsigned long readVirtualFileTLV(APL_SuperParser *parser,const char *fileID, CByteArray &in,unsigned long idx);
-	static unsigned long readVirtualFileCSV(APL_SuperParser *parser,const char *fileID, CByteArray &in,unsigned long idx);
-	static unsigned long readVirtualFileXML(APL_SuperParser *parser,const char *fileID, CByteArray &in,unsigned long idx);
 
 private:
 	APL_EIDCard(const APL_EIDCard& card);				/**< Copy not allowed - not implemented */
 	APL_EIDCard &operator= (const APL_EIDCard& card);	/**< Copy not allowed - not implemented */
+	void invalidateAddressSOD();
 
 	CByteArray *m_cardinfosign;
 	APL_CardType	m_cardType;
@@ -227,7 +194,6 @@ private:
 	APL_EidFile_ID *m_FileID;							/**< Pointer to the file ID */
 	APL_EidFile_IDSign *m_FileIDSign;					/**< Pointer to the file ID signature */
 	APL_EidFile_Address *m_FileAddress;					/**< Pointer to the file Address */
-	APL_EidFile_AddressSign *m_FileAddressSign;			/**< Pointer to the file Address signature */
 	APL_EidFile_Sod *m_FileSod;							/**< Pointer to the file Sod */
 	APL_EidFile_TokenInfo *m_FileTokenInfo;				/**< Pointer to the file Token Info */
 	APL_EidFile_PersoData *m_FilePersoData;				/**< Pointer to the file Perso Data */
@@ -240,8 +206,6 @@ private:
 	APL_CardFile_Certificate *m_fileCertRootSign;
 
 	bool m_sodCheck;
-
-	static APL_AccessWarningLevel m_lWarningLevel;
 
 friend bool APL_ReaderContext::connectCard();	/**< This method must access protected constructor */
 };
@@ -259,8 +223,6 @@ public:
 	  * Destructor
 	  */
 	EIDMW_APL_API virtual ~APL_CCXML_Doc();
-
-	EIDMW_APL_API virtual bool isAllowed();							/**< The document is allowed*/
 
 	EIDMW_APL_API virtual CByteArray getXML(bool bNoHeader=false);	/**< Build the XML document */
 
@@ -286,7 +248,7 @@ friend APL_CCXML_Doc& APL_EIDCard::getXmlCCDoc(APL_XmlUserRequestedInfo& userReq
   * Class that represent the document ID on a PTEID card
   *
   * This class show id informations to APL_EIDCard user
-  * (These informations comes from the ID file)
+  * (This information comes from the ID file)
   *
   * To get APL_DocEId object, we have to ask it from APL_EIDCard 
   *********************************************************************************/
@@ -297,8 +259,6 @@ public:
 	  * Destructor
 	  */
 	EIDMW_APL_API virtual ~APL_DocEId();
-
-	EIDMW_APL_API virtual bool isAllowed();							/**< The document is allowed*/
 
 	EIDMW_APL_API virtual CByteArray getXML(bool bNoHeader=false);	/**< Build the XML document */
 	EIDMW_APL_API virtual CByteArray getCSV();						/**< Build the CSV document */
@@ -311,17 +271,11 @@ public:
 	EIDMW_APL_API const char *getSurname();				/**< Return field Surname from the ID file */
 	EIDMW_APL_API const char *getGender();				/**< Return field Gender from the ID file */
 	EIDMW_APL_API const char *getDateOfBirth();			/**< Return field DateOfBirth from the ID file */
-	EIDMW_APL_API const char *getLocationOfBirth();		/**< Return field LocationOfBirth from the ID file */
 	EIDMW_APL_API const char *getNationality();			/**< Return field Nationality from the ID file */
-	EIDMW_APL_API const char *getDuplicata();			/**< Return field Duplicata from the ID file */
-	EIDMW_APL_API const char *getSpecialOrganization();	/**< Return field SpecialOrganization from the ID file */
-	EIDMW_APL_API const char *getMemberOfFamily();		/**< Return field MemberOfFamily from the ID file */
-	EIDMW_APL_API const char *getLogicalNumber();		/**< Return field LogicalNumber from the ID file */
 	EIDMW_APL_API const char *getDocumentPAN();			/**< Return field Document PAN from the ID file */
 	EIDMW_APL_API const char *getValidityBeginDate();	/**< Return field ValidityBeginDate from the ID file */
 	EIDMW_APL_API const char *getValidityEndDate();		/**< Return field ValidityEndDate from the ID file */
 	EIDMW_APL_API const char *getLocalofRequest();		/**< Return field LocalofRequest from the ID file */
-	EIDMW_APL_API const char *getSpecialStatus();		/**< Return field SpecialStatus from the ID file */
 	/*New status for PTeid-ng */
 	EIDMW_APL_API const char *getHeight();				/**< Return field Height */
 	EIDMW_APL_API const char *getDocumentNumber();		/**< Return field DocumentNumber */
@@ -379,8 +333,6 @@ public:
 	  * Destructor
 	  */
 	EIDMW_APL_API virtual ~APL_AddrEId();
-
-	EIDMW_APL_API virtual bool isAllowed();							/**< The document is allowed*/
 
 	EIDMW_APL_API virtual CByteArray getXML(bool bNoHeader=false);	/**< Build the XML document */
 	EIDMW_APL_API virtual CByteArray getCSV();						/**< Build the CSV document */
@@ -443,8 +395,6 @@ friend CByteArray APL_CCXML_Doc::getXML(bool bNoHeader); /* this method accesses
 class APL_PersonalNotesEId : public APL_XMLDoc{
 public:
 	EIDMW_APL_API virtual ~APL_PersonalNotesEId();
-
-	EIDMW_APL_API virtual bool isAllowed();							/**< The document is allowed*/
 
 	EIDMW_APL_API virtual CByteArray getXML(bool bNoHeader=false);	/**< Build the XML document */
 	EIDMW_APL_API virtual CByteArray getCSV();						/**< Build the CSV document */
@@ -519,8 +469,6 @@ public:
 	  */
 	EIDMW_APL_API virtual ~APL_SodEid();
 
-	EIDMW_APL_API virtual bool isAllowed();							/**< The document is allowed*/
-
 	EIDMW_APL_API virtual CByteArray getXML(bool bNoHeader=false);	/**< Build the XML document */
 	EIDMW_APL_API virtual CByteArray getCSV();						/**< Build the CSV document */
 	EIDMW_APL_API virtual CByteArray getTLV();						/**< Build the TLV document */
@@ -555,8 +503,6 @@ public:
 	  * Destructor
 	  */
 	EIDMW_APL_API virtual ~APL_DocVersionInfo();
-
-	EIDMW_APL_API virtual bool isAllowed();							/**< The document is allowed*/
 
 	EIDMW_APL_API virtual CByteArray getXML(bool bNoHeader=false);	/**< Build the XML document */
 	EIDMW_APL_API virtual CByteArray getCSV();						/**< Build the CSV document */

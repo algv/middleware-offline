@@ -20,7 +20,7 @@
    </sizepolicy>
   </property>
   <property name="windowTitle">
-   <string>Portuguese Citizen Card Management</string>
+   <string>Portuguese Citizen Card</string>
   </property>
   <property name="autoFillBackground">
    <bool>false</bool>
@@ -57,7 +57,7 @@
        <string notr="true">background-image: url(:/images/Images/bg_Empty.png);</string>
       </property>
       <property name="currentIndex">
-       <number>6</number>
+       <number>4</number>
       </property>
       <widget class="QWidget" name="page_Wellcome"/>
       <widget class="QWidget" name="page_Identity">
@@ -73,9 +73,6 @@
           <width>376</width>
           <height>20</height>
          </rect>
-        </property>
-        <property name="font">
-         <font/>
         </property>
         <property name="styleSheet">
          <string notr="true">background-image: url(:/images/Images/bg-Blue.png);</string>
@@ -98,9 +95,6 @@
           <width>376</width>
           <height>20</height>
          </rect>
-        </property>
-        <property name="font">
-         <font/>
         </property>
         <property name="styleSheet">
          <string notr="true">background-image: url(:/images/Images/bg-Blue.png);</string>
@@ -142,9 +136,6 @@
           <width>53</width>
           <height>20</height>
          </rect>
-        </property>
-        <property name="font">
-         <font/>
         </property>
         <property name="styleSheet">
          <string notr="true">background-image: url(:/images/Images/bg-Blue.png);</string>
@@ -190,9 +181,6 @@
           <height>20</height>
          </rect>
         </property>
-        <property name="font">
-         <font/>
-        </property>
         <property name="styleSheet">
          <string notr="true">background-image: url(:/images/Images/bg-Blue.png);</string>
         </property>
@@ -211,9 +199,6 @@
           <width>101</width>
           <height>20</height>
          </rect>
-        </property>
-        <property name="font">
-         <font/>
         </property>
         <property name="styleSheet">
          <string notr="true">background-image: url(:/images/Images/bg-Blue.png);</string>
@@ -268,7 +253,7 @@
          <string/>
         </property>
         <property name="scaledContents">
-         <bool>true</bool>
+         <bool>false</bool>
         </property>
         <property name="alignment">
          <set>Qt::AlignCenter</set>
@@ -307,9 +292,6 @@
           <width>140</width>
           <height>20</height>
          </rect>
-        </property>
-        <property name="font">
-         <font/>
         </property>
         <property name="styleSheet">
          <string notr="true">background-image: url(:/images/Images/bg-Blue.png);</string>
@@ -399,17 +381,18 @@
        <widget class="QPushButton" name="btnShortcut_UnivSign">
         <property name="geometry">
          <rect>
-          <x>430</x>
-          <y>310</y>
-          <width>181</width>
+          <x>620</x>
+          <y>360</y>
+          <width>171</width>
           <height>41</height>
          </rect>
         </property>
         <property name="styleSheet">
          <string notr="true">
-color: rgb(108, 108, 108);
-font: 75 12pt Arial;
-background-image: url(:/images/Images/backgrounds/bg_toolbarMenu2.png);          </string>
+          color: rgb(108, 108, 108);
+          font: 75 15px Arial;
+          background-image: url(:/images/Images/backgrounds/bg_toolbarMenu2.png);
+         </string>
         </property>
         <property name="text">
          <string>Universal Signature</string>
@@ -421,28 +404,27 @@ background-image: url(:/images/Images/backgrounds/bg_toolbarMenu2.png);         
          <bool>false</bool>
         </property>
        </widget>
-        <widget class="QPushButton" name="btnShortcut_VerifSign">
-            <property name="geometry">
-             <rect>
-              <x>430</x>
-              <y>360</y>
-              <width>362</width>
-              <height>41</height>
-            </rect>
-          </property>
-              <property name="styleSheet">
-            <string notr="true">
+       <widget class="QPushButton" name="btnShortcut_VerifSign">
+        <property name="geometry">
+         <rect>
+          <x>420</x>
+          <y>360</y>
+          <width>191</width>
+          <height>41</height>
+         </rect>
+        </property>
+        <property name="styleSheet">
+         <string notr="true">
               color: rgb(108, 108, 108);
-              font: 75 12pt Arial;
+              font: 75 15px Arial;
               background-image: url(:/images/Images/backgrounds/bg_toolbarMenu2.png);
             </string>
-            
-          </property>
-              <property name="text">
-              <string>Verify Signature</string>
-          </property>
-            </widget>
-        <widget class="QPushButton" name="btnShortcut_PdfSign">
+        </property>
+        <property name="text">
+         <string>Verify Signature</string>
+        </property>
+       </widget>
+       <widget class="QPushButton" name="btnShortcut_PdfSign">
         <property name="geometry">
          <rect>
           <x>620</x>
@@ -452,12 +434,39 @@ background-image: url(:/images/Images/backgrounds/bg_toolbarMenu2.png);         
          </rect>
         </property>
         <property name="styleSheet">
-         <string notr="true">color: rgb(108, 108, 108);
-font: 75 12pt Arial;
-background-image: url(:/images/Images/backgrounds/bg_toolbarMenu2.png);</string>
+         <string notr="true">
+          color: rgb(108, 108, 108);
+          font: 75 15px Arial;
+          background-image: url(:/images/Images/backgrounds/bg_toolbarMenu2.png);</string>
         </property>
         <property name="text">
          <string>PDF Signature</string>
+        </property>
+        <property name="flat">
+         <bool>false</bool>
+        </property>
+       </widget>
+       <widget class="QPushButton" name="btnShortcut_SCAPSign">
+        <property name="geometry">
+         <rect>
+          <x>420</x>
+          <y>310</y>
+          <width>191</width>
+          <height>41</height>
+         </rect>
+        </property>
+        <property name="styleSheet">
+         <string notr="true">
+          color: rgb(108, 108, 108);
+          font: 75 15px Arial;
+          background-image: url(:/images/Images/backgrounds/bg_toolbarMenu2.png);
+         </string>
+        </property>
+        <property name="text">
+         <string>Professional signature</string>
+        </property>
+        <property name="checkable">
+         <bool>false</bool>
         </property>
         <property name="flat">
          <bool>false</bool>
@@ -705,11 +714,58 @@ background-image: url(:/images/Images/backgrounds/bg_toolbarMenu2.png);</string>
          <bool>true</bool>
         </property>
        </widget>
+       <widget class="QPushButton" name="btnIdentityExtra_linkToCert">
+        <property name="geometry">
+         <rect>
+          <x>360</x>
+          <y>313</y>
+          <width>355</width>
+          <height>35</height>
+         </rect>
+        </property>
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="font">
+         <font>
+          <underline>true</underline>
+         </font>
+        </property>
+        <property name="cursor">
+         <cursorShape>PointingHandCursor</cursorShape>
+        </property>
+        <property name="mouseTracking">
+         <bool>true</bool>
+        </property>
+        <property name="focusPolicy">
+         <enum>Qt::NoFocus</enum>
+        </property>
+        <property name="acceptDrops">
+         <bool>false</bool>
+        </property>
+        <property name="styleSheet">
+         <string notr="true">background-color: rgba(255, 255, 255, 0);
+background-image: url(:/images/Images/alpha.png);
+color: rgb(0, 0, 255);
+text-align: left top;</string>
+        </property>
+        <property name="text">
+         <string>...</string>
+        </property>
+        <property name="autoDefault">
+         <bool>true</bool>
+        </property>
+        <property name="flat">
+         <bool>true</bool>
+        </property>
+       </widget>
       </widget>
       <widget class="QWidget" name="page_Address">
        <property name="styleSheet">
-        <string notr="true">background-image: url(:/images/Images/tab-backgrounds/bg_address.png);
-</string>
+        <string notr="true"/>
        </property>
        <widget class="QLineEdit" name="txtAddress_District">
         <property name="geometry">
@@ -1123,7 +1179,7 @@ background-image: url(:/images/Images/backgrounds/bg_toolbarMenu2.png);</string>
         <property name="styleSheet">
          <string notr="true">
 color: rgb(108, 108, 108);
-font: 75 12pt Arial;
+font: 75 15px Arial;
 background-image: url(:/images/Images/backgrounds/bg_toolbarMenu2.png);          </string>
         </property>
         <property name="text">
@@ -1263,24 +1319,15 @@ image: url(:/images/Images/bg-Light-Blue.png);</string>
         <property name="geometry">
          <rect>
           <x>410</x>
-          <y>340</y>
+          <y>370</y>
           <width>111</width>
           <height>30</height>
          </rect>
         </property>
-        <property name="font">
-         <font>
-          <family>Arial</family>
-          <pointsize>12</pointsize>
-          <weight>9</weight>
-          <italic>false</italic>
-          <bold>false</bold>
-         </font>
-        </property>
         <property name="styleSheet">
          <string notr="true">
 color: rgb(108, 108, 108);
-font: 75 12pt Arial;
+font: 75 15px Arial;
 background-image: url(:/images/Images/backgrounds/bg_toolbarMenu2.png);          </string>
         </property>
         <property name="text">
@@ -1291,44 +1338,32 @@ background-image: url(:/images/Images/backgrounds/bg_toolbarMenu2.png);         
         <property name="geometry">
          <rect>
           <x>410</x>
-          <y>380</y>
+          <y>410</y>
           <width>111</width>
           <height>31</height>
          </rect>
         </property>
-        <property name="font">
-         <font>
-          <family>Arial</family>
-          <pointsize>12</pointsize>
-          <weight>9</weight>
-          <italic>false</italic>
-          <bold>false</bold>
-         </font>
-        </property>
         <property name="styleSheet">
          <string notr="true">
 color: rgb(108, 108, 108);
-font: 75 12pt Arial;
+font: 75 15px Arial;
 background-image: url(:/images/Images/backgrounds/bg_toolbarMenu2.png);          </string>
         </property>
         <property name="text">
          <string>&amp;Details &gt;&gt;</string>
         </property>
        </widget>
-       <widget class="QLineEdit" name="txtCert_RevStatus">
+       <widget class="QLabel" name="txtCert_RevStatus">
         <property name="geometry">
          <rect>
           <x>410</x>
           <y>310</y>
-          <width>175</width>
-          <height>20</height>
+          <width>370</width>
+          <height>45</height>
          </rect>
         </property>
         <property name="styleSheet">
          <string notr="true">border-image: url(:/images/Images/bg-Blue.png);</string>
-        </property>
-        <property name="readOnly">
-         <bool>true</bool>
         </property>
        </widget>
       </widget>
@@ -1430,19 +1465,10 @@ image: url(:/images/Images/bg-Light-Blue.png);</string>
           <height>31</height>
          </rect>
         </property>
-        <property name="font">
-         <font>
-          <family>Arial</family>
-          <pointsize>12</pointsize>
-          <weight>9</weight>
-          <italic>false</italic>
-          <bold>false</bold>
-         </font>
-        </property>
         <property name="styleSheet">
          <string notr="true">
 color: rgb(108, 108, 108);
-font: 75 12pt Arial;
+font: 75 15px Arial;
 background-image: url(:/images/Images/backgrounds/bg_toolbarMenu2.png);          </string>
         </property>
         <property name="text">
@@ -1461,18 +1487,9 @@ background-image: url(:/images/Images/backgrounds/bg_toolbarMenu2.png);         
           <height>31</height>
          </rect>
         </property>
-        <property name="font">
-         <font>
-          <family>Arial</family>
-          <pointsize>12</pointsize>
-          <weight>9</weight>
-          <italic>false</italic>
-          <bold>false</bold>
-         </font>
-        </property>
         <property name="styleSheet">
          <string notr="true">color: rgb(108, 108, 108);
-font: 75 12pt Arial;
+font: 75 15px Arial;
 background-image: url(:/images/Images/backgrounds/bg_toolbarMenu2.png);          </string>
         </property>
         <property name="text">
@@ -1522,7 +1539,7 @@ background-image: url(:/images/Images/backgrounds/bg_toolbarMenu2.png);         
         <property name="styleSheet">
          <string notr="true">
 color: rgb(108, 108, 108);
-font: 75 12pt Arial;
+font: 75 15px Arial;
 background-image: url(:/images/Images/backgrounds/bg_toolbarMenu2.png);   </string>
         </property>
         <property name="text">
@@ -1541,7 +1558,7 @@ background-image: url(:/images/Images/backgrounds/bg_toolbarMenu2.png);   </stri
         <property name="styleSheet">
          <string notr="true">background-image: url(:/images/Images/alpha.png);
 color: rgb(108, 108, 108);
-font: 10pt &quot;Arial&quot;;</string>
+font: 12px &quot;Arial&quot;;</string>
         </property>
         <property name="text">
          <string>Bytes available:</string>
@@ -1603,18 +1620,9 @@ font: 10pt &quot;Arial&quot;;</string>
        <height>43</height>
       </rect>
      </property>
-     <property name="font">
-      <font>
-       <family>Arial</family>
-       <pointsize>12</pointsize>
-       <weight>9</weight>
-       <italic>false</italic>
-       <bold>false</bold>
-      </font>
-     </property>
      <property name="styleSheet">
       <string notr="true">color: rgb(108, 108, 108);
-font: 75 12pt &quot;Arial&quot;;
+font: 75 15px &quot;Arial&quot;;
 background-image: url(:/images/Images/alpha.png);</string>
      </property>
      <property name="text">
@@ -1635,7 +1643,7 @@ background-image: url(:/images/Images/alpha.png);</string>
      </property>
      <property name="styleSheet">
       <string notr="true">color: rgb(108, 108, 108);
-font: 75 12pt &quot;Arial&quot;;
+font: 75 15px &quot;Arial&quot;;
 background-image: url(:/images/Images/alpha.png);</string>
      </property>
      <property name="text">
@@ -1656,7 +1664,7 @@ background-image: url(:/images/Images/alpha.png);</string>
      </property>
      <property name="styleSheet">
       <string notr="true">color: rgb(108, 108, 108);
-font: 75 12pt &quot;Arial&quot;;
+font: 75 15px &quot;Arial&quot;;
 background-image: url(:/images/Images/alpha.png);</string>
      </property>
      <property name="text">
@@ -1677,7 +1685,7 @@ background-image: url(:/images/Images/alpha.png);</string>
      </property>
      <property name="styleSheet">
       <string notr="true">color: rgb(108, 108, 108);
-font: 75 12pt &quot;Arial&quot;;
+font: 75 15px &quot;Arial&quot;;
 background-image: url(:/images/Images/alpha.png);</string>
      </property>
      <property name="text">
@@ -1698,7 +1706,7 @@ background-image: url(:/images/Images/alpha.png);</string>
      </property>
      <property name="styleSheet">
       <string notr="true">color: rgb(108, 108, 108);
-font: 75 12pt &quot;Arial&quot;;
+font: 75 15px &quot;Arial&quot;;
 background-image: url(:/images/Images/alpha.png);</string>
      </property>
      <property name="text">
@@ -1719,7 +1727,7 @@ background-image: url(:/images/Images/alpha.png);</string>
      </property>
      <property name="styleSheet">
       <string notr="true">color: rgb(108, 108, 108);
-font: 75 12pt &quot;Arial&quot;;
+font: 75 15px &quot;Arial&quot;;
 background-image: url(:/images/Images/alpha.png);</string>
      </property>
      <property name="text">
@@ -1758,8 +1766,10 @@ background-image: url(:/images/Images/alpha.png);</string>
       <bool>false</bool>
      </property>
      <property name="styleSheet">
-      <string notr="true">background-image: url(:/images/Images/buttons/btn_card.png);
-font: 10pt &quot;Arial&quot;;</string>
+      <string notr="true">
+        background-image: url(:/images/Images/buttons/btn_card.png);
+        font: 12px &quot;Arial&quot;;
+      </string>
      </property>
      <property name="text">
       <string>   Card</string>
@@ -1784,8 +1794,10 @@ font: 10pt &quot;Arial&quot;;</string>
       <bool>false</bool>
      </property>
      <property name="styleSheet">
-      <string notr="true">background-image: url(:/images/Images/buttons/btn_tools.png);
-font: 10pt &quot;Arial&quot;;</string>
+      <string notr="true">
+        background-image: url(:/images/Images/buttons/btn_tools.png);
+        font: 12px &quot;Arial&quot;;
+      </string>
      </property>
      <property name="text">
       <string>   Services</string>
@@ -1813,8 +1825,10 @@ font: 10pt &quot;Arial&quot;;</string>
       <bool>false</bool>
      </property>
      <property name="styleSheet">
-      <string notr="true">background-image: url(:/images/Images/buttons/btn_tools.png);
-font: 10pt &quot;Arial&quot;;</string>
+      <string notr="true">
+        background-image: url(:/images/Images/buttons/btn_settings.png);
+        font: 12px &quot;Arial&quot;;
+      </string>
      </property>
      <property name="text">
       <string>   Settings</string>
@@ -1839,8 +1853,10 @@ font: 10pt &quot;Arial&quot;;</string>
       <bool>false</bool>
      </property>
      <property name="styleSheet">
-      <string notr="true">background-image: url(:/images/Images/buttons/btn_help.png);
-font: 10pt &quot;Arial&quot;;</string>
+      <string notr="true">
+        background-image: url(:/images/Images/buttons/btn_help.png);
+        font: 12px &quot;Arial&quot;;
+      </string>
      </property>
      <property name="text">
       <string>  Help</string>
@@ -1893,11 +1909,44 @@ font: 10pt &quot;Arial&quot;;</string>
       <bool>true</bool>
      </property>
     </widget>
+    <widget class="QLabel" name="lbl_testmode">
+     <property name="geometry">
+      <rect>
+       <x>630</x>
+       <y>-2</y>
+       <width>81</width>
+       <height>58</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <family>Arial</family>
+       <pointsize>-1</pointsize>
+       <weight>50</weight>
+       <italic>false</italic>
+       <bold>false</bold>
+      </font>
+     </property>
+     <property name="visible">
+      <bool>true</bool>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">background-image: url(:/images/Images/alpha.png);
+color: rgb(0, 0, 255);
+font: 12px &quot;Arial&quot;;
+text-align: center;
+      </string>
+     </property>
+     <property name="text">
+      <string>Test Mode</string>
+     </property>
+    </widget>
     <zorder>btn_menu_help</zorder>
     <zorder>btn_menu_settings</zorder>
     <zorder>btn_menu_tools</zorder>
     <zorder>btn_menu_card</zorder>
     <zorder>btn_menu_language</zorder>
+    <zorder>lbl_testmode</zorder>
    </widget>
    <widget class="QWidget" name="wdg_submenu_card" native="true">
     <property name="geometry">
@@ -1921,9 +1970,11 @@ font: 10pt &quot;Arial&quot;;</string>
       </rect>
      </property>
      <property name="styleSheet">
-      <string notr="true">background-image: url(:/images/Images/alpha.png);
-color: rgb(108, 108, 108);
-font: 10pt &quot;Arial&quot;;</string>
+      <string notr="true">
+        background-image: url(:/images/Images/alpha.png);
+        color: rgb(108, 108, 108);
+        font: 12px &quot;Arial&quot;;
+      </string>
      </property>
      <property name="text">
       <string>Card</string>
@@ -1939,9 +1990,11 @@ font: 10pt &quot;Arial&quot;;</string>
       </rect>
      </property>
      <property name="styleSheet">
-      <string notr="true">background-image: url(:/images/Images/alpha.png);
-color: rgb(108, 108, 108);
-font: 10pt &quot;Arial&quot;;</string>
+      <string notr="true">
+        background-image: url(:/images/Images/alpha.png);
+        color: rgb(108, 108, 108);
+        font: 12px &quot;Arial&quot;;
+      </string>
      </property>
      <property name="text">
       <string>Read Card</string>
@@ -1957,9 +2010,11 @@ font: 10pt &quot;Arial&quot;;</string>
       </rect>
      </property>
      <property name="styleSheet">
-      <string notr="true">background-image: url(:/images/Images/alpha.png);
-color: rgb(108, 108, 108);
-font: 10pt &quot;Arial&quot;;</string>
+      <string notr="true">
+        background-image: url(:/images/Images/alpha.png);
+        color: rgb(108, 108, 108);
+        font: 12px &quot;Arial&quot;;
+      </string>
      </property>
      <property name="text">
       <string>Exit</string>
@@ -1992,9 +2047,11 @@ background-image: url(:/images/Images/alpha.png);</string>
       </rect>
      </property>
      <property name="styleSheet">
-      <string notr="true">background-image: url(:/images/Images/alpha.png);
-color: rgb(108, 108, 108);
-font: 10pt &quot;Arial&quot;;</string>
+      <string notr="true">
+        background-image: url(:/images/Images/alpha.png);
+        color: rgb(108, 108, 108);
+        font: 12px &quot;Arial&quot;;
+      </string>
      </property>
      <property name="text">
       <string>Export / Print</string>
@@ -2010,9 +2067,11 @@ font: 10pt &quot;Arial&quot;;</string>
       </rect>
      </property>
      <property name="styleSheet">
-      <string notr="true">background-image: url(:/images/Images/alpha.png);
-color: rgb(108, 108, 108);
-font: 10pt &quot;Arial&quot;;</string>
+      <string notr="true">
+        background-image: url(:/images/Images/alpha.png);
+        color: rgb(108, 108, 108);
+        font: 12px &quot;Arial&quot;;
+      </string>
      </property>
      <property name="text">
       <string>»</string>
@@ -2028,9 +2087,11 @@ font: 10pt &quot;Arial&quot;;</string>
       </rect>
      </property>
      <property name="styleSheet">
-      <string notr="true">background-image: url(:/images/Images/alpha.png);
-color: rgb(108, 108, 108);
-font: 10pt &quot;Arial&quot;;</string>
+      <string notr="true">
+        background-image: url(:/images/Images/alpha.png);
+        color: rgb(108, 108, 108);
+        font: 12px &quot;Arial&quot;;
+      </string>
      </property>
      <property name="text">
       <string>»</string>
@@ -2046,9 +2107,11 @@ font: 10pt &quot;Arial&quot;;</string>
       </rect>
      </property>
      <property name="styleSheet">
-      <string notr="true">background-image: url(:/images/Images/alpha.png);
-color: rgb(108, 108, 108);
-font: 10pt &quot;Arial&quot;;</string>
+      <string notr="true">
+        background-image: url(:/images/Images/alpha.png);
+        color: rgb(108, 108, 108);
+        font: 12px &quot;Arial&quot;;
+      </string>
      </property>
      <property name="text">
       <string>»</string>
@@ -2068,9 +2131,12 @@ font: 10pt &quot;Arial&quot;;</string>
      <rect>
       <x>150</x>
       <y>760</y>
-      <width>151</width>
-      <height>71</height>
+      <width>221</width>
+      <height>131</height>
      </rect>
+    </property>
+    <property name="autoFillBackground">
+     <bool>false</bool>
     </property>
     <property name="styleSheet">
      <string notr="true">background-image: url(:/images/Images/submenu_backgrounds/bg_selected_menu_tools.png);</string>
@@ -2085,9 +2151,11 @@ font: 10pt &quot;Arial&quot;;</string>
       </rect>
      </property>
      <property name="styleSheet">
-      <string notr="true">background-image: url(:/images/Images/alpha.png);
-color: rgb(108, 108, 108);
-font: 10pt &quot;Arial&quot;;</string>
+      <string notr="true">
+        background-image: url(:/images/Images/alpha.png);
+        color: rgb(108, 108, 108);
+        font: 12px &quot;Arial&quot;;
+      </string>
      </property>
      <property name="text">
       <string>Services</string>
@@ -2114,7 +2182,7 @@ background-image: url(:/images/Images/alpha.png);</string>
      <property name="geometry">
       <rect>
        <x>25</x>
-       <y>45</y>
+       <y>105</y>
        <width>131</width>
        <height>17</height>
       </rect>
@@ -2123,9 +2191,11 @@ background-image: url(:/images/Images/alpha.png);</string>
       <bool>true</bool>
      </property>
      <property name="styleSheet">
-      <string notr="true">background-image: url(:/images/Images/alpha.png);
-color: rgb(108, 108, 108);
-font: 10pt &quot;Arial&quot;;</string>
+      <string notr="true">
+        background-image: url(:/images/Images/alpha.png);
+        color: rgb(108, 108, 108);
+        font: 12px &quot;Arial&quot;;
+      </string>
      </property>
      <property name="text">
       <string>Universal Signature</string>
@@ -2144,12 +2214,57 @@ font: 10pt &quot;Arial&quot;;</string>
       <bool>true</bool>
      </property>
      <property name="styleSheet">
-      <string notr="true">background-image: url(:/images/Images/alpha.png);
-color: rgb(108, 108, 108);
-font: 10pt &quot;Arial&quot;;</string>
+      <string notr="true">
+        background-image: url(:/images/Images/alpha.png);
+        color: rgb(108, 108, 108);
+        font: 12px &quot;Arial&quot;;
+      </string>
      </property>
      <property name="text">
       <string>Verify Signature</string>
+     </property>
+    </widget>
+    <widget class="QLabel" name="lbl_menuTools_SCAPSignature_bullet">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>105</y>
+       <width>16</width>
+       <height>17</height>
+      </rect>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">
+        background-image: url(:/images/Images/alpha.png);
+        color: rgb(108, 108, 108);
+        font: 12px &quot;Arial&quot;;
+      </string>
+     </property>
+     <property name="text">
+      <string>»</string>
+     </property>
+    </widget>
+    <widget class="QLabel" name="lbl_menuTools_SCAPSignature">
+     <property name="geometry">
+      <rect>
+       <x>25</x>
+       <y>65</y>
+       <width>158</width>
+       <height>17</height>
+      </rect>
+     </property>
+     <property name="visible">
+      <bool>true</bool>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">
+        background-image: url(:/images/Images/alpha.png);
+        color: rgb(108, 108, 108);
+        font: 12px &quot;Arial&quot;;
+      </string>
+     </property>
+     <property name="text">
+      <string>Professional signature</string>
      </property>
     </widget>
     <widget class="QLabel" name="lbl_menuCard_Read_8">
@@ -2162,9 +2277,11 @@ font: 10pt &quot;Arial&quot;;</string>
       </rect>
      </property>
      <property name="styleSheet">
-      <string notr="true">background-image: url(:/images/Images/alpha.png);
-color: rgb(108, 108, 108);
-font: 10pt &quot;Arial&quot;;</string>
+      <string notr="true">
+        background-image: url(:/images/Images/alpha.png);
+        color: rgb(108, 108, 108);
+        font: 12px &quot;Arial&quot;;
+      </string>
      </property>
      <property name="text">
       <string>»</string>
@@ -2180,9 +2297,11 @@ font: 10pt &quot;Arial&quot;;</string>
       </rect>
      </property>
      <property name="styleSheet">
-      <string notr="true">background-image: url(:/images/Images/alpha.png);
-color: rgb(108, 108, 108);
-font: 10pt &quot;Arial&quot;;</string>
+      <string notr="true">
+        background-image: url(:/images/Images/alpha.png);
+        color: rgb(108, 108, 108);
+        font: 12px &quot;Arial&quot;;
+      </string>
      </property>
      <property name="text">
       <string>»</string>
@@ -2192,15 +2311,17 @@ font: 10pt &quot;Arial&quot;;</string>
      <property name="geometry">
       <rect>
        <x>25</x>
-       <y>65</y>
+       <y>45</y>
        <width>131</width>
        <height>17</height>
       </rect>
      </property>
      <property name="styleSheet">
-      <string notr="true">background-image: url(:/images/Images/alpha.png);
-color: rgb(108, 108, 108);
-font: 10pt &quot;Arial&quot;;</string>
+      <string notr="true">
+        background-image: url(:/images/Images/alpha.png);
+        color: rgb(108, 108, 108);
+        font: 12px &quot;Arial&quot;;
+      </string>
      </property>
      <property name="text">
       <string>PDF Signature</string>
@@ -2216,9 +2337,11 @@ font: 10pt &quot;Arial&quot;;</string>
       </rect>
      </property>
      <property name="styleSheet">
-      <string notr="true">background-image: url(:/images/Images/alpha.png);
-color: rgb(108, 108, 108);
-font: 10pt &quot;Arial&quot;;</string>
+      <string notr="true">
+        background-image: url(:/images/Images/alpha.png);
+        color: rgb(108, 108, 108);
+        font: 12px &quot;Arial&quot;;
+      </string>
      </property>
      <property name="text">
       <string>»</string>
@@ -2247,9 +2370,11 @@ font: 10pt &quot;Arial&quot;;</string>
       </rect>
      </property>
      <property name="styleSheet">
-      <string notr="true">background-image: url(:/images/Images/alpha.png);
-color: rgb(108, 108, 108);
-font: 10pt &quot;Arial&quot;;</string>
+      <string notr="true">
+        background-image: url(:/images/Images/alpha.png);
+        color: rgb(108, 108, 108);
+        font: 12px &quot;Arial&quot;;
+      </string>
      </property>
      <property name="text">
       <string>Help</string>
@@ -2265,9 +2390,11 @@ font: 10pt &quot;Arial&quot;;</string>
       </rect>
      </property>
      <property name="styleSheet">
-      <string notr="true">background-image: url(:/images/Images/alpha.png);
-color: rgb(108, 108, 108);
-font: 10pt &quot;Arial&quot;;</string>
+      <string notr="true">
+        background-image: url(:/images/Images/alpha.png);
+        color: rgb(108, 108, 108);
+        font: 12px &quot;Arial&quot;;
+      </string>
      </property>
      <property name="text">
       <string>About</string>
@@ -2300,9 +2427,11 @@ background-image: url(:/images/Images/alpha.png);</string>
       </rect>
      </property>
      <property name="styleSheet">
-      <string notr="true">background-image: url(:/images/Images/alpha.png);
-color: rgb(108, 108, 108);
-font: 10pt &quot;Arial&quot;;</string>
+      <string notr="true">
+        background-image: url(:/images/Images/alpha.png);
+        color: rgb(108, 108, 108);
+        font: 12px &quot;Arial&quot;;
+      </string>
      </property>
      <property name="text">
       <string>Updates</string>
@@ -2318,9 +2447,11 @@ font: 10pt &quot;Arial&quot;;</string>
       </rect>
      </property>
      <property name="styleSheet">
-      <string notr="true">background-image: url(:/images/Images/alpha.png);
-color: rgb(108, 108, 108);
-font: 10pt &quot;Arial&quot;;</string>
+      <string notr="true">
+        background-image: url(:/images/Images/alpha.png);
+        color: rgb(108, 108, 108);
+        font: 12px &quot;Arial&quot;;
+      </string>
      </property>
      <property name="text">
       <string>Online Documentation</string>
@@ -2336,9 +2467,11 @@ font: 10pt &quot;Arial&quot;;</string>
       </rect>
      </property>
      <property name="styleSheet">
-      <string notr="true">background-image: url(:/images/Images/alpha.png);
-color: rgb(108, 108, 108);
-font: 10pt &quot;Arial&quot;;</string>
+      <string notr="true">
+        background-image: url(:/images/Images/alpha.png);
+        color: rgb(108, 108, 108);
+        font: 12px &quot;Arial&quot;;
+      </string>
      </property>
      <property name="text">
       <string>»</string>
@@ -2354,9 +2487,11 @@ font: 10pt &quot;Arial&quot;;</string>
       </rect>
      </property>
      <property name="styleSheet">
-      <string notr="true">background-image: url(:/images/Images/alpha.png);
-color: rgb(108, 108, 108);
-font: 10pt &quot;Arial&quot;;</string>
+      <string notr="true">
+        background-image: url(:/images/Images/alpha.png);
+        color: rgb(108, 108, 108);
+        font: 12px &quot;Arial&quot;;
+      </string>
      </property>
      <property name="text">
       <string>»</string>
@@ -2372,9 +2507,11 @@ font: 10pt &quot;Arial&quot;;</string>
       </rect>
      </property>
      <property name="styleSheet">
-      <string notr="true">background-image: url(:/images/Images/alpha.png);
-color: rgb(108, 108, 108);
-font: 10pt &quot;Arial&quot;;</string>
+      <string notr="true">
+        background-image: url(:/images/Images/alpha.png);
+        color: rgb(108, 108, 108);
+        font: 12px &quot;Arial&quot;;
+      </string>
      </property>
      <property name="text">
       <string>»</string>
@@ -2391,21 +2528,23 @@ font: 10pt &quot;Arial&quot;;</string>
      </rect>
     </property>
     <property name="styleSheet">
-     <string notr="true">background-image: url(:/images/Images/submenu_backgrounds/bg_selected_menu_tools.png);</string>
+     <string notr="true">background-image: url(:/images/Images/submenu_backgrounds/bg_selected_menu_settings.png);</string>
     </property>
     <widget class="QLabel" name="lbl_menuSettings">
      <property name="geometry">
       <rect>
-       <x>45</x>
+       <x>50</x>
        <y>16</y>
        <width>71</width>
        <height>17</height>
       </rect>
      </property>
      <property name="styleSheet">
-      <string notr="true">background-image: url(:/images/Images/alpha.png);
-color: rgb(108, 108, 108);
-font: 10pt &quot;Arial&quot;;</string>
+      <string notr="true">
+        background-image: url(:/images/Images/alpha.png);
+        color: rgb(108, 108, 108);
+        font: 12px &quot;Arial&quot;;
+      </string>
      </property>
      <property name="text">
       <string>Settings</string>
@@ -2415,15 +2554,17 @@ font: 10pt &quot;Arial&quot;;</string>
      <property name="geometry">
       <rect>
        <x>31</x>
-       <y>45</y>
+       <y>53</y>
        <width>81</width>
        <height>17</height>
       </rect>
      </property>
      <property name="styleSheet">
-      <string notr="true">background-image: url(:/images/Images/alpha.png);
-color: rgb(108, 108, 108);
-font: 10pt &quot;Arial&quot;;</string>
+      <string notr="true">
+        background-image: url(:/images/Images/alpha.png);
+        color: rgb(108, 108, 108);
+        font: 12px &quot;Arial&quot;;
+      </string>
      </property>
      <property name="text">
       <string>Parameters</string>
@@ -2433,7 +2574,7 @@ font: 10pt &quot;Arial&quot;;</string>
      <property name="geometry">
       <rect>
        <x>10</x>
-       <y>32</y>
+       <y>40</y>
        <width>105</width>
        <height>16</height>
       </rect>
@@ -2450,15 +2591,17 @@ background-image: url(:/images/Images/alpha.png);</string>
      <property name="geometry">
       <rect>
        <x>16</x>
-       <y>45</y>
+       <y>53</y>
        <width>16</width>
        <height>17</height>
       </rect>
      </property>
      <property name="styleSheet">
-      <string notr="true">background-image: url(:/images/Images/alpha.png);
-color: rgb(108, 108, 108);
-font: 10pt &quot;Arial&quot;;</string>
+      <string notr="true">
+        background-image: url(:/images/Images/alpha.png);
+        color: rgb(108, 108, 108);
+        font: 12px &quot;Arial&quot;;
+      </string>
      </property>
      <property name="text">
       <string>»</string>
@@ -2521,15 +2664,6 @@ font: 10pt &quot;Arial&quot;;</string>
     <string>Ctrl+O</string>
    </property>
   </action>
-  <action name="actionClear">
-   <property name="icon">
-    <iconset resource="eidgui.qrc">
-     <normaloff>:/images/Images/Icons/Clear.png</normaloff>:/images/Images/Icons/Clear.png</iconset>
-   </property>
-   <property name="text">
-    <string>&amp;Clear</string>
-   </property>
-  </action>
   <action name="actionPrint_eID">
    <property name="icon">
     <iconset resource="eidgui.qrc">
@@ -2587,17 +2721,6 @@ font: 10pt &quot;Arial&quot;;</string>
    </property>
    <property name="text">
     <string>&amp;About</string>
-   </property>
-  </action>
-  <action name="actionShow_Toolbar">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="checked">
-    <bool>true</bool>
-   </property>
-   <property name="text">
-    <string>&amp;Show Toolbar</string>
    </property>
   </action>
   <action name="actionPINRequest">

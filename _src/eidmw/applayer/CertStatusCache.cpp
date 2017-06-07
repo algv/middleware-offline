@@ -89,11 +89,11 @@ APL_CscLine::APL_CscLine(const char *lineIn)
 	}
 }
 
-APL_CscLine::APL_CscLine(unsigned long ulUniqueID,CSC_Validation validationType,bool bAllowTestRoot)
+APL_CscLine::APL_CscLine(unsigned long ulUniqueID,CSC_Validation validationType)
 {
 	m_ulUniqueID=ulUniqueID;
-	m_ulFlags=	validationType 
-				+ (bAllowTestRoot?1:0) * CSC_VALIDATION_FLAG_TESTROOT;
+	m_ulFlags =	validationType;
+				
 	m_Status=CSC_STATUS_NONE;
 	m_Validity=""; 
 }
@@ -208,7 +208,7 @@ CSC_Status APL_CertStatusCache::getCertStatus(unsigned long ulUniqueID,const CSC
 
 	CSC_Status status;
 
-	APL_CscLine line(ulUniqueID,validationType,certStore->getAllowTestCard());
+	APL_CscLine line(ulUniqueID,validationType);
 	unsigned long ulFlags=line.getFlags();
 
 	//Check if the certificate is in the cache and the status still valid
@@ -310,17 +310,14 @@ CSC_Status APL_CertStatusCache::convertStatus(APL_CertifStatus status)
 	case APL_CERTIF_STATUS_VALID_OCSP:
 		return CSC_STATUS_VALID_FULL;
 
-	case APL_CERTIF_STATUS_TEST:
-		return CSC_STATUS_TEST;
-
-	case APL_CERTIF_STATUS_DATE:
-		return CSC_STATUS_DATE;
-
 	case APL_CERTIF_STATUS_CONNECT:
 		return CSC_STATUS_CONNECT;
 
 	case APL_CERTIF_STATUS_ISSUER:
 		return CSC_STATUS_ISSUER;
+
+	case APL_CERTIF_STATUS_SUSPENDED:
+		return CSC_STATUS_SUSPENDED; 
 
 	case APL_CERTIF_STATUS_REVOKED:
 		return CSC_STATUS_REVOKED;
@@ -340,10 +337,6 @@ CSC_Status APL_CertStatusCache::checkCertValidation(unsigned long ulUniqueID,uns
 	APL_Certif *cert=certStore->getCertUniqueId(ulUniqueID);
 
 	bool bRoot=cert->isRoot();
-	bool bTest=cert->isTest();
-
-	if(bTest && !APL_CscLine::allowTestRoot(ulFlags))
-		return CSC_STATUS_TEST;
 
 	//If this is not a root
 	if (bRoot)
@@ -372,13 +365,12 @@ CSC_Status APL_CertStatusCache::checkCertValidation(unsigned long ulUniqueID,uns
 	certstatus = convertStatus(cert->validationOCSP());
 
 	//In case the OCSP query failed fallback to CRL
-	//TODO: Fallback to CRL under the right conditions
-	if (certstatus != CSC_STATUS_REVOKED && certstatus != CSC_STATUS_VALID_SIGN)
+	if (certstatus != CSC_STATUS_SUSPENDED && certstatus != CSC_STATUS_REVOKED &&
+	      certstatus != CSC_STATUS_VALID_SIGN)
 	{
-		//fprintf(stderr, "DEBUG: falling back to CRL validation for certificate %s: OCSP return code %d\n",
-		//	 cert->getOwnerName(), certstatus);
+		MWLOG(LEV_DEBUG, MOD_APL, "DEBUG: falling back to CRL validation for certificate %s: OCSP return code %d",
+			 cert->getOwnerName(), certstatus);
 		certstatus = convertStatus(cert->validationCRL());
-
 	}
 
 

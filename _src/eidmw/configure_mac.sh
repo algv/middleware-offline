@@ -2,36 +2,13 @@
 
 OSDEF=__NONE__
 
-ver=`sw_vers -productVersion`
-
-if [[ $ver > "10.7.0" || $ver = "10.7.0" ]]
-then
-	OSDEF=osx10_7
-else 	if [[ $ver > "10.6.0" || $ver = "10.6.0" ]]
-	then
-		OSDEF=osx10_6
-else	if [[ $ver > "10.5.0" || $ver = "10.5.0" ]]
-	then
-		OSDEF=osx10_5
-
-	else 	if [[ $ver > "10.4.0" || $ver = "10.4.0" ]]
-		then
-			OSDEF=osx10_4
-		else
-			echo "[Error] OSX version: $ver < 10.4.0"
-			exit -1
-		fi
-	fi
-	fi
-fi
-
 #if [ ! "$QTBASEDIR" ]
 #then
-        QTBASEDIR=/Library/Frameworks
+        QTBASEDIR=/usr/local/Cellar/qt5/5.7.0/lib/
 #fi
 #echo "[Info ] Checking $QTBASEDIR"
 
-if [[ "$QTBASEDIR" != "" && -d $QTBASEDIR ]]
+if [[ "$QTBASEDIR" != "" ]]
 then
         echo "[Info ] $QTBASEDIR found"
 	./configure CONFIG=release QMAKE_LFLAGS+=-F$QTBASEDIR/lib --include=/System/Library/Frameworks/PCSC.framework/Versions/A/Headers/ --include+=$QTBASEDIR/include/QtCore/ --include+=$QTBASEDIR/QtCore.framework/Headers/ --include+=$QTBASEDIR/include/QtGui/  --include+=$QTBASEDIR/QtGui.framework/Headers/ --include+=$QTBASEDIR/QtNetwork.framework/Headers/ --lib=-L/System/Library/Frameworks/PCSC.framework/ --lib+=-L$QTBASEDIR/QtCore.framework/Versions/Current/ --lib+=-L$QTBASEDIR/QtGui.framework/Versions/Current/ --lib+=-L$QTBASEDIR/QtNetwork.framework/Versions/Current/

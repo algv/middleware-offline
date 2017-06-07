@@ -17,8 +17,6 @@
  * http://www.gnu.org/licenses/.
 
 **************************************************************************** */
-#include <iostream>
-#include <fstream>
 
 #include "CardPteid.h"
 #include "TLVBuffer.h"
@@ -32,9 +30,16 @@
 #include "APLConfig.h"
 #include "PhotoPteid.h"
 #include "APLPublicKey.h"
+#include "Log.h"
 #include "SODParser.h"
 
-#include "Log.h"
+#include <openssl/err.h>
+#include <iostream>
+#include <fstream>
+
+
+
+
 
 using namespace std;
 
@@ -104,16 +109,7 @@ bool APL_EidFile_Trace::ShowData()
 {
 	APL_EIDCard *pcard=dynamic_cast<APL_EIDCard *>(m_card);
 
-	bool bAllowTest=pcard->getAllowTestCard();
-
-	tCardFileStatus status=getStatus(false,&bAllowTest);
-	if(status==CARDFILESTATUS_OK)
-		return true;
-
-	//If the autorisation changed, we read the card again
-	if((status==CARDFILESTATUS_ERROR_TEST && pcard->getAllowTestCard()))
-		status=LoadData(true);
-
+	tCardFileStatus status=getStatus(false);
 	if(status==CARDFILESTATUS_OK)
 		return true;
 
@@ -201,7 +197,7 @@ tCardFileStatus APL_EidFile_ID::VerifyFile()
 
 	MapFieldsInternal();
 
-	if (m_SODCheck){
+	if (m_SODCheck) {
 		CByteArray pkData;
 		CByteArray idData;
 		CByteArray picData;
@@ -227,7 +223,6 @@ void APL_EidFile_ID::EmptyFields()
 {
 	m_DocumentVersion.clear();
 	m_Country.clear();
-	m_LogicalNumber.clear();
 	m_ChipNumber.clear();
 	m_ValidityBeginDate.clear();
 	m_ValidityEndDate.clear();
@@ -236,11 +231,9 @@ void APL_EidFile_ID::EmptyFields()
 	m_Surname.clear();
 	m_GivenName.clear();
 	m_Nationality.clear();
-	m_LocationOfBirth.clear();
 	m_DateOfBirth.clear();
 	m_Gender.clear();
 	m_DocumentType.clear();
-	m_SpecialStatus.clear();
 	m_HealthNo.clear();
 	m_DocumentNumber.clear();
 	m_TaxNo.clear();
@@ -251,7 +244,7 @@ void APL_EidFile_ID::EmptyFields()
 	m_SurnameFather.clear();
 	m_GivenNameMother.clear();
 	m_SurnameMother.clear();
-	if (m_photo){
+	if (m_photo) {
 		delete m_photo;
 		m_photo = NULL;
 	}
@@ -445,15 +438,7 @@ bool APL_EidFile_ID::ShowData()
 {
 	APL_EIDCard *pcard=dynamic_cast<APL_EIDCard *>(m_card);
 
-	bool bAllowTest=pcard->getAllowTestCard();
-
-	tCardFileStatus status=getStatus(false,&bAllowTest);
-	if(status==CARDFILESTATUS_OK)
-		return true;
-	//If the autorisation changed, we read the card again
-	if((status==CARDFILESTATUS_ERROR_TEST && pcard->getAllowTestCard()))
-		status=LoadData(true);
-
+	tCardFileStatus status=getStatus(false);
 	if(status==CARDFILESTATUS_OK)
 		return true;
 
@@ -516,14 +501,6 @@ const char *APL_EidFile_ID::getDateOfBirth()
 	return "";
 }
 
-const char *APL_EidFile_ID::getLocationOfBirth()
-{
-	if(ShowData())
-		return m_LocationOfBirth.c_str();
-
-	return "";
-}
-
 const char *APL_EidFile_ID::getNationality()
 {
 	if(ShowData())
@@ -532,37 +509,6 @@ const char *APL_EidFile_ID::getNationality()
 	return "";
 }
 
-const char *APL_EidFile_ID::getDuplicata()
-{
-	if(ShowData())
-		return m_Duplicata.c_str();
-
-	return "";
-}
-
-const char *APL_EidFile_ID::getSpecialOrganization()
-{
-	if(ShowData())
-		return m_SpecialOrganization.c_str();
-
-	return "";
-}
-
-const char *APL_EidFile_ID::getMemberOfFamily()
-{
-	if(ShowData())
-		return m_MemberOfFamily.c_str();
-
-	return "";
-}
-
-const char *APL_EidFile_ID::getLogicalNumber()
-{
-	if(ShowData())
-		return m_LogicalNumber.c_str();
-
-	return "";
-}
 
 const char *APL_EidFile_ID::getDocumentPAN()
 {
@@ -584,14 +530,6 @@ const char *APL_EidFile_ID::getValidityEndDate()
 {
 	if(ShowData())
 		return m_ValidityEndDate.c_str();
-
-	return "";
-}
-
-const char *APL_EidFile_ID::getSpecialStatus()
-{
-	if(ShowData())
-		return m_SpecialStatus.c_str();
 
 	return "";
 }
@@ -768,27 +706,6 @@ void  APL_EidFile_ID::doSODCheck(bool check){
 }
 
 /*****************************************************************************************
----------------------------------------- APL_EidFile_IDSign -----------------------------------------
-*****************************************************************************************/
-APL_EidFile_IDSign::APL_EidFile_IDSign(APL_EIDCard *card):APL_CardFile(card,PTEID_FILE_ID_SIGN,NULL)
-{
-}
-
-APL_EidFile_IDSign::~APL_EidFile_IDSign()
-{
-}
-
-/**
-  * No verification here.
-  * This file is needed for other verifications. 
-  * If it is corrupted, these verifications will failed.
-  */
-tCardFileStatus APL_EidFile_IDSign::VerifyFile()
-{
-	return CARDFILESTATUS_OK;
-}
-
-/*****************************************************************************************
 ---------------------------------------- APL_EidFile_Address -----------------------------------------
 *****************************************************************************************/
 const string APL_EidFile_Address::m_NATIONAL = "N";
@@ -827,6 +744,7 @@ void APL_EidFile_Address::PackAddressData(CByteArray &cb, bool isNational){
 		cb.Append((unsigned char*)m_PostalLocality.c_str(),m_PostalLocality.length());
 		cb.Append((unsigned char*)m_Generated_Address_Code.c_str(),m_Generated_Address_Code.length());
 	} else {
+		cb.Append((unsigned char*)m_CountryCode.c_str(), m_CountryCode.length());
 		cb.Append((unsigned char*)m_Foreign_Country.c_str(),m_Foreign_Country.length());
 		cb.Append((unsigned char*)m_Foreign_Generic_Address.c_str(),m_Foreign_Generic_Address.length());
 		cb.Append((unsigned char*)m_Foreign_City.c_str(),m_Foreign_City.length());
@@ -878,7 +796,7 @@ tCardFileStatus APL_EidFile_Address::VerifyFile()
 
 		if (m_SODCheck){
 			CByteArray addrData;
-			PackAddressData(addrData, isNationalAddress());
+			PackAddressData(addrData, m_AddressType != m_FOREIGN);
 
 			if (!m_cryptoFwk->VerifyHashSha256(addrData,pcard->getFileSod()->getAddressHash()))
 				throw CMWEXCEPTION(EIDMW_SOD_ERR_HASH_NO_MATCH_ADDRESS);
@@ -892,16 +810,7 @@ bool APL_EidFile_Address::ShowData()
 {
 	APL_EIDCard *pcard=dynamic_cast<APL_EIDCard *>(m_card);
 
-	bool bAllowTest=pcard->getAllowTestCard();
-
-	tCardFileStatus status=getStatus(false,&bAllowTest);
-	if(status==CARDFILESTATUS_OK)
-		return true;
-
-	//If the autorisation changed, we read the card again
-	if((status==CARDFILESTATUS_ERROR_TEST && pcard->getAllowTestCard()))
-		status=LoadData(true);
-
+	tCardFileStatus status=getStatus(false);
 	if(status==CARDFILESTATUS_OK)
 		return true;
 
@@ -1331,27 +1240,6 @@ void APL_EidFile_Address::doSODCheck(bool check){
 }
 
 /*****************************************************************************************
----------------------------------------- APL_EidFile_AddressSign -----------------------------------------
-*****************************************************************************************/
-APL_EidFile_AddressSign::APL_EidFile_AddressSign(APL_EIDCard *card):APL_CardFile(card,PTEID_FILE_ADDRESS_SIGN,NULL)
-{
-}
-
-APL_EidFile_AddressSign::~APL_EidFile_AddressSign()
-{
-}
-
-/**
-  * No verification here.
-  * This file is needed for other verifications. 
-  * If it is corrupted, these verifications will failed.
-  */
-tCardFileStatus APL_EidFile_AddressSign::VerifyFile()
-{
-	return CARDFILESTATUS_OK;
-}
-
-/*****************************************************************************************
 ---------------------------------------- APL_EidFile_Sod -----------------------------------------
 *****************************************************************************************/
 APL_EidFile_Sod::APL_EidFile_Sod(APL_EIDCard *card):APL_CardFile(card,PTEID_FILE_SOD,NULL)
@@ -1362,6 +1250,22 @@ APL_EidFile_Sod::APL_EidFile_Sod(APL_EIDCard *card):APL_CardFile(card,PTEID_FILE
 APL_EidFile_Sod::~APL_EidFile_Sod()
 {
 }
+
+/*
+char * parseSubjectFromCert(X509 * cert)
+{
+
+       X509_NAME * subject_struct = X509_get_subject_name(cert);	
+
+       int space_needed = X509_NAME_get_text_by_NID(subject_struct, NID_commonName, NULL, 0) +1;
+       char *subject = (char *)malloc(space_needed);
+
+       X509_NAME_get_text_by_NID(subject_struct, NID_commonName, subject, space_needed);
+
+       return subject;
+}
+*/
+
 
 tCardFileStatus APL_EidFile_Sod::VerifyFile()
 {
@@ -1377,9 +1281,8 @@ tCardFileStatus APL_EidFile_Sod::VerifyFile()
 
 	PKCS7 *p7 = NULL;
 	bool verifySOD = false;
-
-	ERR_load_PKCS7_strings();
-	ERR_load_X509_strings();
+	
+	ERR_load_crypto_strings();
 	OpenSSL_add_all_digests();
 
 	const unsigned char *temp = m_data.GetBytes();
@@ -1388,21 +1291,28 @@ tCardFileStatus APL_EidFile_Sod::VerifyFile()
 
 	p7 = d2i_PKCS7(NULL, (const unsigned char **)&temp, len);
 
-	STACK_OF(X509) *pSigners = PKCS7_get0_signers(p7, NULL, 0);
+	//STACK_OF(X509) *pSigners = PKCS7_get0_signers(p7, NULL, 0);
 
 	X509_STORE *store = X509_STORE_new();
 
+	// Load only the SOD relevant root certificates
+
 	// martinho: load all certificates, let openssl do the job and find the needed ones...
-	for (int i = 0; i<pcard->getCertificates()->countAll(true);i++){
+	for (int i = 0; i<pcard->getCertificates()->countSODCAs(); i++){
+		APL_Certif * sod_ca = pcard->getCertificates()->getSODCA(i);
 		X509 *pX509 = NULL;
-		const unsigned char *p = pcard->getCertificates()->getCert(i,false)->getData().GetBytes();
-		pX509 = d2i_X509(&pX509, &p, pcard->getCertificates()->getCert(i,false)->getData().Size());
+		const unsigned char *p = sod_ca->getData().GetBytes();
+
+		pX509 = d2i_X509(&pX509, &p, sod_ca->getData().Size());
 		X509_STORE_add_cert(store, pX509);
+		MWLOG(LEV_DEBUG, MOD_APL, "%d. Adding certificate Subject CN: %s", i, sod_ca->getOwnerName());
 	}
+	
 	BIO *Out = BIO_new(BIO_s_mem());
 
-	verifySOD = PKCS7_verify(p7,pSigners,store,NULL,Out,0)==1;
-	if (verifySOD){
+	//verifySOD = PKCS7_verify(p7,pSigners,store,NULL,Out,0)==1;
+	verifySOD = PKCS7_verify(p7, NULL,store,NULL,Out,0)==1;
+	if (verifySOD) {
 		unsigned char *p;
 		long size;
 		size = BIO_get_mem_data(Out, &p);
@@ -1411,9 +1321,16 @@ tCardFileStatus APL_EidFile_Sod::VerifyFile()
 		m_isVerified = true;
 		filestatus = CARDFILESTATUS_OK;
 	}
+	else
+	{
+		char * validation_error = ERR_error_string(ERR_get_error(), NULL);
+		//Log specific OpenSSL error
+		MWLOG(LEV_ERROR, MOD_APL, "EidFile_Sod:: Error validating SOD signature. OpenSSL error: %s", validation_error);
+			
+	}
 
 	X509_STORE_free(store);
-	sk_X509_free(pSigners);
+	//sk_X509_free(pSigners);
 	BIO_free_all(Out);
 	PKCS7_free(p7);
 
@@ -1427,16 +1344,7 @@ bool APL_EidFile_Sod::ShowData()
 {
 	APL_EIDCard *pcard=dynamic_cast<APL_EIDCard *>(m_card);
 
-	bool bAllowTest=pcard->getAllowTestCard();
-
-	tCardFileStatus status=getStatus(false,&bAllowTest);
-	if(status==CARDFILESTATUS_OK)
-		return true;
-
-	//If the autorisation changed, we read the card again
-	if((status==CARDFILESTATUS_ERROR_TEST && pcard->getAllowTestCard()))
-		status=LoadData(false);
-
+	tCardFileStatus status=getStatus(false);
 	if(status==CARDFILESTATUS_OK)
 		return true;
 
@@ -1527,22 +1435,6 @@ tCardFileStatus APL_EidFile_PersoData::VerifyFile()
 	if(!m_card)
 		return CARDFILESTATUS_ERROR;
 
-	APL_EIDCard *pcard=dynamic_cast<APL_EIDCard *>(m_card);
-	/*
-	//The hash for the photo is in the ID file
-	//const CByteArray &hash=pcard->getFileID()->getPhotoHash();
-	const CByteArray &hash=pcard->getFileID()->getData();
-
-	//If the status of the ID file is not OK, the hash is not valid.
-	//The id status is return
-	tCardFileStatus idstatus=pcard->getFileID()->getStatus();
-	if(idstatus!=CARDFILESTATUS_OK)
-		return idstatus;
-
-	//We check if the hash correspond to the photo
-	if(!m_cryptoFwk->VerifyHashSha1(m_data,hash))
-		return CARDFILESTATUS_ERROR_HASH;*/
-
 	return CARDFILESTATUS_OK;
 }
 
@@ -1550,16 +1442,7 @@ bool APL_EidFile_PersoData::ShowData()
 {
         APL_EIDCard *pcard=dynamic_cast<APL_EIDCard *>(m_card);
 
-        bool bAllowTest=pcard->getAllowTestCard();
-
-        tCardFileStatus status=getStatus(false,&bAllowTest);
-        if(status==CARDFILESTATUS_OK)
-                return true;
-
-        //If the autorisation changed, we read the card again
-        if((status==CARDFILESTATUS_ERROR_TEST && pcard->getAllowTestCard()))
-                status=LoadData(true);
-
+        tCardFileStatus status=getStatus(false);
         if(status==CARDFILESTATUS_OK)
                 return true;
 

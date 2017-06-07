@@ -21,17 +21,12 @@
 #define __PTEIDCARD_H__
 
 #include "../PkiCard.h"
-#include "PteidP15Correction.h"
 #include "../Card.h"
 
 using namespace eIDMW;
 
-// If we want to 'hardcode' this plugin internally in the CAL, this function
-// can't be present because it's the same for all plugins
-#ifndef CARDPLUGIN_IN_CAL
 EIDMW_CAL_API CCard *GetCardInstance(unsigned long ulVersion, const char *csReader,
 	unsigned long hCard, CContext *poContext, GenericPinpad *poPinpad);
-#endif
 
 CCard *PTeidCardGetVersion (unsigned long ulVersion, const char *csReader,
 			    SCARDHANDLE hCard, CContext *poContext, GenericPinpad *poPinpad);
@@ -39,21 +34,11 @@ CCard *PTeidCardGetVersion (unsigned long ulVersion, const char *csReader,
 CCard *PteidCardGetInstance(unsigned long ulVersion, const char *csReader,
 	SCARDHANDLE hCard, CContext *poContext, GenericPinpad *poPinpad);
 
-//CCard PteidCardSelectPteid();
-
 namespace eIDMW
 {
 
-typedef enum {
-	BELPIC_DF,
-	IAS_DF,
-	GEMSAFE,DF,
-	ID_DF,
-	UNKNOWN_DF,
-} tBelpicDF;
 
-
-//Workaround needed for Windows 8 and later
+//Workaround needed for Windows 8 and later: With the do-nothing call to SCardStatus() in PCSC::Status() we make sure the transaction has activity so that Windows doesn't kill it
 class KeepAliveThread : public CThread
 {
 public:
@@ -64,16 +49,11 @@ public:
 		m_poPCSC = poPCSC;
 	}
 
-	void Run() {
-		while(1)
-		{
-			CThread::SleepMillisecs(1000);
-			m_poPCSC->Status(m_hCard);
-
-			if (m_bStopRequest)
-				break;
-		}
+	~KeepAliveThread() { 
+		RequestStop();
 	}
+
+	void Run();
 
 private:
 	CPCSC *m_poPCSC;
@@ -101,32 +81,25 @@ public:
 	virtual bool PinCmd(tPinOperation operation, const tPin & Pin,
             const std::string & csPin1, const std::string & csPin2,
             unsigned long & ulRemaining, const tPrivKey *pKey = NULL,
-            bool bShowDlg=true);
+            bool bShowDlg=true, void *wndGeometry = 0, unsigned long unblockFlags=0 );
     virtual unsigned long PinStatus(const tPin & Pin);
     virtual CByteArray RootCAPubKey();
-    virtual bool Activate(const char *pinCode, CByteArray &BCDDate);
-    virtual bool unlockPIN(const tPin &pin, const tPin *puk, const char *pszPuk, const char *pszNewPin, unsigned long &triesLeft);
-	virtual bool LogOff(const tPin & Pin);
+    virtual bool Activate(const char *pinCode, CByteArray &BCDDate, bool blockActivationPIN);
+    virtual bool unlockPIN(const tPin &pin, const tPin *puk, const char *pszPuk, const char *pszNewPin, unsigned long &triesLeft,
+    	unsigned long unblockFlags);
 
-	virtual unsigned long GetSupportedAlgorithms();
-
-    virtual CByteArray Ctrl(long ctrl, const CByteArray & oCmdData);
-
-    virtual CP15Correction* GetP15Correction();
+	virtual unsigned long GetSupportedAlgorithms();  
 
 protected:
 	virtual bool ShouldSelectApplet(unsigned char ins, unsigned long ulSW12);
     virtual bool SelectApplet();
-
-	virtual tBelpicDF getDF(const std::string & csPath, unsigned long & ulOffset);
-	virtual tFileInfo SelectFile(const std::string & csPath, bool bReturnFileInfo = false);
-	virtual tFileInfo ParseFileInfo(CByteArray & oFCI);
+		
     virtual CByteArray SelectByPath(const std::string & csPath, bool bReturnFileInfo = false);
 
 	virtual unsigned long Get6CDelay();
 
     virtual void showPinDialog(tPinOperation operation, const tPin & Pin,
-        std::string & csPin1, std::string & csPin2, const tPrivKey *pKey);
+        std::string & csPin1, std::string & csPin2, const tPrivKey *pKey, void *wndGeometry = 0 );
 
     virtual void SetSecurityEnv(const tPrivKey & key, unsigned long algo,
         unsigned long ulInputLen);
@@ -141,10 +114,6 @@ protected:
     unsigned int m_AppletVersion;
 	unsigned long m_ul6CDelay;
 
-	CPteidP15Correction p15correction;
-
-private:
-	void IasSignatureHelper();
 };
 
 }

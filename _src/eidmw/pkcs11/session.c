@@ -53,12 +53,12 @@ log_trace(WHERE, "I: enter");
    if (ret != CKR_OK)
 {
 	log_trace(WHERE, "I: leave, p11_lock failed with %i",ret);
-   return ret;
+   return ((CK_RV)ret);
 }
 
    log_trace(WHERE, "S: C_OpenSession (slot %d)", slotID);
 
-   if (!(flags & CKF_SERIAL_SESSION)) 
+   if (!(flags & CKF_SERIAL_SESSION))
      {
      ret = CKR_SESSION_PARALLEL_NOT_SUPPORTED;
      goto cleanup;
@@ -81,7 +81,7 @@ log_trace(WHERE, "I: enter");
 
   /* Check that no conflictions sessions exist */
   /* RO session when SO session exists is not allowed */
-  if ( !(flags & CKF_RW_SESSION) && (pSlot->login_type == CKU_SO)) 
+  if ( !(flags & CKF_RW_SESSION) && (pSlot->login_type == CKU_SO))
      {
      log_trace(WHERE, "E: R/W Session exists", slotID);
      ret = CKR_SESSION_READ_WRITE_SO_EXISTS;
@@ -111,7 +111,7 @@ log_trace(WHERE, "I: enter");
   pSession->flags = flags;
   pSession->pdNotify = pApplication;
   pSession->pfNotify = Notify;
-  //initial state 
+  //initial state
   pSession->state = P11_CARD_STILL_PRESENT;
 
   /* keep the nr of sessions for this slot */
@@ -122,7 +122,7 @@ log_trace(WHERE, "I: enter");
 cleanup:
    p11_unlock();
    log_trace(WHERE, "I: leave, ret = %i",ret);
-   return ret;
+   return ((CK_RV)ret);
 }
 #undef WHERE
 
@@ -139,7 +139,7 @@ ret = p11_lock();
 if (ret != CKR_OK)
 {
 	log_trace(WHERE, "I: leave, p11_lock failed with %i",ret);
-   return ret;
+   return ((CK_RV)ret);
 }
 
 log_trace(WHERE, "S: C_CloseSession (session %d)", hSession);
@@ -187,7 +187,7 @@ pSession->pfNotify = NULL;
 cleanup:
    p11_unlock();
    log_trace(WHERE, "I: leave, ret = %i",ret);
-   return ret;
+   return ((CK_RV)ret);
 }
 #undef WHERE
 
@@ -203,7 +203,7 @@ log_trace(WHERE, "I: enter");
 if (ret != CKR_OK)
 {
 	log_trace(WHERE, "I: leave, p11_lock failed with %i",ret);
-   return ret;
+   return ((CK_RV)ret);
 }
 
    log_trace(WHERE, "S: C_CloseAllSessions(slot %d)", slotID);
@@ -212,7 +212,7 @@ if (ret != CKR_OK)
 
    p11_unlock();
    log_trace(WHERE, "I: leave, ret = %i",ret);
-   return ret;
+   return ((CK_RV)ret);
 }
 #undef WHERE
 
@@ -225,25 +225,27 @@ int isAcroread()
 
    DWORD bufsize;
    bufsize = GetModuleFileNameA(NULL,(LPTSTR)buf, (DWORD)buf_len);
-   #endif   
+   #endif
 #ifdef __linux__
    ssize_t s = readlink("/proc/self/exe", buf, (size_t)buf_len);
    buf[s] = 0;
 #endif
 #ifdef __APPLE__
-   _NSGetExecutablePath(buf, &buf_len);	
+   _NSGetExecutablePath(buf, &buf_len);
 #endif
 
-   if (strstr(buf, "acroread") != NULL 
+   if (strstr(buf, "acroread") != NULL
 		   || strstr(buf, "AcroRd32") != NULL
 		   || strstr(buf, "AdobeReader") != NULL
 		   || strstr(buf, "Acrobat") != NULL
 		   )
    {
 	   fprintf(stderr, "We're being called by acroread!!\n");
+	   free(buf);//LL
 	   return 1;
 
    }
+   free(buf);//LL
    return 0;
 
 }
@@ -263,12 +265,12 @@ CK_RV C_GetSessionInfo(CK_SESSION_HANDLE hSession,  /* the session's handle */
    if (ret != CKR_OK)
    {
 	   log_trace(WHERE, "I: leave, p11_lock failed with %i",ret);
-	   return ret;
+	   return ((CK_RV)ret);
    }
 
    log_trace(WHERE, "S: C_GetSessionInfo(session %d)", hSession);
 
-   if (pInfo == NULL_PTR) 
+   if (pInfo == NULL_PTR)
    {
 	   ret = CKR_ARGUMENTS_BAD;
 	   goto cleanup;
@@ -296,17 +298,17 @@ CK_RV C_GetSessionInfo(CK_SESSION_HANDLE hSession,  /* the session's handle */
       }
 
    //SO only can create RW_SO sessions
-   if (pSlot->login_type == CKU_SO) 
+   if (pSlot->login_type == CKU_SO)
       {
       pInfo->state = CKS_RW_SO_FUNCTIONS;
       }
    //USER can create RW or RO sessions
-   else if (pSlot->login_type == CKU_USER) 
+   else if (pSlot->login_type == CKU_USER)
       {
       pInfo->state = (pSession->flags & CKF_RW_SESSION)? CKS_RW_USER_FUNCTIONS : CKS_RO_USER_FUNCTIONS;
-      } 
+      }
    //if login not required => we can also get USER sessions without being logged on
-   else 
+   else
       {
       ret = cal_get_token_info(pSession->hslot, &tokeninfo);
       if ( (ret == CKR_OK) && !(tokeninfo.flags & CKF_LOGIN_REQUIRED) )
@@ -318,9 +320,9 @@ CK_RV C_GetSessionInfo(CK_SESSION_HANDLE hSession,  /* the session's handle */
 cleanup:
    p11_unlock();
    log_trace(WHERE, "I: leave, ret = %i",ret);
-   return ret;
+   return ((CK_RV)ret);
 }
-#undef WHERE 
+#undef WHERE
 
 
 #define WHERE "C_GetOperationState()"
@@ -370,7 +372,7 @@ if (ret != CKR_OK)
 	log_trace(WHERE, "I: leave, p11_lock failed with %i",ret);
 	//printf("LOCK failled!\n");
    	//printf("\n********************\n");
-   return ret;
+   return ((CK_RV)ret);
 }
 
 if (isAcroread())
@@ -438,8 +440,8 @@ cleanup:
    log_trace(WHERE, "I: leave, ret = %i",ret);
    	//printf("RET = %d\n",ret);
 	//printf("\n********************\n");
-	
-   return ret;
+
+   return ((CK_RV)ret);
 }
 #undef WHERE
 
@@ -456,8 +458,8 @@ ret = p11_lock();
 if (ret != CKR_OK)
 {
 	log_trace(WHERE, "I: leave, p11_lock failed with %i",ret);
-   return ret;
-} 
+   return ((CK_RV)ret);
+}
 
 log_trace(WHERE, "S: Logout (session %d)", hSession);
 
@@ -493,7 +495,7 @@ else
 cleanup:
    p11_unlock();
    log_trace(WHERE, "I: leave, ret = %i",ret);
-   return ret;
+   return ((CK_RV)ret);
 }
 #undef WHERE
 
@@ -525,7 +527,7 @@ log_trace(WHERE, "I: enter");
 if (ret != CKR_OK)
 {
 	log_trace(WHERE, "I: leave, p11_lock failed with %i",ret);
-   return ret;
+   return ((CK_RV)ret);
 }
 
    log_trace(WHERE, "S: C_SetPIN(session %d)", hSession);
@@ -541,6 +543,6 @@ if (ret != CKR_OK)
 cleanup:
    p11_unlock();
    log_trace(WHERE, "I: leave, ret = %i",ret);
-   return ret;
+   return ((CK_RV)ret);
 }
 #undef WHERE

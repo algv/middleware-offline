@@ -22,12 +22,8 @@
 #include <QPushButton>
 #include <QMessageBox>
 
-#include "sys/ipc.h"
-#include "sys/shm.h"
-
-#include <openssl/rand.h>
-#include <openssl/rc4.h>
-#define RC4_KEY_LEN       16
+#include <sys/ipc.h>
+#include <sys/shm.h>
 
 #include <signal.h>
 
@@ -79,7 +75,7 @@ void sigint_handler(int sig)
 int g_UseKeyPad = -1;
 
 bool DlgGetKeyPad()
-{	
+{
 	if(g_UseKeyPad==-1)
 	{
 		g_UseKeyPad = (CConfig::GetLong(CConfig::EIDMW_CONFIG_PARAM_GUITOOL_VIRTUALKBD)?1:0);
@@ -88,26 +84,53 @@ bool DlgGetKeyPad()
 }
 
 /*
- * Translate Pin names to english from their native labels 
+ * Translate Pin names to english from their native labels
  * present on the in-card objects
  */
 
-QString translatePinName(QString &ptPinName)
-{
-	wstring lang_pref = CConfig::GetString(CConfig::EIDMW_CONFIG_PARAM_GENERAL_LANGUAGE);
-	if (lang_pref == L"en")
-	{
-		if (ptPinName.contains("Autent"))
-			return QString("Authentication PIN");
-		else if (ptPinName.contains("Assinatura"))
-			return QString("Signature PIN");
-		else if (ptPinName.contains("Morada"))
-			return QString("Address PIN");
-		else return QString("PIN");
-	}
-	else return ptPinName;
+QString getPinName( DlgPinUsage usage, wchar_t *inPinName ){
+    QString PinName;
 
-}
+    switch( usage ){
+        case DLG_PIN_AUTH:
+            PinName = GETQSTRING_DLG(AuthenticationPin);
+            break;
+
+        case DLG_PIN_SIGN:
+            PinName = GETQSTRING_DLG(SignaturePin);
+            break;
+
+        case DLG_PIN_ADDRESS:
+            PinName = GETQSTRING_DLG(AddressPin);
+            break;
+
+        DLG_PIN_UNKNOWN:
+            if ( inPinName == NULL ){
+                PinName = GETQSTRING_DLG(UnknownPin);
+            }else{
+                if( wcscmp( inPinName , L"" ) == 0 ){
+                    PinName = GETQSTRING_DLG(UnknownPin);
+                } else{
+                    PinName = QString::fromWCharArray( inPinName );
+                }/* if( wcscmp( inPinName , L"" ) == 0 ) */
+            }/* if ( inPinName == NULL ) */
+            break;
+
+        default:
+            if ( inPinName == NULL ){
+                PinName = GETQSTRING_DLG(UnknownPin);
+            }else{
+                if ( wcscmp( inPinName, L"") == 0 ){
+                    PinName = GETQSTRING_DLG(Pin);
+                } else {
+                    PinName = QString::fromWCharArray( inPinName );
+                }/* if ( wcscmp( inPinName, L"") == 0 ) */
+            }/* if ( inPinName == NULL ) */
+            break;
+    }/* switch( usage ) */
+
+    return PinName;
+}/* getPinName() */
 
 int main(int argc, char *argv[])
 {
@@ -125,12 +148,26 @@ int main(int argc, char *argv[])
 	// parse the arguments according to the operation requested
 	MWLOG(LEV_INFO, MOD_DLG, L"  Running %s ...",argv[0]);
 
-	if(argc > 2 ) 
+	if(argc > 2 )
 	{
 		int iFunctionIndex = atoi(argv[1]);
 		std::string readableFilePath = argv[2];
 
-		if(iFunctionIndex == DLG_ASK_PIN) 
+        Type_WndGeometry parentWndGeometry;
+		if (argc > 5 ){
+            parentWndGeometry.x = atoi(argv[3]);
+            parentWndGeometry.y = atoi(argv[4]);
+            parentWndGeometry.width = atoi(argv[5]);
+            parentWndGeometry.height = atoi(argv[6]);
+		}/* if (argc > 5 ) */
+
+		#ifdef __APPLE__
+		// In MacOS we deploy the QT plugins in a specific location which is common
+		// to all the QT applications (pteidgui, ScapSignature, pteiddialogs)
+		QCoreApplication::addLibraryPath(QString("/usr/local/Frameworks"));
+		#endif
+
+		if(iFunctionIndex == DLG_ASK_PIN)
 		{
 			QApplication a(argc, argv);
 
@@ -139,31 +176,13 @@ int main(int argc, char *argv[])
 
 			SharedMem oShMemory;
 			oShMemory.Attach( sizeof(DlgAskPINArguments), readableFilePath.c_str(),(void **) &oData);
+			MWLOG(LEV_DEBUG, MOD_DLG, L"Running DLG_ASK_PIN with args: operation=> %d usage=> %d\n", oData->operation, oData->usage);
 
 			// do something
 			dlgWndAskPIN *dlg = NULL;
-			try 
+			try
 			{
-				QString PINName;
-				if(oData->usage == DLG_PIN_UNKNOWN)
-				{
-					PINName = QString::fromWCharArray(oData->pinName);
-				}
-				else if (oData->usage == DLG_PIN_AUTH)
-				{
-					PINName = QString::fromUtf8("PIN da Autenticação");
-				}
-				else if (oData->usage == DLG_PIN_SIGN)
-				{
-					PINName = QString::fromUtf8("PIN da Assinatura");
-				}
-				else if (oData->usage == DLG_PIN_ADDRESS)
-				{
-					PINName = QString::fromUtf8("PIN da Morada");
-				}
-
-				PINName = translatePinName(PINName);
-
+				QString PINName = getPinName( oData->usage, oData->pinName );
 				QString Header;
 				switch( oData->operation )
 				{
@@ -181,14 +200,6 @@ int main(int argc, char *argv[])
 								Header += " ";
 								Header += GETQSTRING_DLG(YouAreAboutToMakeALegallyBindingElectronic);
 								Header += "\n";
-						/*		Header += GETQSTRING_DLG(PleaseEnterYourPin);
-								Header += ", ";
-								Header += GETQSTRING_DLG(ToContinueOrClickTheCancelButton);
-								Header += "\n\n";
-								Header += GETQSTRING_DLG(Warning);
-								Header += " ";
-								Header += GETQSTRING_DLG(IfYouOnlyWantToLogOnToA);
-								Header += "\n"; */
 								break;
 							default:
 								Header = GETQSTRING_DLG(PleaseEnterYourPin);
@@ -219,15 +230,16 @@ int main(int argc, char *argv[])
 						return 0;
 						break;
 				}
-	
-				dlg = new dlgWndAskPIN( 
-									   oData->pinInfo, 
-									   oData->usage, 
-									   Header, 
-									   PINName, 
-									   DlgGetKeyPad() );
+
+				dlg = new dlgWndAskPIN(
+									   oData->pinInfo,
+									   oData->usage,
+									   Header,
+									   PINName,
+									   DlgGetKeyPad(),
+                                       0, &parentWndGeometry );
 				int retVal = dlg->exec();
-				if( retVal == QDialog::Accepted ) 
+				if( retVal == QDialog::Accepted )
 				{
 					wcscpy_s(oData->pin, sizeof(oData->pin)/sizeof(wchar_t), dlg->getPIN().c_str());
 					oData->returnValue = DLG_OK;
@@ -241,25 +253,26 @@ int main(int argc, char *argv[])
 				oShMemory.Detach((void *)oData);
 				return 0;
 			}
-			catch( ... ) 
+			catch( ... )
 			{
 				if( dlg )  delete dlg;
 				oData->returnValue = DLG_ERR;
 				oShMemory.Detach((void *)oData);
 				return 0;
 			}
-  
-		} 
-		else if (iFunctionIndex == DLG_ASK_PINS ) 
+
+		}
+		else if (iFunctionIndex == DLG_ASK_PINS )
 		{
 			QApplication a(argc, argv);
 			// attach to the segment and get a pointer
 			DlgAskPINsArguments *oData = NULL;
 			SharedMem oShMemory;
 			oShMemory.Attach( sizeof(DlgAskPINsArguments), readableFilePath.c_str(),(void **) &oData);
+			MWLOG(LEV_ERROR, MOD_DLG, L"Running DLG_ASK_PINS with args: operation=> %d usage=> %d\n", oData->operation, oData->usage);
 
 			dlgWndAskPINs *dlg = NULL;
-			try 
+			try
 			{
 				QString PINName;
 				QString Header;
@@ -279,14 +292,21 @@ int main(int argc, char *argv[])
 						}
 						break;
 					case DLG_PIN_OP_UNBLOCK_CHANGE:
-						if( oData->usage == DLG_PIN_UNKNOWN )
-						{
-							PINName = QString::fromWCharArray(oData->pinName);
-						}
-						else
-						{
+						Header = GETQSTRING_DLG(PleaseEnterYourPuk);
+						Header += ", ";
+						Header = GETQSTRING_DLG(ToUnblock);
+						Header += " ";
+						Header = GETQSTRING_DLG(Your);
+						Header += " \"";
+
+					//	if( oData->usage == DLG_PIN_UNKNOWN )
+					//	{
+				    //			PINName = QString::fromWCharArray(oData->pinName);
+					//	}
+					//	else
+					//	{
 							PINName = GETQSTRING_DLG(Puk);
-						}
+					//	}
 						break;
 					default:
 						oData->returnValue = DLG_BAD_PARAM;
@@ -295,33 +315,29 @@ int main(int argc, char *argv[])
 						break;
 				}
 
-                switch( oData->usage )
-                {
-                    case DLG_PIN_AUTH:
-                        Header += QString::fromUtf8("Pin da Autenticação");
-                        PINName = QString::fromUtf8("Pin da Autenticação");
-                        break;
-                    case DLG_PIN_SIGN:
-                        Header +=  QString::fromWCharArray(oData->pinName);
-                        PINName = QString::fromWCharArray(oData->pinName);
-                        break;
-                    case DLG_PIN_ADDRESS:
-                        Header +=  QString::fromWCharArray(oData->pinName);
-                        PINName = QString::fromWCharArray(oData->pinName);
-                        break;
-                    default:
-                        Header += PINName;
-                        break;
-                }
+                PINName = getPinName( oData->usage, oData->pinName );
+                Header += PINName;
 
 				Header += " ";
-				QString tr_pin = translatePinName(PINName);
-				dlg = new dlgWndAskPINs(oData->pin1Info, 
-						oData->pin2Info, 
-						Header, 
-						tr_pin, 
-						DlgGetKeyPad());
-				if( dlg->exec() ) 
+				QString tr_pin;
+
+				if (oData->operation == DLG_PIN_OP_UNBLOCK_CHANGE)
+				{
+					Header = GETQSTRING_DLG(UnlockDialogHeader);
+					tr_pin = QString("PUK");
+				}
+				else
+				{
+					tr_pin = PINName;
+				}
+
+				dlg = new dlgWndAskPINs(oData->pin1Info,
+						oData->pin2Info,
+						Header,
+						tr_pin,
+						DlgGetKeyPad(),
+						0, &parentWndGeometry );
+				if( dlg->exec() )
 				{
 				        wcscpy_s(oData->pin1, sizeof(oData->pin1)/sizeof(wchar_t), dlg->getPIN1().c_str());
 					wcscpy_s(oData->pin2, sizeof(oData->pin2)/sizeof(wchar_t), dlg->getPIN2().c_str());
@@ -345,8 +361,8 @@ int main(int argc, char *argv[])
 			oShMemory.Detach((void *)oData);
 			return 0;
 
-		} 
-		else if (iFunctionIndex == DLG_BAD_PIN) 
+		}
+		else if (iFunctionIndex == DLG_BAD_PIN)
 		{
 			QApplication a(argc, argv);
 
@@ -359,36 +375,12 @@ int main(int argc, char *argv[])
 			try
 			{
 				QString PINName;
-
-				switch( oData->usage ) 
-				{
-					case DLG_PIN_UNKNOWN:
-						if( wcscmp(oData->pinName,L"") == 0 )
-						{
-							return 0;
-						}
-						PINName = QString::fromWCharArray(oData->pinName);
-						break;
-					default:
-						if( wcscmp(oData->pinName,L"") == 0 )
-						{
-							PINName = GETQSTRING_DLG(Pin);
-						}
-						else
-						{
-							PINName = QString::fromWCharArray(oData->pinName);
-                            QByteArray teste = PINName.toUtf8();
-                            QString mystr(teste);
-						}
-						break;
-				}
-
-		//Quickfix for encoding problem! It should be fixed later!
-                if( wcsstr(oData->pinName,L"PIN da Autentica") != 0 )
-                    PINName=QString::fromUtf8("PIN da Autentica\xc3\xa7\xc3\xa3o");
-		    QString tr_pin = translatePinName(PINName);
-				dlg = new dlgWndBadPIN(tr_pin, oData->ulRemainingTries);
-				if( dlg->exec() ) 
+				PINName = getPinName( oData->usage, oData->pinName );
+				dlg = new dlgWndBadPIN( PINName
+                                        , oData->ulRemainingTries
+                                        , 0
+                                        , &parentWndGeometry );
+				if( dlg->exec() )
 				{
 					delete dlg;
 					dlg = NULL;
@@ -407,7 +399,7 @@ int main(int argc, char *argv[])
 				delete dlg;
 				dlg = NULL;
 			}
-			catch( ... ) 
+			catch( ... )
 			{
 				if( dlg )  delete dlg;
 
@@ -421,25 +413,34 @@ int main(int argc, char *argv[])
 			oShMemory.Detach((void *)oData);
 			return 0;
 
-		} 
-		else if (iFunctionIndex == DLG_DISPLAY_PINPAD_INFO) 
+		}
+		else if (iFunctionIndex == DLG_DISPLAY_PINPAD_INFO)
 		{
 			//To avoid problem on Mac Leopard, we follow these steps
 			//1. The server is call with the 2 usual param
 			//2. A fork is made
-			//2a. The fork process recall the QtServer with a 3rd parameter 
+			//2a. The fork process recall the QtServer with a 3rd parameter
 			//2b. The main process get the child pid and write it into the share memory and then quit
 			//3. The Child process show the dialog
-			
+
 			SharedMem oShMemory;
-			
-			if(argc == 3 )
+
+			if ( ( argc == 3 ) || ( argc == 7 ) )
 			{
 				MWLOG(LEV_DEBUG, MOD_DLG,L"  %s called with DLG_DISPLAY_PINPAD_INFO",argv[0]);
-				
+
 				char csCommand[100];
-				sprintf(csCommand,"%s %s %s child",argv[0], argv[1], argv[2]);
-				
+				sprintf(csCommand,"%s %s %s",argv[0], argv[1], argv[2]);
+                int len;
+				if ( argc == 7 ){
+                    len = strlen( csCommand );
+                    sprintf(  &csCommand[len]
+                            , " %s %s %s %s"
+                            , argv[3], argv[4], argv[5], argv[6] );
+                }
+                len = strlen( csCommand );
+                sprintf(  &csCommand[len], " child" );
+
 				// spawn a child process
 				signal(SIGCHLD,SIG_IGN);
 				pid_t pid = fork();
@@ -456,29 +457,29 @@ int main(int argc, char *argv[])
 					// fork process
 					//
 					MWLOG(LEV_DEBUG, MOD_DLG, L"  %s fork process started", argv[0]);
-					
+
 					//Due to Mac Leopard constraint, we start another QtServer
 					//See __THE_PROCESS_HAS_FORKED_AND_YOU_CANNOT_USE_THIS_COREFOUNDATION_FUNCTIONALITY___YOU_MUST_EXEC__
 					int code = system(csCommand);
-					if(code != 0) 
+					if(code != 0)
 					{
 						MWLOG(LEV_ERROR, MOD_DLG, L"  eIDMW::CallQTServer %s %s child : %s ",argv[1], argv[2], strerror(errno) );
 						exit(DLG_ERR);
 					}
-					
+
 					MWLOG(LEV_DEBUG, MOD_DLG, L"  %s fork system() return", argv[0]);
-					
+
 					return 0;
 				}
-				else 
+				else
 				{
 					//
 					// parent process
 					//
 					MWLOG(LEV_DEBUG, MOD_DLG, L"  %s started fork process with ID %d", argv[0], pid);
-				
+
 					pid_t subpid=0;
-					
+
 					for(int i=0; i<10; i++)
 					{
 						CThread::SleepMillisecs(100); //Wait for the child process to start
@@ -487,9 +488,9 @@ int main(int argc, char *argv[])
 							break;
 						}
 					}
-					
+
 					oShMemory.Attach( sizeof(DlgDisplayPinpadInfoArguments), readableFilePath.c_str(),(void **) &oInfoData);
-					
+
 					if(subpid == 0)
 					{
 						MWLOG(LEV_ERROR, MOD_DLG, L"  %s failed to find child process ID", argv[0]);
@@ -501,9 +502,9 @@ int main(int argc, char *argv[])
 						oInfoData->tRunningProcess = subpid;
 						oInfoData->returnValue = DLG_OK;
 					}
-					
+
 					oShMemory.Detach((void *)oInfoData);
-					
+
 					return 0;
 				}
 			}
@@ -514,50 +515,21 @@ int main(int argc, char *argv[])
 				//
 				oShMemory.Attach( sizeof(DlgDisplayPinpadInfoArguments), readableFilePath.c_str(),(void **) &oInfoData);
 				MWLOG(LEV_DEBUG, MOD_DLG, L"  %s child process started (pin=%ls, usage=%ld, operation=%ld)", argv[0],oInfoData->pinName,  oInfoData->usage, oInfoData->operation);
-				
+
 				QApplication a(argc, argv);
 				MWLOG(LEV_DEBUG, MOD_DLG, L"  %s child process : QApplication created", argv[0]);
 
 				// attach to the segment and get a pointer
 
-				try 
+				try
 				{
 					QString	qsReader=QString::fromWCharArray(oInfoData->reader);
 					QString qsPinName=QString::fromWCharArray(oInfoData->pinName);
 					QString qsMessage=QString::fromWCharArray(oInfoData->message);
 
 					QString PINName;
+                    PINName = getPinName( oInfoData->usage, oInfoData->pinName );
 
-					switch( oInfoData->usage )
-					{
-						case DLG_PIN_UNKNOWN:
-							if( wcscmp(oInfoData->pinName,L"") == 0  )
-							{
-								return 0;
-							}
-							PINName = QString::fromWCharArray(oInfoData->pinName);
-							break;
-						case DLG_PIN_AUTH:
-							PINName = QString::fromUtf8("PIN de Autenticação");
-							break;
-						case DLG_PIN_SIGN:
-							PINName = QString::fromUtf8("PIN da Assinatura");
-							break;
-						case DLG_PIN_ADDRESS:
-							PINName = QString::fromUtf8("PIN da Morada");
-							break;
-						default:
-							if( wcscmp(oInfoData->pinName,L"") == 0  )
-							{
-								PINName = GETQSTRING_DLG(Pin);
-							}
-							else
-							{
-								PINName = QString::fromWCharArray(oInfoData->pinName);
-							}
-							break;
-					}
-		
 					MWLOG(LEV_DEBUG, MOD_DLG, L"  %s child process : pin name set", argv[0]);
 
 					if(qsMessage.isEmpty())
@@ -580,10 +552,6 @@ int main(int argc, char *argv[])
 										qsMessage += "\n";
 										break;
 									case DLG_PIN_SIGN:
-										qsMessage = GETQSTRING_DLG(Caution);
-										qsMessage += " ";
-										qsMessage += GETQSTRING_DLG(YouAreAboutToMakeALegallyBindingElectronic);
-										qsMessage += "\n";
 										qsMessage += GETQSTRING_DLG(PleaseEnterYourPinOnThePinpadReader);
 										if(!qsReader.isEmpty())
 										{
@@ -591,13 +559,6 @@ int main(int argc, char *argv[])
 											qsMessage += qsReader;
 											qsMessage += "\"";
 										}
-										qsMessage += ", ";
-										qsMessage += GETQSTRING_DLG(ToContinueOrClickTheCancelButton);
-										qsMessage += "\n\n";
-										qsMessage += GETQSTRING_DLG(Warning);
-										qsMessage += " ";
-										qsMessage += GETQSTRING_DLG(IfYouOnlyWantToLogOnToA);
-										qsMessage += "\n";
 										break;
 									default:
 										qsMessage = GETQSTRING_DLG(PleaseEnterYourPinOnThePinpadReader);
@@ -658,7 +619,11 @@ int main(int argc, char *argv[])
 								qsMessage += "\n";
 								break;
 							case DLG_PIN_OP_UNBLOCK_CHANGE:
-								qsMessage = GETQSTRING_DLG(ChangeYourPuk);
+								qsMessage = GETQSTRING_DLG(PleaseEnterYourPuk);
+								qsMessage += ", ";
+								qsMessage = GETQSTRING_DLG(ToUnblock);
+								qsMessage += " ";
+								qsMessage = GETQSTRING_DLG(Your);
 								qsMessage += " \"";
 								if( !qsPinName.isEmpty() )
 								{
@@ -686,7 +651,7 @@ int main(int argc, char *argv[])
 								break;
 						}
 					}
-		
+
 					MWLOG(LEV_DEBUG, MOD_DLG, L"  %s child process : qsMessage set", argv[0]);
 
 					dlg = new QDialog();
@@ -694,25 +659,26 @@ int main(int argc, char *argv[])
 
 					DlgPinOperation operation = oInfoData->operation;
 					unsigned long infoCollectorIndex = oInfoData->infoCollectorIndex;
-	  
+
 					// we do not need the shared memory area anymore
 					oShMemory.Detach((void *)oInfoData);
 					SharedMem::Delete(oShMemory.getID());
 
-					dlgInfo = new dlgWndPinpadInfo( 
-												   infoCollectorIndex, 
-												   operation, 
-												   qsReader, 
-												   translatePinName(PINName), 
+					dlgInfo = new dlgWndPinpadInfo(
+												   infoCollectorIndex,
+												   operation,
+												   qsReader,
+												   PINName,
 												   qsMessage,
-												   dlg);
-		
+												   dlg,
+												   &parentWndGeometry );
+
 					MWLOG(LEV_DEBUG, MOD_DLG, L"  %s child process : dlgWndPinpadInfo created", argv[0]);
 					dlg->show();
                    			dlg->raise();
 					dlg->exec();
 
-					if (dlgInfo) 
+					if (dlgInfo)
 					{
 						delete dlgInfo;
 						dlgInfo = NULL;
@@ -726,33 +692,33 @@ int main(int argc, char *argv[])
 
 					return 0;
 				}
-				catch(...) 
+				catch(...)
 				{
 					MWLOG(LEV_ERROR, MOD_DLG, L"  %s child process failed", argv[0]);
 
-					if (dlgInfo) 
+					if (dlgInfo)
 					{
 						delete dlgInfo;
 						dlgInfo = NULL;
 					}
-					
+
 					if (dlg)
 					{
 						delete dlg;
 						dlg = NULL;
 					}
-					
+
 					oInfoData->returnValue = DLG_ERR;
 					oShMemory.Detach((void *)oInfoData);
 					SharedMem::Delete(oShMemory.getID());
 
 					return 0;
 				}
-			} 
+			}
 			return 0;
-		} 
+		}
 	}
-	else 
+	else
 	{
 		// wrong number of arguments
 	}
@@ -762,12 +728,12 @@ int main(int argc, char *argv[])
 pid_t getPidFromParentid(pid_t parentid, const char *CommandLineToFind)
 {
 	pid_t pid = 0;
-	
+
 	FILE *			pF;
 	pid_t pPid;
 	pid_t pPpid;
 	char pCommand[8192];
-	
+
 	// popen will fork and invoke the ps command and return a stream reference with its result data
 	char buffer[8192];
 #ifdef __APPLE__
@@ -776,7 +742,7 @@ pid_t getPidFromParentid(pid_t parentid, const char *CommandLineToFind)
 	const char *psCommand="ps -A -o pid,ppid,command --sort=-etime";
 #endif
 
-	pF = popen(psCommand, "r");		
+	pF = popen(psCommand, "r");
 
 	if (pF == NULL )
 	{

@@ -21,6 +21,17 @@
 
 #include <QtGui>
 #include <QtNetwork>
+#include <QProgressDialog>
+#include <QPushButton>
+#include <QMessageBox>
+#include <QDialogButtonBox>
+#include <QHBoxLayout>
+#include <QVBoxLayout>
+#include <QRegExp>
+#include <QDebug>
+#include <QFile>
+#include <QTimer>
+#include <QLabel>
 
 #include <fstream>
 #include <sstream>
@@ -37,6 +48,7 @@
 #include <stdio.h>
 #include "verinfo.h"
 #include <QSysInfo>
+#include <QNetworkProxy>
 #else
 #include "pteidversions.h"
 #endif
@@ -48,8 +60,7 @@ std::string remoteversion = "https://svn.gov.pt/projects/ccidadao/repository/mid
 
 std::string WINDOWS32 = "PteidMW-Basic.msi";
 std::string WINDOWS64 = "PteidMW-Basic-x64.msi";
-std::string OSX32 = "pteidgui.dmg";
-std::string OSX64 = "pteidgui.dmg";
+std::string MAC_OS = "pteidgui.dmg";
 std::string DEBIAN32 = "pteid-mw_debian_i386.deb";
 std::string DEBIAN64 = "pteid-mw_debian_amd64.deb";
 std::string UBUNTU32 = "pteid-mw_ubuntu_i386.deb";
@@ -63,9 +74,9 @@ std::string MANDRIVA64 = "pteid-mw-mandriva.x86_64.rpm";
 
 struct PteidVersion
 {
-int major;
-int minor;
-int release;
+	int major;
+	int minor;
+	int release;
 };
 
 
@@ -91,10 +102,12 @@ AutoUpdates::AutoUpdates(QWidget *parent)
 	connect(progressDialog, SIGNAL(canceled()), this, SLOT(cancelDownload()));
 	connect(cancelButton, SIGNAL(clicked()), this, SLOT(close()));
 	connect(downloadButton, SIGNAL(clicked()), this, SLOT(downloadFile()));
+	progressDialog->reset();
 
-	QHBoxLayout *topLayout = new QHBoxLayout;
+	topLayout = new QHBoxLayout();
 
-	QVBoxLayout *mainLayout = new QVBoxLayout;
+	mainLayout = new QVBoxLayout();
+
 	mainLayout->addLayout(topLayout);
 	mainLayout->addWidget(statusLabel);
 	mainLayout->addWidget(buttonBox);
@@ -103,20 +116,88 @@ AutoUpdates::AutoUpdates(QWidget *parent)
 	const QIcon app_icon = QIcon(":/images/Images/Icons/ICO_CARD_EID_PLAIN_16x16.png");
 	setWindowIcon(app_icon);
 	setWindowTitle(ddtitle);
+
+	//Before trying any request configure the proxy autoconfig
+	/* XX: it should only require this to use the system proxy but it does not fallback to 
+	//the configured PAC script if there is WPAD config but it is somewhat broken
+	 QNetworkProxyFactory::setUseSystemConfiguration(true); */
+
+	eIDMW::PTEID_Config config_pacfile(eIDMW::PTEID_PARAM_PROXY_PACFILE);
+	const char * pacfile_url = config_pacfile.getString();
+
+	if (pacfile_url != NULL && strlen(pacfile_url) > 0)
+	{
+		m_pac_url = QString(pacfile_url);
+	}
+
 }
 
 AutoUpdates::~AutoUpdates()
 {
+	delete cancelButton;
+	delete downloadButton;
+	delete buttonBox;
+	delete statusLabel;
+
+	delete topLayout;
+	delete mainLayout;
 }
 
 void AutoUpdates::cancelDownload()
 {
+
 	httpRequestAborted = true;
 	reply->abort();
+
 }
+
 void AutoUpdates::startRequest(QUrl url)
 {
+	eIDMW::PTEID_Config config(eIDMW::PTEID_PARAM_PROXY_HOST);
+	eIDMW::PTEID_Config config2(eIDMW::PTEID_PARAM_PROXY_PORT);
+	eIDMW::PTEID_Config config_username(eIDMW::PTEID_PARAM_PROXY_USERNAME);
+	eIDMW::PTEID_Config config_pwd(eIDMW::PTEID_PARAM_PROXY_PWD);
+
+    std::string proxy_host = config.getString();
+    std::string proxy_username = config_username.getString();
+    std::string proxy_pwd = config_pwd.getString();
+    long proxy_port = config2.getLong();
+    
+    //10 second timeout
+    int network_timeout = 10000;
+
+	if (!proxy_host.empty() && proxy_port != 0)
+	{
+		PTEID_LOG(PTEID_LOG_LEVEL_DEBUG, "eidgui", "Autoupdates: using manual proxy config");
+		proxy.setType(QNetworkProxy::HttpProxy);
+		proxy.setHostName(QString::fromStdString(proxy_host));
+		proxy.setPort(proxy_port);
+
+		if (!proxy_username.empty())
+		{
+			proxy.setUser(QString::fromStdString(proxy_username));
+			proxy.setPassword(QString::fromStdString(proxy_pwd));
+		}
+
+		QNetworkProxy::setApplicationProxy(proxy);
+	}
+	else if (!m_pac_url.isEmpty())
+	{
+		std::string proxy_port_str;
+		PTEID_LOG(PTEID_LOG_LEVEL_DEBUG, "eidgui", "Autoupdates: using system proxy config");
+
+		PTEID_GetProxyFromPac(m_pac_url.toUtf8().constData(), url.toString().toUtf8().constData(), &proxy_host, &proxy_port_str);
+
+		proxy.setType(QNetworkProxy::HttpProxy);
+		proxy.setHostName(QString::fromStdString(proxy_host));
+		proxy.setPort(atol(proxy_port_str.c_str()));
+		QNetworkProxy::setApplicationProxy(proxy);
+	}
+
 	reply = qnam.get(QNetworkRequest(url));
+
+    QTimer::singleShot(network_timeout, this, SLOT(cancelDownload()));
+
 	connect(reply, SIGNAL(finished()),
 			this, SLOT(httpFinished()));
 	connect(reply, SIGNAL(readyRead()),
@@ -133,7 +214,7 @@ void AutoUpdates::downloadFile()
 	QString fileName = fileInfo.fileName();
 	if (fileName.isEmpty())
 	{
-		QMessageBox::information(this, tr("Auto-update"),
+		QMessageBox::critical(this, tr("Auto-update"),
 				tr("Unable to download the update please check your Network Connection.")
 		.arg(fileName).arg(file->errorString()));
 	}
@@ -145,7 +226,7 @@ void AutoUpdates::downloadFile()
 
 	file = new QFile(QString::fromUtf8((tmpfile.c_str())));
 	if (!file->open(QIODevice::WriteOnly)) {
-		QMessageBox::information(this, tr("Auto-update"),
+		QMessageBox::critical(this, tr("Auto-update"),
 				tr("Unable to save the file %1: %2.")
 		.arg(fileName).arg(file->errorString()));
 		delete file;
@@ -154,7 +235,7 @@ void AutoUpdates::downloadFile()
 	}
 
 	progressDialog->setWindowTitle(tr("Auto-update"));
-	progressDialog->setLabelText(tr("Downloading %1.").arg(fileName));
+	progressDialog->setLabelText(tr("Checking for newer versions"));
 	downloadButton->setEnabled(false);
 
 	// schedule the request
@@ -164,6 +245,7 @@ void AutoUpdates::downloadFile()
 
 void AutoUpdates::httpFinished()
 {
+
 	if (httpRequestAborted) {
 		if (file) {
 			file->close();
@@ -171,8 +253,14 @@ void AutoUpdates::httpFinished()
 			delete file;
 			file = 0;
 		}
+
+		QMessageBox::critical(this, tr("Auto-update"),
+				tr("Download failed. Please check your Network Connection."));
+
 		reply->deleteLater();
 		progressDialog->hide();
+
+		this->close();
 		return;
 	}
 
@@ -183,10 +271,15 @@ void AutoUpdates::httpFinished()
 	QVariant redirectionTarget = reply->attribute(QNetworkRequest::RedirectionTargetAttribute);
 	if (reply->error()) {
 		file->remove();
-		QMessageBox::information(this, tr("Auto-update"),
-				tr("Download failed: %1.")
-		.arg(reply->errorString()));
+		QMessageBox::critical(this, tr("Auto-update"),
+				tr("Download failed. Please check your Network Connection.") );
+
 		downloadButton->setEnabled(true);
+
+        QString strLog = QString("AutoUpdates:: Download failed: ");
+        strLog += reply->url().toString();
+        PTEID_LOG(PTEID_LOG_LEVEL_ERROR, "eidgui", strLog.toStdString().c_str() );
+
 	} else if (!redirectionTarget.isNull()) {
 		QUrl newUrl = url.resolved(redirectionTarget.toUrl());
 		if (QMessageBox::question(this, tr("Auto-update"),
@@ -219,7 +312,7 @@ void AutoUpdates::httpReadyRead()
 	QByteArray data = reply->readAll();
 	QString qsdata(data);
 	filedata = qsdata.toStdString();
-	
+
 	//Write to file
 	if (file)
 		file->write(data);
@@ -251,10 +344,8 @@ int compareVersions(PteidVersion v1, PteidVersion v2)
 
 bool AutoUpdates::VerifyUpdates(std::string filedata)
 {
-    std::string distrover;
+	std::string distrover;
 	std::string archver;
-
-
 
 #ifdef WIN32
 	QString filename = QCoreApplication::arguments().at(0);
@@ -264,7 +355,7 @@ bool AutoUpdates::VerifyUpdates(std::string filedata)
 	{
 		VerInfo.QueryStringValue(VI_STR_FILEVERSION, version);
 	}
-	QString ver = QString::fromAscii(version);
+	QString ver = QString::fromLatin1(version);
 
 #else
 
@@ -272,9 +363,18 @@ bool AutoUpdates::VerifyUpdates(std::string filedata)
 #endif
 
 	QStringList list1 = ver.split(",");
-	
+
 	QStringList list2 = QString(filedata.c_str()).split(",");
-	
+
+	if (list2.size() < 3)
+	{
+		PTEID_LOG(PTEID_LOG_LEVEL_ERROR, "eidgui",
+			"AutoUpdates::VerifyUpdates: Wrong data returned from server or Proxy HTML error!");
+
+		this->close();
+		return false;
+	}
+
 	//Parse local version into PteidVersion
 	PteidVersion local_version;
 	local_version.major = list1.at(0).toInt();
@@ -291,15 +391,13 @@ bool AutoUpdates::VerifyUpdates(std::string filedata)
 	if (compareVersions(local_version, remote_version) > 0)
 	{
 		this->close();
-#ifdef WIN32
-		distrover = VerifyOS("distro", false);
-#else
-		distrover = VerifyOS("distro", true);
-#endif
-        archver = VerifyOS("arch", false);
+
+		distrover = VerifyOS("distro");
+        archver = VerifyOS("arch");
         ChooseVersion(distrover, archver);
         return true;
-	} else {
+	}
+	else {
 
 		QMessageBox msgBoxnoupdates(QMessageBox::Information, tr("Auto-update"),
 			       	tr("No updates available at the moment"), 0, this);
@@ -312,67 +410,58 @@ bool AutoUpdates::VerifyUpdates(std::string filedata)
 bool AutoUpdates::FileExists(const char *filename)
 {
 	std::ifstream ifile(filename);
-	ifile.close();
-	return ifile;
+	return ifile.is_open();
 }
 
-std::string AutoUpdates::VerifyOS(std::string param, bool runscript)
+
+std::string AutoUpdates::VerifyOS(std::string param)
 {
 	std::string distrostr;
 	std::string archstr;
-#ifdef WIN32
-	//check if it's Windows 32 or 64 bits
-	distrostr = "windows";
-
-	if( QSysInfo::WordSize == 64 )
-		archstr = "x86_64";
-	else
-		archstr = "i386";
-
-#elif __APPLE__
-    //check if it's OSX 32 or 64 bits
-    distrostr = "osx";
+	QRegExp rx;
+	QStringList list;
+	QString content;
 
     if( QSysInfo::WordSize == 64 )
         archstr = "x86_64";
     else
         archstr = "i386";
+
+#ifdef WIN32
+	distrostr = "windows";
+	
+#elif __APPLE__
+    distrostr = "osx";
 #else
 
-	if (runscript)
+    QFile osFile("/etc/os-release");
+	if (!osFile.exists())
 	{
-		int sysret;
-		sysret = system("/usr/local/bin/pteidlinuxversion.pl");
-		if (sysret != 0)
-			PTEID_LOG(PTEID_LOG_LEVEL_DEBUG, "eidgui", "Problem trying to run pteidlinuxversion.pl");
+		qDebug() << "Not Linux or too old distro!";
+		distrostr = "unsupported";
+		goto done; 
 	}
 
-	try
+	if (!osFile.open(QFile::ReadOnly | QFile::Text))
+		goto done; 
+
+	rx = QRegExp("NAME=\"(.*)\"");
+	content = osFile.readAll();
+
+	rx.setMinimal(true);
+
+	rx.indexIn(content);
+
+	list = rx.capturedTexts();
+
+	if (list.size() > 1)
 	{
-		if (FileExists("/tmp/linuxversion"))
-		{
-			std::ifstream linuxversion("/tmp/linuxversion");
-			std::string line;
-
-			while(std::getline(linuxversion, line))
-			{
-				std::stringstream   linestream(line);
-				std::string         value;
-
-				getline(linestream,value, ';');
-				std::istringstream distro(value);
-				distro >> distrostr;
-
-				getline(linestream, value, ';');
-				std::istringstream arch(value);
-				arch >> archstr;
-			}
-		}
-	} catch (...) {
-		PTEID_LOG(PTEID_LOG_LEVEL_DEBUG, "eidgui", "can't open file /tmp/linuxversion");
+		distrostr = list.at(1).toStdString();
 	}
-
+	
 #endif
+
+done:
 	if (param == "distro")
 		return distrostr;
 	else
@@ -403,30 +492,23 @@ void AutoUpdates::ChooseVersion(std::string distro, std::string arch)
 		HttpWindow httpWin(downloadurl, distro);
 		httpWin.show();
 		httpWin.exec();
-	}    
+	}
 #elif __APPLE__
-    	if (arch == "i386")
-    	{
-            downloadurl.append(OSX32);
-        	HttpWindow httpWin(downloadurl, distro);
-        	httpWin.show();
-        	httpWin.exec();
-    	} else {
-            downloadurl.append(OSX64);
-        	HttpWindow httpWin(downloadurl, distro);
-        	httpWin.show();
-        	httpWin.exec();
-    	}
+    	
+    downloadurl.append(MAC_OS);
+    HttpWindow httpWin(downloadurl, distro);
+    httpWin.show();
+    httpWin.exec();
 #else
 
-	if (distro == "unsupported")  
+	if (distro == "unsupported")
 	{
-	  	QMessageBox msgBoxp(QMessageBox::Warning, tr("Warning"), 
+	  	QMessageBox msgBoxp(QMessageBox::Warning, tr("Warning"),
 			tr("Your Linux distribution is not supported by Auto-updates"), 0, this);
 	  	msgBoxp.exec();
 	}
 
-    //Name of the deb/rpm the rest of the appends will be distro specific
+    //Name of the deb/rpm will be distro specific
 
 	if (arch == "x86_64")
 	{

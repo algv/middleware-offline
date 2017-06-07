@@ -234,7 +234,7 @@ DWORD WINAPI   CardSignData
 	if ( ( pInfo->dwSigningFlags & CARD_BUFFER_SIZE_ONLY ) == CARD_BUFFER_SIZE_ONLY)
 	{
 		LogTrace(LOGTYPE_INFO, WHERE, "pInfo->dwSigningFlags: CARD_BUFFER_SIZE_ONLY");
-
+		//TODO: hardcoded signature length
 		pInfo->cbSignedData = 128;
 		CLEANUP(SCARD_S_SUCCESS);
 	}
@@ -243,6 +243,13 @@ DWORD WINAPI   CardSignData
 	{
 		LogTrace(LOGTYPE_ERROR, WHERE, "Invalid parameter [pInfo->aiHashAlg][0x%X]",pInfo->aiHashAlg);
 		CLEANUP(SCARD_E_INVALID_PARAMETER);
+	}
+	
+	//SHAMD5 Hash used by SSLv3 should be the largest supported hash
+	if (pInfo->cbData > 36)
+	{
+		LogTrace(LOGTYPE_ERROR, WHERE, "Invalid parameter (Hash Size): %d", pInfo->cbData);
+		CLEANUP(SCARD_E_UNSUPPORTED_FEATURE);
 	}
 
 	switch(pInfo->aiHashAlg)
@@ -473,7 +480,7 @@ DWORD WINAPI   CardQueryKeySizes
 
 	pKeySizes->dwMinimumBitlen     = 1024;
 	pKeySizes->dwDefaultBitlen     = 1024;
-	pKeySizes->dwMaximumBitlen     = 1024;
+	pKeySizes->dwMaximumBitlen     = 2048;
 	pKeySizes->dwIncrementalBitlen = 0;
 
 cleanup:

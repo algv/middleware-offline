@@ -40,29 +40,40 @@ struct SignedChallengeResponse
 	char *set_se_command;
 };
 
+
 class SAM
 {
 
 public:
 	SAM(APL_Card *card);
 
-	bool getDHParams(DHParams *otp_struct);
+	bool getDHParams(DHParams *otp_struct, bool getAllParams = false);
 	bool verifyCVCCertificate(const char *cvc_certificate_hex);
+	
 	bool verifySignedChallenge(char *signed_challenge);
+	bool verifySignedChallenge(CByteArray &signed_challenge);
 	bool sendKIFD(char *kifd);
 	char *getKICC();
 	bool verifyCert_CV_IFD(char * cv_cert);
-	char *generateChallenge();
+	bool verifyCert_CV_IFD(CByteArray &cv_cert);
+	char *generateChallenge(char * CHR);
+
 	char *getSerialNumberIAS101();
+	
+	char * getPK_IFD_AUT(CByteArray &cvc_cert);
+	char * getPK_IFD_AUT(char * cvc_cert);
 	char *sendPrebuiltAPDU(char *apdu_string);
 	std::vector<char *> sendSequenceOfPrebuiltAPDUs(std::vector<char *> &apdu_array);
 
 private:
 	char * _getDH_Param(char specific_byte, unsigned long offset);
-	char *_getCVCPublicKey();
-	char *_getCardAuthPublicKey();
+	char * _getCVCPublicKey();
+	char * _getCardAuthPublicKey();
 	char * _getSODCert();
     APL_Card *m_card;
+
+    CByteArray m_ca_cvc_exponent;
+    CByteArray m_ca_cvc_modulus;
 };
 
 

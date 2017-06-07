@@ -68,7 +68,7 @@ bool CPkiCard::ShouldSelectApplet(unsigned char ins, unsigned long ulSW12)
 bool CPkiCard::SelectApplet()
 {
 	// Don't do anything by default
-	// Subclasses that implement this functionality should set the 
+	// Subclasses that implement this functionality should set the
 	// m_selectAppletMode to TRY_SELECT_APPLET
 	return false;
 }
@@ -104,15 +104,15 @@ CByteArray CPkiCard::ReadUncachedFile(const std::string & csPath,
 	CAutoLock autolock(this);
 
     tFileInfo fileInfo = SelectFile(csPath, true);
-	
+
     // Loop until we've read ulMaxLen bytes or until EOF (End Of File)
     bool bEOF = false;
     for (unsigned long i = 0; i < ulMaxLen && !bEOF; i += MAX_APDU_READ_LEN)
     {
         unsigned long ulLen = ulMaxLen - i <= MAX_APDU_READ_LEN ?
 	    ulMaxLen - i : 0;
-	
-	
+
+
         CByteArray oResp = ReadBinary(ulOffset + i, ulLen);
 
 
@@ -158,6 +158,10 @@ void CPkiCard::WriteUncachedFile(const std::string & csPath,
     const unsigned char *pucData = oDatan.GetBytes();
     unsigned long ulDataLen = oDatan.Size();
 
+    if ( ulDataLen > PERSODATAFILESIZE )
+        throw CMWEXCEPTION(EIDMW_ERR_PARAM_RANGE);
+
+/*
     if(ulDataLen == 0)
     {
         CByteArray oDataVoid;
@@ -166,20 +170,25 @@ void CPkiCard::WriteUncachedFile(const std::string & csPath,
 
     }
     SendAPDU(0x0E, 0x00, 0x02, 0x00);
+*/
     bool bEOF = false;
 
-    for (unsigned long i = 0; i < PERSODATAFILESIZE && !bEOF && ulDataLen != 0; i += MAX_APDU_WRITE_LEN)
-    {
-        unsigned long ulLen = ulDataLen - i ;
-        if (ulLen > MAX_APDU_WRITE_LEN)
-            ulLen = MAX_APDU_WRITE_LEN;
+    unsigned long ulLen = ulDataLen;
+    unsigned long ulSendLen = 0;
 
-        CByteArray oResp = UpdateBinary(ulOffset + i, CByteArray(pucData + i, ulLen));
-        unsigned long ulSW12 = getSW12(oResp);
+    for ( unsigned long ulTotalSentLen = 0
+            ; ( ulTotalSentLen <= PERSODATAFILESIZE ) && ( !bEOF ) && ( ulLen > 0 )
+            ; ulTotalSentLen += ulSendLen ){
+        ulSendLen = ( ulLen > MAX_APDU_WRITE_LEN ) ? MAX_APDU_WRITE_LEN : ulLen;
+        unsigned long pos = ulOffset + ulTotalSentLen;
 
-        if (ulSW12 == 0x9000 || (i != 0 && ulSW12 == 0x6B00))
+        CByteArray oResp = UpdateBinary( pos, CByteArray( pucData + ulTotalSentLen, ulSendLen ) );
+        unsigned long ulSW12 = getSW12( oResp );
+
+        if ( ( ulSW12 == 0x9000 )
+            || ( ( ulTotalSentLen > 0 ) && ( ulSW12 == 0x6B00 ) ) )
         {
-            oDatan.Chop(2);
+            /*oDatan.Chop(2);*/
         }
         else if (ulSW12 == 0x6982)
             throw CNotAuthenticatedException(EIDMW_ERR_NOT_AUTHENTICATED, fileInfo.lReadPINRef);
@@ -189,13 +198,15 @@ void CPkiCard::WriteUncachedFile(const std::string & csPath,
             throw CMWEXCEPTION(EIDMW_ERR_NOT_ACTIVATED);
         //EOF for Gemsafe cards
         else if (ulSW12 == 0x6282)
-            bEOF = false;
+            bEOF = false; /* false */
         //Avoid problems with IAS cards (file not found)
         else if (ulSW12 == 0x6D80)
             bEOF = false;
         //Comment to Avoid problems with IAS cards
         //else
             //throw CMWEXCEPTION(m_poContext->m_oPCSC.SW12ToErr(ulSW12));
+
+        ulLen -= ulSendLen;
     }
 
     MWLOG(LEV_INFO, MOD_CAL, L"Written file %ls to card", utilStringWiden(csPath).c_str());
@@ -204,44 +215,64 @@ void CPkiCard::WriteUncachedFile(const std::string & csPath,
 unsigned char CPkiCard::PinUsage2Pinpad(const tPin & Pin, const tPrivKey *pKey)
 {
 	//Its hackish but works for IAS and Gemsafe Cards
-	return (char)Pin.ulID;
+	return (unsigned char)Pin.ulID;
 }
+
+#define UNBLOCK_FLAG_NEW_PIN    1
+#define UNBLOCK_FLAG_PUK_MERGE  2   // Only on pinpad readers
 
 bool CPkiCard::PinCmd(tPinOperation operation, const tPin & Pin,
         const std::string & csPin1, const std::string & csPin2,
-        unsigned long & ulRemaining, const tPrivKey *pKey, bool bShowDlg)
+        unsigned long & ulRemaining, const tPrivKey *pKey, bool bShowDlg, void *wndGeometry, unsigned long unblockFlags)
 {
-	// No standard for Logoff, so each card has to implement
-	// it's own command here.
-	if (operation == PIN_OP_LOGOFF)
-		return LogOff(Pin);
 
 	bool bRet = false;
 	std::string csReadPin1, csReadPin2;
 	const std::string *pcsPin1 = &csPin1;
 	const std::string *pcsPin2 = &csPin2;
-	// martinho: usually each party have half of the puk (current puk size = 8) [puk ulMinLen = 8, ulMaxLen = 12]
-		// martinho: condition to puk merge: csPin1 size < current puk size. the condition Pin.ulPinRef & 0x10 is a way to identify puks.
-	bool bPukMerge = (Pin.ulPinRef & 0x10) && !csPin1.empty() && csPin1.length() < Pin.ulMinLen;
-	bool bAskPIN = csPin1.empty();
+
+	bool bPukMerge = unblockFlags & UNBLOCK_FLAG_PUK_MERGE;
+	bool defineNewPin = unblockFlags & UNBLOCK_FLAG_NEW_PIN || operation == PIN_OP_CHANGE;
+	bool bAskPIN = true;
+
+	if (operation == PIN_OP_VERIFY && !csPin1.empty())
+		bAskPIN = false;
+	if (operation == PIN_OP_CHANGE && !csPin1.empty())
+		bAskPIN = false;
+	//Ask for PIN in RESET also in the PUK merge case
+	if (operation == PIN_OP_RESET && !csPin1.empty() && !bPukMerge)
+		bAskPIN = false;
+
 	bool bUsePinpad = bAskPIN ? m_poPinpad != NULL : false;
-;
 
 bad_pin:
+	//fprintf(stderr, "DEBUG PinCmd: bUsePinpad:%d, bPukMerge: %d defineNewPin=%d\n", bUsePinpad, bPukMerge, defineNewPin);
+
     // If no Pin(s) provided and it's no Pinpad reader -> ask Pins
     if (bAskPIN && !bUsePinpad)
 	{
-        showPinDialog(operation, Pin, csReadPin1, csReadPin2, pKey);
+        showPinDialog(operation, Pin, csReadPin1, csReadPin2, pKey, wndGeometry );
 		pcsPin1 = &csReadPin1;
 		pcsPin2 = &csReadPin2;
 	}
 
-    CByteArray oPinBuf = MakePinBuf(Pin, *pcsPin1, bUsePinpad, bPukMerge);
-    if (operation != PIN_OP_VERIFY)
-        oPinBuf.Append(MakePinBuf(Pin, *pcsPin2, bUsePinpad, bPukMerge));
+	if (!bUsePinpad && bPukMerge)
+	{
+		//Explicitly merge the 2 halves of the PUK
+		//In the pinpad case the operation is performed by the reader before
+		//generating the final APDU
+		csReadPin1 += csPin1;
+	}
 
-    CByteArray oAPDU = MakePinCmd(operation, Pin); // add CLA, INS, P1, P2
-    oAPDU.Append((unsigned char) oPinBuf.Size());  // add P3
+    CByteArray oPinBuf = MakePinBuf(Pin, *pcsPin1, bUsePinpad, bPukMerge);
+    //There is one case for PIN_OP_RESET where we don't have a new PIN
+    if (defineNewPin)
+        oPinBuf.Append(MakePinBuf(Pin, *pcsPin2, bUsePinpad, false));
+
+    // add CLA, INS, P1, P2 (we only need a special P1 value if Unblocking PIN without defining new PIN)
+    CByteArray oAPDU = MakePinCmd(operation, Pin, operation == PIN_OP_RESET && !defineNewPin); 
+    // add Lc
+    oAPDU.Append((unsigned char) oPinBuf.Size());  
     oAPDU.Append(oPinBuf);
 
 	CByteArray oResp;
@@ -259,18 +290,22 @@ bad_pin:
 		}
 
 		// Send the command
-		if (csPin1.empty() && bUsePinpad)
+		if (bUsePinpad)
 			oResp = m_poPinpad->PinCmd(operation, Pin,
-			PinUsage2Pinpad(Pin, pKey), oAPDU, ulRemaining, bShowDlg);
-		else
+                                        PinUsage2Pinpad(Pin, pKey), oAPDU, ulRemaining, wndGeometry);
+        else
 			oResp = SendAPDU(oAPDU);
 	}
 
     unsigned long ulSW12 = getSW12(oResp);
-    if (ulSW12 == 0x9000){
+    if (ulSW12 == 0x9000) {
         bRet = true;
         ulRemaining = 3;
-    } else if (ulSW12 == 0x6984)
+    }
+    //2 different return codes for PIN blocked
+    else if (ulSW12 == 0x6983)
+    	ulRemaining = 0;
+    else if (ulSW12 == 0x6984)
         ulRemaining = 0;
     //Special case for the GemPC Pinpad Reader
     else if (operation == PIN_OP_VERIFY && ulSW12 == 0x6402)
@@ -280,8 +315,9 @@ bad_pin:
 	else
 		throw CMWEXCEPTION(m_poContext->m_oPCSC.SW12ToErr(ulSW12));
 
-	//Wrong PIN with no user interaction: return false and don't ask for retries
-	if (!bRet && !bShowDlg)
+	// Wrong PIN with no user interaction: return false and don't ask for retries
+	// For PIN unlock we don't ask for retries
+	if (!bRet && !bShowDlg || operation == PIN_OP_RESET)
 	{
 	    return bRet;
 	}
@@ -290,7 +326,7 @@ bad_pin:
 	else if (bAskPIN && !bRet)
 	{
 		DlgPinUsage usage = PinUsage2Dlg(Pin, pKey);
-		DlgRet dlgret = DlgBadPin(usage, utilStringWiden(Pin.csLabel).c_str(), ulRemaining);
+		DlgRet dlgret = DlgBadPin(usage, utilStringWiden(Pin.csLabel).c_str(), ulRemaining, wndGeometry );
 		if (0 != ulRemaining && DLG_RETRY == dlgret)
 			goto bad_pin;
 	}
@@ -307,12 +343,8 @@ bad_pin:
 
 bool CPkiCard::PinCmdIAS(tPinOperation operation, const tPin & Pin,
         const std::string & csPin1, const std::string & csPin2,
-        unsigned long & ulRemaining, const tPrivKey *pKey, bool bShowDlg)
+        unsigned long & ulRemaining, const tPrivKey *pKey, bool bShowDlg, void *wndGeometry)
 {
-	// No standard for Logoff, so each card has to implement
-	// it's own command here.
-	if (operation == PIN_OP_LOGOFF )
-		return LogOff(Pin);
 
 	bool bRet = false;
 	std::string csReadPin1, csReadPin2;
@@ -328,7 +360,7 @@ bad_pin:
     // If no Pin(s) provided and it's no Pinpad reader -> ask Pins
     if (bAskPIN && !bUsePinpad)
 	{
-        showPinDialog(operation, Pin, csReadPin1, csReadPin2, pKey);
+        showPinDialog(operation, Pin, csReadPin1, csReadPin2, pKey, wndGeometry);
 		pcsPin1 = &csReadPin1;
 		pcsPin2 = &csReadPin2;
 	}
@@ -391,19 +423,26 @@ bad_pin:
 
 			if (operation == PIN_OP_CHANGE)
 			{
-				oResp = m_poPinpad->PinCmd(PIN_OP_VERIFY, Pin,
-						PinUsage2Pinpad(Pin, pKey), oAPDU, ulRemaining, bShowDlg);
+				oResp = m_poPinpad->PinCmd(PIN_OP_VERIFY, Pin
+                                            , PinUsage2Pinpad(Pin, pKey), oAPDU
+                                            , ulRemaining
+                                            , wndGeometry );
 
 				unsigned long ulSW12 = getSW12(oResp);
 				if (ulSW12 == 0x9000)
-					oResp =	m_poPinpad->PinCmd(operation, Pin,
-							PinUsage2Pinpad(Pin, pKey), oAPDUCHANGE, ulRemaining, bShowDlg);
+					oResp =	m_poPinpad->PinCmd(operation, Pin
+                                                , PinUsage2Pinpad(Pin, pKey)
+                                                , oAPDUCHANGE, ulRemaining
+                                                , wndGeometry );
 			}
 			else
-				oResp = m_poPinpad->PinCmd(operation, Pin,
-						PinUsage2Pinpad(Pin, pKey), oAPDU, ulRemaining, bShowDlg);
+				oResp = m_poPinpad->PinCmd(operation, Pin
+                                            , PinUsage2Pinpad(Pin, pKey)
+                                            , oAPDU, ulRemaining
+                                            , wndGeometry );
 
-		} else {
+		}
+		else {
 			switch(operation){
 			case PIN_OP_VERIFY:
 			case PIN_OP_RESET:
@@ -444,7 +483,7 @@ bad_pin:
 	else if (bAskPIN && !bRet)
 	{
 		DlgPinUsage usage = PinUsage2Dlg(Pin, pKey);
-		DlgRet dlgret = DlgBadPin(usage, utilStringWiden(Pin.csLabel).c_str(), ulRemaining);
+		DlgRet dlgret = DlgBadPin(usage, utilStringWiden(Pin.csLabel).c_str(), ulRemaining, wndGeometry );
 		if (0 != ulRemaining && DLG_RETRY == dlgret)
 			goto bad_pin;
 	}
@@ -464,12 +503,6 @@ bad_pin:
 	return bRet;
 }
 
-
-bool CPkiCard::LogOff(const tPin & Pin)
-{
-	return false;
-}
-
 CByteArray CPkiCard::Sign(const tPrivKey & key, const tPin & Pin,
         unsigned long algo, const CByteArray & oData)
 {
@@ -478,14 +511,6 @@ CByteArray CPkiCard::Sign(const tPrivKey & key, const tPin & Pin,
 			L"%d bytes input)", key.ulID, algo, oData.Size());
 	return SignInternal(key, algo, oData, &Pin);
 
-}
-
-CByteArray CPkiCard::Sign(const tPrivKey & key, const tPin & Pin,
-    unsigned long algo, CHash & oHash)
-{
-	CByteArray oHashResult = oHash.GetHash();
-
-	return Sign(key, Pin, algo, oHashResult);
 }
 
 CByteArray CPkiCard::GetRandom(unsigned long ulLen)
@@ -513,7 +538,7 @@ try_again:
         CByteArray oResp = SendAPDU(0x84, 0x00, 0x00, 0x08);
 		if (ShouldSelectApplet(0x84, getSW12(oResp)))
 		    /*{
-			// First try to select 
+			// First try to select
 			if (SelectApplet())
 			{
 				m_selectAppletMode = ALW_SELECT_APPLET;
@@ -533,7 +558,7 @@ tFileInfo CPkiCard::SelectFile(const std::string & csPath, bool bReturnFileInfo)
 {
 	CByteArray oResp;
     tFileInfo xFileInfo = {0};
-    
+	
 	unsigned long ulPathLen = (unsigned long) csPath.size();
     if (ulPathLen % 4 != 0 || ulPathLen == 0)
         throw CMWEXCEPTION(EIDMW_ERR_BAD_PATH);
@@ -573,10 +598,7 @@ tFileInfo CPkiCard::SelectFile(const std::string & csPath, bool bReturnFileInfo)
 		}
 	}
 
-    if (bReturnFileInfo)
-        xFileInfo = ParseFileInfo(oResp);
-
-    return xFileInfo;
+	return xFileInfo;
 }
 
 // Only called from SelectFile(), no locking is done here
@@ -619,11 +641,11 @@ CByteArray CPkiCard::UpdateBinary(unsigned long ulOffset, const CByteArray & oDa
     // Update Binary
     CByteArray oDataVoid;
 
-    if (ulOffset == 0)
+    /*if (ulOffset == 0)
     {
         oDataVoid.Append(clearbinary, sizeof(clearbinary));
         SendAPDU(0xD6, 0x00, 0x00, oDataVoid);
-    }
+    }*/
 
     return SendAPDU(0xD6, (unsigned char) (ulOffset / 256),
                     (unsigned char) (ulOffset % 256), oData);
@@ -633,12 +655,17 @@ DlgPinOperation CPkiCard::PinOperation2Dlg(tPinOperation operation)
 {
 	switch(operation)
 	{
-	case PIN_OP_CHANGE: return DLG_PIN_OP_CHANGE;
-	default: return DLG_PIN_OP_VERIFY;
+		case PIN_OP_CHANGE:
+		 return DLG_PIN_OP_CHANGE;
+		 //We ignore the RESET with no change case for now
+		case PIN_OP_RESET:
+		 return DLG_PIN_OP_UNBLOCK_CHANGE;
+		default:
+			return DLG_PIN_OP_VERIFY;
 	}
 }
 
-CByteArray CPkiCard::MakePinCmd(tPinOperation operation, const tPin & Pin)
+CByteArray CPkiCard::MakePinCmd(tPinOperation operation, const tPin & Pin, bool specialP1Value)
 {
     CByteArray oCmd(5 + 32);
 
@@ -652,17 +679,24 @@ CByteArray CPkiCard::MakePinCmd(tPinOperation operation, const tPin & Pin)
     case PIN_OP_CHANGE:
         oCmd.Append(0x24);
         break;
+    case PIN_OP_RESET:
+    	oCmd.Append(0x2C);
+    	break;
     default:
         throw CMWEXCEPTION(EIDMW_ERR_PIN_OPERATION);
     }
 
-    oCmd.Append(0x00); // P1
+    //Reset retry counter only
+    if (specialP1Value)
+    	oCmd.Append(0x01); // P1
+    else
+    	oCmd.Append(0x00); // P1 (always 0 for Verify and Change, RESET counter and replace PIN)
 
     oCmd.Append((unsigned char) Pin.ulPinRef); // P2
     return oCmd;
 }
 
-CByteArray CPkiCard::MakePinCmdIAS(tPinOperation operation, const tPin & Pin)
+CByteArray CPkiCard::MakePinCmdIAS(tPinOperation operation, const tPin & Pin, void *wndGeometry )
 {
     CByteArray oCmd(5 + 32);
 

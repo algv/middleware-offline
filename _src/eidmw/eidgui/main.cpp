@@ -24,9 +24,12 @@
 #endif
 
 #include <iostream>
-#include "qtsingleapplication.h"
+#include <cstring>
+
+#include <QApplication>
 
 #include "Settings.h"
+#include "singleapplication.h"
 #include "mainwnd.h"
 
 #ifdef MEMORY_LEAKS_CHECK
@@ -36,51 +39,12 @@
 	#endif
 #endif
 
-class MyApplication : public QtSingleApplication
-{
-public:
-	MyApplication( const char* name, int &argc, char ** argv ) :
-	  QtSingleApplication( name, argc, argv )
-	  {
-	  }
-#ifdef WIN32
-	  //--------------------------------------------
-	  // install an event filter and post a message to the application
-	  // that it should shut down
-	  //--------------------------------------------
-	  bool winEventFilter(MSG * msg, long * retVal)
-	  {
-		  if (msg->message == WM_QUERYENDSESSION )
-		  {
-			  QuitEvent* quitEvent = new QuitEvent(msg->message);
-			  QCoreApplication::postEvent((MainWnd*)activationWindow(),quitEvent);
-			  *retVal = true;	//--> indicate that app can be closed
-			  return true;		//--> do not let Qt handle the message
-		  }
-		  return false;
-	  }
-#elif __MACH__
-    bool event(QEvent *event)
-    {
-		QString openFile = "Open File";
-        switch (event->type()) {
-			case QEvent::FileOpen:
-				//loadFile(static_cast<QFileOpenEvent *>(event)->file());  
-				openFile.append(static_cast<QFileOpenEvent *>(event)->file()); 
-				sendMessage( (const QString)openFile );
-				sendMessage("Restore Windows");
-				return true;
-			default:
-				return QApplication::event(event);
-        }
-    }
-	
-#endif
-};
-
 
 int main(int argc, char *argv[])
 {
+	bool test_mode = false;
+	const char * default_sam_server = NULL;
+
 #ifdef MEMORY_LEAKS_CHECK
 	#ifdef WIN32
 		_CrtSetDbgFlag ( _CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF );
@@ -92,44 +56,38 @@ int main(int argc, char *argv[])
 #endif
 
 	int iRetValue = 0;
-
-	if (argc == 2 && strcmp(argv[1],"/startup")==0)
-	{
-		PTEID_Config StartupParam(PTEID_PARAM_GUITOOL_STARTWIN);
-		if(!StartupParam.getLong())
-		{
-			PTEID_ReleaseSDK();
-			return 0;
-		}
-	}
-
-	MyApplication instance("eidgui", argc, argv);
-	PTEID_LOG(PTEID_LOG_LEVEL_DEBUG, "eidgui", "Waking up other instance");
-	if (instance.sendMessage("Wake up!"))
-	{
-		PTEID_LOG(PTEID_LOG_LEVEL_DEBUG, "eidgui", "Wake up responding OK");
-		instance.sendMessage("Restore Windows");
-#ifndef __MACH__
-		if ( (argc >= 2) && (strcmp(argv[1],"/startup")!=0) && (argv[1] != NULL) )
-		{
-			PTEID_LOG(PTEID_LOG_LEVEL_DEBUG, "eidgui", "argc = %i argv[1] = %s",argc,argv[1]);
-			QString openFile = "Open File";
-			openFile.append(argv[1]);
-			instance.sendMessage (openFile);
-		}
+#ifdef WIN32
+	QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
 #endif
-		return 0;
-	}
 
-	PTEID_LOG(PTEID_LOG_LEVEL_DEBUG, "eidgui", "Wake up did not respond");
-	instance.initialize();
+#ifdef __APPLE__
+
+	//In MacOS we deploy the QT plugins in a specific location which is common
+	// to all the QT applications (pteidgui, ScapSignature, pteiddialogs)
+	QCoreApplication::addLibraryPath(QString("/usr/local/Frameworks"));
+#endif
+
+	SingleApplication app(argc, argv);
 
 	PTEID_InitSDK();
+	PTEID_Config sam_server(PTEID_PARAM_GENERAL_SAM_SERVER);
+
+	if (argc == 2 && strcmp(argv[1], "-test") == 0)
+	{
+		test_mode = true;
+		default_sam_server = strdup(sam_server.getString());
+		sam_server.setString("pki.teste.cartaodecidadao.pt:443");
+	}
+	else
+	{
+		//Force production mode
+		sam_server.setString("pki.cartaodecidadao.pt:443");
+	}
 
 	GUISettings settings;
 	QString     appPath = QCoreApplication::applicationDirPath();
 	settings.setExePath(appPath);
-
+	settings.setTestMode( test_mode );
 
 	MainWnd widget(settings);
 
@@ -138,27 +96,24 @@ int main(int argc, char *argv[])
 	// main application. In this way, the 'wake up' message emitted by each starting instance
 	// will make the running instance to restore.
 	//-------------------------------------------------
-	QObject::connect(&instance, SIGNAL(messageReceived(const QString&)),
-		&widget, SLOT(messageRespond(const QString&)));
+	QObject::connect(
+        &app,
+        &SingleApplication::instanceStarted,
+        &widget,
+        &MainWnd::messageRespond);
 
-	
-#ifndef __MACH__	
-	if ( (argc >= 2) && (strcmp(argv[1],"/startup")!=0) && (argv[1] != NULL) )
-	{
-		PTEID_LOG(PTEID_LOG_LEVEL_DEBUG, "eidgui", "argc = %i argv[1] = %s",argc,argv[1]);
-		QString openFile = "Open File";
-		openFile.append(argv[1]);
-		instance.sendMessage( (const QString)openFile );
-	}
-#endif
 	if (!settings.getStartMinimized())
 	{
 		widget.show();
 	}
 
-	instance.setActivationWindow ( &widget );
+	iRetValue = app.exec();
 
-	iRetValue = instance.exec();
+	if (test_mode)
+	{
+		sam_server.setString(default_sam_server);
+		free((char *)default_sam_server);
+	}
 
 	PTEID_ReleaseSDK();
 

@@ -289,6 +289,11 @@ class PTEID_ByteArray : public PTEID_Object
 		PTEIDSDK_API const unsigned char *GetBytes() const;
 
 		/**
+		 * Get a string from buffer at ulOffset position and with ulLen size.
+		 */
+		const char *GetStringAt(unsigned long ulOffset, unsigned long ulLen) const;
+
+		/**
 		 * Writing the binary content to a file.
 		 */
 		PTEIDSDK_API bool writeToFile(const char * csFilePath);
@@ -342,8 +347,8 @@ private:
 };
 
 
-/******************************************************************************//**
-  * These structure are used for compatibility with old C sdk.
+/********************************************************************************
+  * These defines and functions are meant for compatibility with old C sdk.
   *********************************************************************************/
 
 /* General return codes */
@@ -360,23 +365,6 @@ private:
 #define PTEID_E_UNKNOWN						10 /* An internal error has been detected, but the source is unknown */
 #define PTEID_E_FILE_NOT_FOUND				11 /* Attempt to read a file has failed. */
 #define PTEID_E_USER_CANCELLED				12 /* An operation was cancelled by the user. */
-
-
-struct PTEID_RawData_Eid
-{
-    PTEID_ByteArray idData;
-    PTEID_ByteArray idSigData;
-    PTEID_ByteArray addrData;
-    PTEID_ByteArray addrSigData;
-    PTEID_ByteArray sodData;
-    PTEID_ByteArray cardData;
-    PTEID_ByteArray tokenInfo;
-    PTEID_ByteArray certRN;
-    PTEID_ByteArray challenge;
-    PTEID_ByteArray response;
-    PTEID_ByteArray persoData;
-    PTEID_ByteArray trace;
-};
 
 /**
   * This define give an easy access to singleton (no declaration/instantiation is needed).
@@ -520,19 +508,6 @@ public:
 	  * Construct using a fileType and fileName.
 	  *		No physical reader are connected (m_reader=NULL)
 	  */
-	PTEIDSDK_API PTEID_ReaderContext(PTEID_FileType fileType,const char *fileName);
-
-	/**
-	  * Construct using a fileType and its content (for compatibility with SetRawFile).
-	  *		No physical reader are connected (m_reader=NULL)
-	  */
-	PTEIDSDK_API PTEID_ReaderContext(PTEID_FileType fileType,const PTEID_ByteArray &data);
-
-	/**
-	  * Construct using Raw data for Eid.
-	  *		No physical reader are connected (m_reader=NULL)
-	  */
-	PTEIDSDK_API PTEID_ReaderContext(const PTEID_RawData_Eid &data);
 
 	PTEIDSDK_API virtual ~PTEID_ReaderContext();	/**< Destructor */
 
@@ -545,6 +520,8 @@ public:
 	  * Return true if a card is present and false otherwise.
 	  */
     PTEIDSDK_API bool isCardPresent();
+
+    PTEIDSDK_API bool isPinpad();
 
 	/**
 	  * Release the card.
@@ -604,8 +581,6 @@ public:
 	PTEIDSDK_API void BeginTransaction();								/**< Begin a transaction with the reader */
 	PTEIDSDK_API void EndTransaction();								/**< End the transaction */
 
-	PTEIDSDK_API bool isVirtualReader();								/**< Return true if this is a virtual reader (create from a file) */
-
 private:
 	PTEID_ReaderContext(const PTEID_ReaderContext& reader);				/**< Copy not allowed - not implemented */
 	PTEID_ReaderContext& operator= (const PTEID_ReaderContext& reader);	/**< Copy not allowed - not implemented */
@@ -636,18 +611,6 @@ public:
 	PTEIDSDK_API virtual PTEID_CardType getType();
 
  	/**
-	 * Return a document from the card.
-	 * Throw PTEID_ExDocTypeUnknown exception if the document doesn't exist for this card.
-	 */
-	PTEIDSDK_API virtual PTEID_XMLDoc& getDocument(PTEID_DocumentType type)=0;
-
- 	/**
-	 * Return a raw data from the card.
-	 * Throw PTEID_ExFileTypeUnknown exception if the document doesn't exist for this card.
-	 */
-	PTEIDSDK_API virtual const PTEID_ByteArray& getRawData(PTEID_RawDataType type)=0;
-
- 	/**
 	 * Send an APDU command to the card and get the result.
 	 * @param cmd is the apdu command
 	 * @return a PTEID_ByteArray containing the result
@@ -655,6 +618,8 @@ public:
     PTEIDSDK_API virtual PTEID_ByteArray sendAPDU(const PTEID_ByteArray& cmd);
 
     PTEIDSDK_API virtual PTEID_ByteArray Sign(const PTEID_ByteArray& data, bool signatureKey=false);
+
+    PTEIDSDK_API virtual PTEID_ByteArray SignSHA256(const PTEID_ByteArray& data, bool signatureKey=false);
 
  	/**
 	 * Read a File from the card.
@@ -749,8 +714,9 @@ public:
 	 * @param out contents the bytes to write
 	 * @param pin is the pin to ask for writing
 	 * @param csPinCode is the code of the pin (it will be asked if needed and not set)
+	 * @param inOffset is the offset of the data to be written to the file
 	 */
-	PTEIDSDK_API virtual bool writeFile(const char *fileID,const PTEID_ByteArray &out,PTEID_Pin *pin=NULL,const char *csPinCode="");
+	PTEIDSDK_API virtual bool writeFile(const char *fileID,const PTEID_ByteArray &out, PTEID_Pin *pin=NULL,const char *csPinCode="",unsigned long inOffset=0);
 
  	/**
 	 * Return the number of pin on the card.
@@ -771,27 +737,6 @@ public:
 	 * Return an object to access all the certificates on the card.
 	 */
 	PTEIDSDK_API virtual PTEID_Certificates& getCertificates();
-
-	/**
-	  * Return the challenge.
-	  *
-	  * @param bForceNewInit force a new initialization of the couple challenge/response
-	  */
-	PTEIDSDK_API virtual const PTEID_ByteArray &getChallenge(bool bForceNewInit = false);
-
-	/**
-	  * Return the response to the challenge.
-	  */
-	PTEIDSDK_API virtual const PTEID_ByteArray &getChallengeResponse();
-
-	/**
-	  * Return true if the response of the card to the given challenge is the same as the response expected.
-	  * For virtual card (from file), always return false.
-	  *
-	  * @param challenge is the challenge to check
-	  * @param response is the response expected from the card
-	  */
-	PTEIDSDK_API virtual bool verifyChallengeResponse(const PTEID_ByteArray &challenge, const PTEID_ByteArray &response) const;
 
 protected:
 	PTEID_SmartCard(const SDK_Context *context,APL_Card *impl);	/**< For internal use : Constructor */
@@ -829,6 +774,7 @@ class PTEID_PDFSignature
 		PTEIDSDK_API bool isLandscapeFormat();
 		PTEIDSDK_API char *getOccupiedSectors(int page);
 		PTEIDSDK_API void setCustomImage(unsigned char *image_data, unsigned long image_length);
+		PTEIDSDK_API PDFSignature *getPdfSignature();
 
 	private:
 	//The applayer object that actually implements the signature
@@ -837,6 +783,23 @@ class PTEID_PDFSignature
 	friend class PTEID_EIDCard;
 
 };
+
+
+//Fwd declaration
+class ScapSSLConnection;
+
+class PTEID_ScapConnection
+{
+	public:
+		PTEIDSDK_API PTEID_ScapConnection(char *host, char *port);
+		PTEIDSDK_API ~PTEID_ScapConnection();
+		PTEIDSDK_API char *postSoapRequest(char *endpoint, char *soapAction, char *soapBody);
+
+	private:
+		ScapSSLConnection *m_connection;
+};
+
+class SecurityContext;
 
 /******************************************************************************//**
   * This class represents a Portugal EID card.
@@ -847,31 +810,6 @@ class PTEID_EIDCard : public PTEID_SmartCard
 public:
 	PTEIDSDK_API virtual ~PTEID_EIDCard();						/**< Destructor */
 
- 	/**
-	  * Return true if the user allow the application.
-	  */
-	PTEIDSDK_API static bool isApplicationAllowed();
-
- 	/**
-	  * Return true this is a test card.
-	  */
-	PTEIDSDK_API virtual bool isTestCard();
-
-	/**
-	  * Return true if test card are allowed.
-	  */
-	PTEIDSDK_API virtual bool getAllowTestCard();
-
-	/**
-	  * Set the flag to allow the test cards.
-	  */
-	PTEIDSDK_API virtual void setAllowTestCard(bool allow);
-
-	/**
-	 * Return a document from the card.
-	 * Throw PTEID_ExDocTypeUnknown exception if the document doesn't exist for this card.
-	 */
-	PTEIDSDK_API virtual PTEID_XMLDoc& getDocument(PTEID_DocumentType type);
 
 	PTEIDSDK_API PTEID_CCXML_Doc& getXmlCCDoc(PTEID_XmlUserRequestedInfo& userRequestedInfo);
 	PTEIDSDK_API PTEID_EId& getID();							/**< Get the id document */
@@ -890,7 +828,7 @@ public:
 	PTEIDSDK_API PTEID_PublicKey& getRootCAPubKey();		/**< Get the CVC CA public key that this card uses to verify the CVC key */
 	PTEIDSDK_API bool isActive();
 	PTEIDSDK_API void doSODCheck(bool check);			/**< enable/disable the checking of the data against the sod*/
-	PTEIDSDK_API bool Activate(const char *pinCode, PTEID_ByteArray &BCDDate); 	/**< Activate the pteid card */
+	PTEIDSDK_API bool Activate(const char *pinCode, PTEID_ByteArray &BCDDate, bool blockActivationPIN); 	/**< Activate the pteid card */
 
 
 	    /** Produce Xades Signature of Arbitrary Contents (from memory or local files)
@@ -901,61 +839,51 @@ public:
 	    *  These method perform interactive PIN authentication if needed
 	    *
 	    *  @param IN paths is an array of null-terminated strings representing absolute paths in
-	    *  the local filesystem. Those files content (hashed with SHA-1 algorithm) will be the input data for the RSA signature 
-	    *  @param IN n_paths is the number of elements in the paths array 
+	    *  the local filesystem. Those files content (hashed with SHA-1 algorithm) will be the input data for the RSA signature
+	    *  @param IN n_paths is the number of elements in the paths array
 	    */
-	     PTEIDSDK_API PTEID_ByteArray SignXades(const char * const* paths, unsigned int n_paths, const char *output_path); /** Return a Xades signature as a UTF-8 string (supports multiple files)*/
-	     
-	     PTEIDSDK_API PTEID_ByteArray SignXadesT(const char * const* path, unsigned int n_paths, const char *output_path); /** Return a Xades-T signature as a UTF-8 string (supports multiple files)*/
-	     PTEIDSDK_API PTEID_ByteArray SignXadesA(const char * const* path, unsigned int n_paths, const char *output_path); /** Return a Xades-T signature as a UTF-8 string (supports multiple files)*/
-	     
-	     PTEIDSDK_API void SignXadesIndividual(const char * const* paths, unsigned int n_paths, const char *output_path); /** Store the XAdes signature in individual zip containers  */
-	     PTEIDSDK_API void SignXadesTIndividual(const char * const* paths, unsigned int n_paths, const char *output_path); /** Store the Xades-T signature in individual zip containers  */
-		 PTEIDSDK_API void SignXadesAIndividual(const char * const* paths, unsigned int n_paths, const char *output_path);
-		
+	     PTEIDSDK_API PTEID_ByteArray SignXades(const char *output_path, const char * const* paths, unsigned int n_paths); /** Return a Xades signature as a UTF-8 string (supports multiple files)*/
+
+	     PTEIDSDK_API PTEID_ByteArray SignXadesT(const char *output_path, const char * const* path, unsigned int n_paths); /** Return a Xades-T signature as a UTF-8 string (supports multiple files)*/
+	     PTEIDSDK_API PTEID_ByteArray SignXadesA(const char *output_path, const char * const* path, unsigned int n_paths); /** Return a Xades-T signature as a UTF-8 string (supports multiple files)*/
+
+	     PTEIDSDK_API void SignXadesIndividual(const char *output_path,  const char * const* paths, unsigned int n_paths); /** Store the XAdes signature in individual zip containers  */
+	     PTEIDSDK_API void SignXadesTIndividual(const char *output_path, const char * const* paths, unsigned int n_paths); /** Store the Xades-T signature in individual zip containers  */
+		 PTEIDSDK_API void SignXadesAIndividual(const char *output_path, const char * const* paths, unsigned int n_paths);
+
 	     //PDF Signature with location by page sector (the portrait A4 page is split into 18 cells: 6 lines and 3 columns)
 	     PTEIDSDK_API int SignPDF(PTEID_PDFSignature &sig_handler, int page, int page_sector, bool is_landscape, const char *location, const char *reason,
 			const char *outfile_path);
 
-	     //PDF Signature with location by precise location (in postscript points) the coordinate system has its origin in the top left corner 
-	     //of the page
-	     PTEIDSDK_API int SignPDF(PTEID_PDFSignature &sig_handler, int page, double coord_x, double coord_y, const char *location, const char *reason,
+	     /*PDF Signature with location by coordinates (expressed in percentage of page height/width). The coordinate system has its origin in the top left corner
+	     of the page
+		 * @param sig_handler: this defines the input file and some signature options
+		 * @param page: in case of visible signature it defines the page where the signature will appear
+		 * @param coord_x: X coordinate of the signature location (percentage of page width)
+		 * @param coord_y: Y coordinate of the signature location (percentage of page height)
+		 * @param location: Signature metadata field
+		 * @param reason: Signature metadata field
+		 * @param outfile_path: Native Filesystem path of the ouput file
+		 */
+	    PTEIDSDK_API int SignPDF(PTEID_PDFSignature &sig_handler, int page, double coord_x, double coord_y, const char *location, const char *reason,
 			const char *outfile_path);
 
+	    /* PDF Signature close:
+             * @param sig_handler: this defines the input file and some signature options
+             * @param signature: Signature metadata field
+             */
+        PTEIDSDK_API int SignClose( PTEID_PDFSignature &sig_handler, PTEID_ByteArray signature );
 
 	     /* Change the OTP/EMV-CAP PIN through interaction with the appropriate HTTPS server
 	      * Note: This method SHOULD be always called before any change to the Authentication PIN
-	      * because the two PINs are the same from the user's perspective 
-	      * 
+	      * because the two PINs are the same from the user's perspective
+	      *
 	      */
-	     PTEIDSDK_API bool ChangeCapPin(const char *new_pin);
+	     //PTEIDSDK_API bool ChangeCapPin(const char *new_pin);
 
 	     typedef void (*t_address_change_callback)(void *, int);
 
-	     PTEIDSDK_API bool ChangeAddress(char *secretCode, char *process, t_address_change_callback callback, void *callback_data);
-
-	     /* helper method for the compatibility layer */
-	     PTEIDSDK_API bool ChangeCapPinCompLayer(const char *old_pin, const char *new_pin,unsigned long &ulRemaining);
-
-
-
-	/**
-	 * Return a raw data from the card.
-	 * Throw PTEID_ExFileTypeUnknown exception if the document doesn't exist for this card.
-	 */
-	PTEIDSDK_API virtual const PTEID_ByteArray& getRawData(PTEID_RawDataType type);
-
- 	PTEIDSDK_API const PTEID_ByteArray& getRawData_Id();				/**< Get the Id RawData */
- 	PTEIDSDK_API const PTEID_ByteArray& getRawData_IdSig();			/**< Get the IdSig RawData */
- 	PTEIDSDK_API const PTEID_ByteArray& getRawData_Trace();			/**< Get the Trace RawData */
- 	PTEIDSDK_API const PTEID_ByteArray& getRawData_Addr();			/**< Get the Addr RawData */
- 	PTEIDSDK_API const PTEID_ByteArray& getRawData_AddrSig();			/**< Get the AddrSig RawData */
- 	PTEIDSDK_API const PTEID_ByteArray& getRawData_Sod();				/**< Get the Sod RawData */
- 	PTEIDSDK_API const PTEID_ByteArray& getRawData_CardInfo();		/**< Get the Card Info RawData */
- 	PTEIDSDK_API const PTEID_ByteArray& getRawData_TokenInfo();		/**< Get the Token Info RawData */
- 	PTEIDSDK_API const PTEID_ByteArray& getRawData_Challenge();		/**< Get the challenge RawData */
- 	PTEIDSDK_API const PTEID_ByteArray& getRawData_Response();		/**< Get the response RawData */
- 	PTEIDSDK_API const PTEID_ByteArray& getRawData_PersoData();		/**< Get the response RawData */
+	     PTEIDSDK_API void ChangeAddress(char *secretCode, char *process, t_address_change_callback callback, void *callback_data);
 
 protected:
 	PTEID_EIDCard(const SDK_Context *context,APL_Card *impl);		/**< For internal use : Constructor */
@@ -966,39 +894,10 @@ private:
 	bool persoNotesDirty;
 
 friend PTEID_Card &PTEID_ReaderContext::getCard();				/**< For internal use : This method must access protected constructor */
-};
-
-
-class SignatureVerifier;
-
-class PTEID_SigVerifier
-{
-	
-	/** Validates an XML-DSIG or XAdES signature
- 	*
- 	*  This method is intended to validate XADES signatures produced with PTEID_EIDCard::SignXades() method
- 	*  even though any conforming signature should work
-	*
- 	*  Implementation note: External references in the <SignedInfo> element are not checked
- 	*
- 	*  @param IN signature is a byte array containing the UTF-8 representation of an XML document
- 	*/
-
-	public:
-	
-	PTEIDSDK_API PTEID_SigVerifier(const char * container_path);
-	PTEIDSDK_API ~PTEID_SigVerifier();
-
-	PTEIDSDK_API int Verify();
-	PTEIDSDK_API char * GetSigner();
-	PTEIDSDK_API char *GetTimestampString();
-	PTEIDSDK_API long long GetUnixTimestamp();
-      	//PTEIDSDK_API getTimestamp() //TODO: Create a custom class struct that expresses the timestamp in all its glorious detail
-	
-	private:
-	SignatureVerifier *m_impl;
+friend PTEIDSDK_API long PTEID_CVC_Init(const unsigned char *pucCert, int iCertLen, unsigned char *pucChallenge, int iChallengeLen);
 
 };
+
 
 class APL_XmlUserRequestedInfo;
 /******************************************************************************//**
@@ -1031,8 +930,6 @@ class PTEID_XMLDoc : public PTEID_Object
 {
 public:
 	PTEIDSDK_API virtual ~PTEID_XMLDoc()=0;				/**< Destructor */
-
-	PTEIDSDK_API virtual bool isAllowed();						/**< The document is allowed */
 
 	PTEIDSDK_API virtual PTEID_ByteArray getXML();			/**< Return the document in an XML format */
 	PTEIDSDK_API virtual PTEID_ByteArray getCSV();			/**< Return the document in an CSV format */
@@ -1105,7 +1002,7 @@ class APL_DocVersionInfo;
 
 /******************************************************************************//**
   * Class for the info document.
-  * You can get such an object from PTEID_EIDCard::getVersionInfo() (or getDocument).
+  * You can get such an object from PTEID_EIDCard::getVersionInfo().
   *********************************************************************************/
 class PTEID_CardVersionInfo : public PTEID_XMLDoc
 {
@@ -1128,7 +1025,6 @@ public:
 	PTEIDSDK_API const char *getGraphicalPersonalisation();			/**< Return field GraphicalPersonalisation from the Info file */
 	PTEIDSDK_API const char *getElectricalPersonalisation();			/**< Return field ElectricalPersonalisation from the TokenInfo file */
 	PTEIDSDK_API const char *getElectricalPersonalisationInterface();	/**< Return field ElectricalPersonalisationInterface from the TokenInfo file */
-	PTEIDSDK_API const PTEID_ByteArray &getSignature();		/**< Return the signature of the card info */
 
 private:
 	PTEID_CardVersionInfo(const PTEID_CardVersionInfo& doc);				/**< Copy not allowed - not implemented */
@@ -1143,7 +1039,7 @@ class APL_SodEid;
 
 /******************************************************************************//**
   * Class for the sod document on a EID Card.
-  * You can get such an object from PTEID_EIDCard::getSod()	(or getDocument).
+  * You can get such an object from PTEID_EIDCard::getSod().
   *********************************************************************************/
 class PTEID_Sod : public PTEID_Biometric
 {
@@ -1151,7 +1047,6 @@ public:
 	PTEIDSDK_API virtual ~PTEID_Sod();				/**< Destructor */
 
 	PTEIDSDK_API const PTEID_ByteArray& getData();		/**< Return the sod itself */
-	PTEIDSDK_API const PTEID_ByteArray& getHash();		/**< Return the hash of the sod */
 
 private:
 	PTEID_Sod(const PTEID_Sod& doc);				/**< Copy not allowed - not implemented */
@@ -1166,7 +1061,7 @@ class APL_DocEId;
 
 /******************************************************************************//**
   * Class for the id document on a EID Card.
-  * You can get such an object from PTEID_EIDCard::getID()	(or getDocument).
+  * You can get such an object from PTEID_EIDCard::getID().
   *********************************************************************************/
 class PTEID_EId : public PTEID_XMLDoc
 {
@@ -1180,16 +1075,10 @@ public:
 	PTEIDSDK_API const char *getSurname();					/**< Return Surname field */
 	PTEIDSDK_API const char *getGender();					/**< Return Gender field */
 	PTEIDSDK_API const char *getDateOfBirth();				/**< Return Date Of Birth field */
-	PTEIDSDK_API const char *getLocationOfBirth();			/**< Return Location Of Birth field */
 	PTEIDSDK_API const char *getNationality();				/**< Return Nationality field */
-	PTEIDSDK_API const char *getDuplicata();				/**< Return Duplicata field */
-	PTEIDSDK_API const char *getSpecialOrganization();		/**< Return Special Organization field */
-	PTEIDSDK_API const char *getMemberOfFamily();			/**< Return Member Of Family field */
-	PTEIDSDK_API const char *getLogicalNumber();			/**< Return Logical Number field */
 	PTEIDSDK_API const char *getDocumentPAN();				/**< Return Document PAN field */
 	PTEIDSDK_API const char *getValidityBeginDate();		/**< Return Validity Begin Date field */
 	PTEIDSDK_API const char *getValidityEndDate();			/**< Return Validity End Date field */
-	PTEIDSDK_API const char *getSpecialStatus();			/**< Return Special Status field */
 	PTEIDSDK_API const char *getHeight();					/**< Return field Height */
 	PTEIDSDK_API const char *getDocumentNumber();			/**< Return field DocumentNumber */
 	PTEIDSDK_API const char *getCivilianIdNumber();			/**< Return field CivlianIdNumber */
@@ -1224,7 +1113,7 @@ class APL_AddrEId;
 
 /******************************************************************************//**
   * Class for the Address document on a EID Card.
-  * You can get such an object from PTEID_EIDCard::getAddr()	(or getDocument).
+  * You can get such an object from PTEID_EIDCard::getAddr().
   *********************************************************************************/
 class PTEID_Address : public PTEID_XMLDoc
 {
@@ -1348,18 +1237,15 @@ public:
 	PTEIDSDK_API unsigned long getId();			/**< Get the id of the pin */
 	PTEIDSDK_API unsigned long getPinRef();		/**< Get the pinref value of the pin */
 	PTEIDSDK_API PTEID_PinUsage getUsageCode();	/**< Get the usage code of the pin */
-	PTEIDSDK_API unsigned long getFlags();		/**< Get the flags of the pin */
-	PTEIDSDK_API const char *getLabel();			/**< Get the label of the pin */
-	PTEIDSDK_API bool unlockPin(const char *pszPuk, const char *pszNewPin, unsigned long &triesLeft);
-
-	PTEIDSDK_API const PTEID_ByteArray &getSignature();	/**< Return the signature of the pin */
+	PTEIDSDK_API unsigned long getFlags();		               /**< Get the flags of the pin */
+	PTEIDSDK_API const char *getLabel();			           /**< Get the label of the pin */
+	PTEIDSDK_API const char *getLabelById( unsigned long id ); /**< Get the label of the pin by Id */
+	PTEIDSDK_API bool unlockPin(const char *pszPuk, const char *pszNewPin, unsigned long &triesLeft, unsigned long flags);
 
 	/**
-	  * Return the remaining tries for giving the good pin.
+	  * Return the remaining tries for entering the correct pin.
 	  *
-	  * This opperation is not supported by all card.
 	  *
-	  * @return -1 if not supported
 	  * @return the number of remaining tries in the other case
 	  */
 	PTEIDSDK_API long getTriesLeft();
@@ -1379,7 +1265,7 @@ public:
 	  *
 	  * @return true if success and false if failed
 	  */
-	PTEIDSDK_API bool verifyPin(const char *csPin,unsigned long &ulRemaining,bool bShowDlg=true);
+	PTEIDSDK_API bool verifyPin(const char *csPin,unsigned long &ulRemaining,bool bShowDlg=true, void *wndGeometry = 0 );
 
 	/**
 	  * Ask the card to change the pin.
@@ -1399,7 +1285,7 @@ public:
 	  *
 	  * @return true if success and false if failed
 	  */
-	PTEIDSDK_API bool changePin(const char *csPin1,const char *csPin2,unsigned long &ulRemaining, const char *PinName,bool bShowDlg=true);
+	PTEIDSDK_API bool changePin(const char *csPin1,const char *csPin2,unsigned long &ulRemaining, const char *PinName,bool bShowDlg=true, void *wndGeometry = 0 );
 
 private:
 	PTEID_Pin(const PTEID_Pin& pin);									/**< Copy not allowed - not implemented */
@@ -1419,12 +1305,6 @@ class APL_Certifs;
 class PTEID_Certificates : public PTEID_Crypto
 {
 public:
-	/**
-	  * Create an PTEID_Certificates store without any link to a card.
-	  * This store is not link to any Card, so some methods could not be used.
-	  * These methods throw PTEID_ExBadUsage exception.
-	  */
-	PTEIDSDK_API PTEID_Certificates();
 
 	PTEIDSDK_API virtual ~PTEID_Certificates();					/**< Destructor */
 
@@ -1445,14 +1325,6 @@ public:
 	  */
 	PTEIDSDK_API PTEID_Certificate &getCert(unsigned long ulIndexAll);
 
-	PTEIDSDK_API const char *getExternalCertData(int cert);
-	PTEIDSDK_API int getExternalCertDataSize(int cert);
-	PTEIDSDK_API const char *getExternalCertSubject(int cert);
-	PTEIDSDK_API const char *getExternalCertIssuer(int cert);
-	PTEIDSDK_API const char *getExternalCertNotBefore(int cert);
-	PTEIDSDK_API const char *getExternalCertNotAfter(int cert);
-	PTEIDSDK_API unsigned long getExternalCertKeylenght(int cert);
-
 	/**
 	  * Return the certificate by type.
 	  */
@@ -1468,6 +1340,10 @@ public:
 	  */
 	PTEIDSDK_API PTEID_Certificate &addCertificate(PTEID_ByteArray &cert);
 
+	PTEIDSDK_API void addToSODCAs(PTEID_ByteArray &cert);
+
+	PTEIDSDK_API void resetSODCAs();
+
 
 private:
 	PTEID_Certificates(const PTEID_Certificates& certifs);			/**< Copy not allowed - not implemented */
@@ -1481,7 +1357,7 @@ friend PTEID_Certificates& PTEID_SmartCard::getCertificates();		/**< For interna
 class APL_Certif;
 
 /******************************************************************************//**
-  * Class that represent one certificate.
+  * Class that represents one certificate.
   *********************************************************************************/
 class PTEID_Certificate : public PTEID_Crypto
 {
@@ -1565,7 +1441,7 @@ friend PTEID_Certificate &PTEID_Certificates::addCertificate(PTEID_ByteArray &ce
 
 class APL_Config;
 
-/******************************************************************************//**
+/**********************************************************************************
   * Class to access the config parameters.
   *********************************************************************************/
 class PTEID_Config : public PTEID_Object
@@ -1606,7 +1482,11 @@ private:
   *********************************************************************************/
 PTEIDSDK_API void PTEID_LOG(PTEID_LogLevel level, const char *module_name, const char *format, ...);
 
-#if !defined SWIGJAVA && !defined SWIGCSHARP
+
+#if !defined SWIG
+
+/* Function to get System Proxy to access supplied host */
+PTEIDSDK_API void PTEID_GetProxyFromPac(const char *pacFile, const char *url, std::string *proxy_host, std::string *proxy_port);
 
 /******************************************************************************//**
   * Compatibility layer
@@ -1619,6 +1499,8 @@ PTEIDSDK_API void PTEID_LOG(PTEID_LogLevel level, const char *module_name, const
 
 #define COMP_LAYER_NATIONAL_ADDRESS "N"
 #define COMP_LAYER_FOREIGN_ADDRESS "I"
+
+//Sizes of ID file data fields
 
 #define PTEID_DELIVERY_ENTITY_LEN               40
 #define PTEID_COUNTRY_LEN                       80
@@ -1657,6 +1539,8 @@ PTEIDSDK_API void PTEID_LOG(PTEID_LogLevel level, const char *module_name, const
 #define PTEID_MAX_NUMSNS_LEN                        PTEID_NUMSNS_LEN+2
 #define PTEID_MAX_INDICATIONEV_LEN                  PTEID_INDICATIONEV_LEN+2
 #define PTEID_MAX_MRZ_LEN                           PTEID_MRZ_LEN+2
+
+ //Sizes of Address file data fields
 
 #define PTEID_ADDR_TYPE_LEN                     2
 #define PTEID_ADDR_COUNTRY_LEN                  4
@@ -1750,7 +1634,7 @@ typedef enum {
 	COMP_CARD_TYPE_ERR = 0, // Something went wrong, or unknown card type
 	COMP_CARD_TYPE_IAS07,   // IAS 0.7 card
 	COMP_CARD_TYPE_IAS101,  // IAS 1.01 card
-}tCompCardType;
+} tCompCardType;
 
 typedef struct
 {
@@ -1784,39 +1668,44 @@ typedef struct
     char mrz3[PTEID_MAX_MRZ_LEN];
 } PTEID_ID;
 
+// The structs below need packing with 1-byte alignment
+#pragma pack(push, 1)
+
 typedef struct
 {
     short version;
-    char addrType[PTEID_MAX_ADDR_TYPE_LEN];
-    char country[PTEID_MAX_ADDR_COUNTRY_LEN];
-    char district[PTEID_MAX_DISTRICT_LEN];
-    char districtDesc[PTEID_MAX_DISTRICT_DESC_LEN];
-    char municipality[PTEID_MAX_DISTRICT_CON_LEN];
-    char municipalityDesc[PTEID_MAX_DISTRICT_CON_DESC_LEN];
-    char freguesia[PTEID_MAX_DISTRICT_FREG_LEN];
-    char freguesiaDesc[PTEID_MAX_DISTRICT_FREG_DESC_LEN];
-    char streettypeAbbr[PTEID_MAX_ROAD_ABBR_LEN];
-    char streettype[PTEID_MAX_ROAD_LEN];
-    char street[PTEID_MAX_ROAD_DESIG_LEN];
-    char buildingAbbr[PTEID_MAX_HOUSE_ABBR_LEN];
-    char building[PTEID_MAX_HOUSE_LEN];
-    char door[PTEID_MAX_NUMDOOR_LEN];
-    char floor[PTEID_MAX_FLOOR_LEN];
-    char side[PTEID_MAX_SIDE_LEN];
-    char place[PTEID_MAX_PLACE_LEN];
-    char locality[PTEID_MAX_LOCALITY_LEN];
-    char cp4[PTEID_MAX_CP4_LEN];
-    char cp3[PTEID_MAX_CP3_LEN];
-    char postal[PTEID_MAX_POSTAL_LEN];
-    char numMor[PTEID_MAX_NUMMOR_LEN];
-    char countryDescF[PTEID_MAX_ADDR_COUNTRYF_DESC_LEN];
-    char addressF[PTEID_MAX_ADDRF_LEN];
-    char cityF[PTEID_MAX_CITYF_LEN];
-    char regioF[PTEID_MAX_REGIOF_LEN];
-    char localityF[PTEID_MAX_LOCALITYF_LEN];
-    char postalF[PTEID_MAX_POSTALF_LEN];
-    char numMorF[PTEID_MAX_NUMMORF_LEN];
+    char addrType[PTEID_ADDR_TYPE_LEN];
+    char country[PTEID_ADDR_COUNTRY_LEN];
+    char district[PTEID_DISTRICT_LEN];
+    char districtDesc[PTEID_DISTRICT_DESC_LEN];
+    char municipality[PTEID_DISTRICT_CON_LEN];
+    char municipalityDesc[PTEID_DISTRICT_CON_DESC_LEN];
+    char freguesia[PTEID_DISTRICT_FREG_LEN];
+    char freguesiaDesc[PTEID_DISTRICT_FREG_DESC_LEN];
+    char streettypeAbbr[PTEID_ROAD_ABBR_LEN];
+    char streettype[PTEID_ROAD_LEN];
+    char street[PTEID_ROAD_DESIG_LEN];
+    char buildingAbbr[PTEID_HOUSE_ABBR_LEN];
+    char building[PTEID_HOUSE_LEN];
+    char door[PTEID_NUMDOOR_LEN];
+    char floor[PTEID_FLOOR_LEN];
+    char side[PTEID_SIDE_LEN];
+    char place[PTEID_PLACE_LEN];
+    char locality[PTEID_LOCALITY_LEN];
+    char cp4[PTEID_CP4_LEN];
+    char cp3[PTEID_CP3_LEN];
+    char postal[PTEID_POSTAL_LEN];
+    char numMor[PTEID_NUMMOR_LEN];
+    char countryDescF[PTEID_ADDR_COUNTRYF_DESC_LEN];
+    char addressF[PTEID_ADDRF_LEN];
+    char cityF[PTEID_CITYF_LEN];
+    char regioF[PTEID_REGIOF_LEN];
+    char localityF[PTEID_LOCALITYF_LEN];
+    char postalF[PTEID_POSTALF_LEN];
+    char numMorF[PTEID_NUMMORF_LEN];
 } PTEID_ADDR;
+
+#pragma pack(pop)
 
 typedef struct
 {
@@ -2002,6 +1891,9 @@ PTEIDSDK_API long PTEID_UnblockPIN(
 	long *triesLeft			/**< out: the remaining PUK tries */
 );
 
+
+#define UNBLOCK_FLAG_NEW_PIN    1
+#define UNBLOCK_FLAG_PUK_MERGE  2   // Only on pinpad readers
 /**
  * Extended Unblock PIN functionality.
  * E.g. calling PTEID_UnblockPIN_Ext() with ulFlags = UNBLOCK_FLAG_NEW_PIN
@@ -2056,6 +1948,17 @@ PTEIDSDK_API long PTEID_WriteFile(
 	unsigned char PinId		/**< in: the ID of the Authentication PIN, see the PTEID_Pins struct */
 );
 
+
+PTEIDSDK_API long PTEID_WriteFile_inOffset(
+	unsigned char *file,	/**< in: a byte array containing the file path,
+								e.g. {0x3F, 0x00, 0x5F, 0x00, 0xEF, 0x02} for the ID file */
+	int filelen,			/**< in: file length */
+	unsigned char *in,		/**< in: the data to be written to the file */
+	unsigned long inOffset, /**< in: the offset of the data to be written to the file */
+	unsigned long inlen,	/**< in: length of the data to be written */
+	unsigned char PinId		/**< in: the ID of the Authentication PIN, see the PTEID_Pins struct */
+);
+
 /**
  * Get the activation status of the card.
  */
@@ -2072,7 +1975,7 @@ PTEIDSDK_API long PTEID_Activate(
 	unsigned char *pucDate,	/**< in: the current date in DD MM YY YY format in BCD format (4 bytes),
 									e.g. {0x17 0x11 0x20 0x06} for the 17th of Nov. 2006) */
 	unsigned long ulMode	/**<in: mode: MODE_ACTIVATE_BLOCK_PIN to block the Activation PIN,
-									or to 0 otherwise (this should only to be used for testing). */
+									or to 0 otherwise (this should only be used for testing). */
 );
 
 /**
@@ -2191,8 +2094,97 @@ PTEIDSDK_API void PTEID_CAP_SetCapPinChangeCallback(void(_USERENTRY * callback)(
  */
 PTEIDSDK_API void PTEID_CAP_CancelCapPinChange();
 
+/**
+ * Return true if the connected reader is a pinpad.
+ */
+PTEIDSDK_API int PTEID_IsPinpad();
+
+/**
+ * Return true if the connected reader is an EMV-CAP compliant pinpad.
+ */
+PTEIDSDK_API int PTEID_IsEMVCAP();
+
+
+/**
+* CVC authentication functions
+*/
+/**
+ * Start a CVC authentication with the card.
+ * The resulting challenge should be signed with the private key corresponding
+ * to the CVC certificate (raw RSA signature) and provided in the
+ * PTEID_CVC_Authenticate() function.
+ */
+
+PTEIDSDK_API long PTEID_CVC_Init(
+    const unsigned char *pucCert,	/**< in: the CVC as a byte array */
+    int iCertLen,					/**< in: the length of ucCert */
+    unsigned char *pucChallenge,	/**< out: the challenge to be signed by the CVC private key */
+    int iChallengeLen				/**< in: the length reserved for ucChallenge, must be 128 */
+);
+
+
+/**
+ * Finish the CVC authentication with the card, to be called
+ *   after a PTEID_CVC_Init()
+ *
+ */
+PTEIDSDK_API long PTEID_CVC_Authenticate(
+    unsigned char *pucSignedChallenge,	/**< in: the challenge that was signed by the
+											private key corresponding to the CVC */
+    int iSignedChallengeLen				/**< in: the length of ucSignedChallenge, must be 128 */
+);
+
+#define CVC_WRITE_MODE_PAD    1
+/**
+ * Write to a file on the card over a 'CVC channel'.
+ * A successfull PTEID_CVC_Init() and PTEID_CVC_Authenticate()
+ * must have been done before.
+ */
+PTEIDSDK_API long PTEID_CVC_WriteFile(
+	unsigned char *file,		/**< in: the path of the file to read (e.g. {0x3F, 0x00, 0x5F, 0x00, 0xEF, 0x05} */
+	int filelen,				/**< in: the length file path (e.g. 6) */
+	unsigned long ulFileOffset,	/**< in: at which offset in the file to start writing */
+    const unsigned char *in,	/**< in: the file contents */
+    unsigned long inlen,		/**< in: the number of bytes to write */
+    unsigned long ulMode		/**< in: set to CVC_WRITE_MODE_PAD to pad the file with zeros if
+									(ulFileOffset + inlen) is less then the file length */
+);
+
+/**
+ * Read the address file over a 'CVC channel' and put the contents
+ * into a PTEID_ADDR struct.
+ * A successfull PTEID_CVC_Init() and PTEID_CVC_Authenticate()
+ * must have been done before.
+ */
+PTEIDSDK_API long PTEID_CVC_GetAddr(
+	PTEID_ADDR *AddrData	/**< out: the address of a PTEID_ADDR struct */
+);
+
+/**
+ * Read out the contents of a file over a 'CVC channel'
+ * A successful PTEID_CVC_Init() and PTEID_CVC_Authenticate()
+ * must have been done before.
+ * If outlen is less then the file's contents, only *outlen
+ * bytes will be read. If outlen is bigger then the file's
+ * contents then the files contents are returned without error.
+ */
+PTEIDSDK_API long PTEID_CVC_ReadFile(
+	const unsigned char *file,	/**< in: the path of the file to read (e.g. {0x3F, 0x00, 0x5F, 0x00, 0xEF, 0x05} */
+	int filelen,			/**< in: the length file path (e.g. 6) */
+    unsigned char *out,		/**< out: the buffer to contain the file contents */
+    unsigned long *outlen	/**< out the number of bytes to read/the number of byte read. */
+);
+
 
 #endif // !defined SWIGJAVA && !defined SWIGCSHARP
+
+PTEIDSDK_API void setCompatReaderContext(PTEID_ReaderContext *ctx);
+
+PTEIDSDK_API PTEID_ByteArray PTEID_CVC_Init(PTEID_ByteArray cvc_cert);
+
+PTEIDSDK_API void PTEID_CVC_Authenticate(PTEID_ByteArray cvc_cert);
+
+PTEIDSDK_API PTEID_ByteArray PTEID_CVC_ReadFile(PTEID_ByteArray fileID);
 }
 
 #endif //__PTEIDLIB_H__

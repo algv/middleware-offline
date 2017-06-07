@@ -25,6 +25,7 @@
 #include "../langUtil.h"
 #include "Log.h"
 #include "Config.h"
+#include "resource.h"
 
 #define IDC_STATIC 0
 #define IDB_OK 1
@@ -41,19 +42,20 @@ std::wstring lang = CConfig::GetString(CConfig::EIDMW_CONFIG_PARAM_GENERAL_LANGU
 dlgWndAskPIN::dlgWndAskPIN( DlgPinInfo pinInfo, DlgPinUsage PinPusage, std::wstring & Header, std::wstring & PINName, bool UseKeypad, HWND Parent )
 :Win32Dialog(L"WndAskPIN")
 {
-	m_UseKeypad = UseKeypad;
 
 	PinResult[0] = ' ';
 	PinResult[1] = (char)0;
 
 	std::wstring tmpTitle = L"";
 
-	if( PinPusage == DLG_PIN_SIGN )
+	/*if( PinPusage == DLG_PIN_SIGN )
 		tmpTitle += GETSTRING_DLG(SigningWith);
 	else
 		tmpTitle += GETSTRING_DLG(Asking);
 
-	tmpTitle += L" ";
+	tmpTitle += L" ";*/
+
+	tmpTitle += GETSTRING_DLG(VerifyingPinCode);
 
 	/*
 	//Change to pt once fixed the language issues.
@@ -68,19 +70,17 @@ dlgWndAskPIN::dlgWndAskPIN( DlgPinInfo pinInfo, DlgPinUsage PinPusage, std::wstr
 	}
 	else
 	*/
-		tmpTitle.append(PINName);
 
-	m_ulPinMinLen = pinInfo.ulMinLen;
-	m_ulPinMaxLen = pinInfo.ulMaxLen;
+	//Max Length of PINs for PTEID cards as currently defined by INCM personalization
+	m_ulPinMinLen = 4;
+	m_ulPinMaxLen = 8;
 
 	szHeader = Header.c_str();
 	szPIN = PINName.c_str();
 
 	int Height = 280;
-	if( m_UseKeypad )
-		Height = 480;
 
-	if( CreateWnd( tmpTitle.c_str() , 420, Height, 0, Parent ) )
+	if( CreateWnd( tmpTitle.c_str() , 420, Height, IDI_APPICON, Parent ) )
 	{
 		RECT clientRect;
 		GetClientRect( m_hWnd, &clientRect );
@@ -99,50 +99,6 @@ dlgWndAskPIN::dlgWndAskPIN( DlgPinInfo pinInfo, DlgPinUsage PinPusage, std::wstr
 			clientRect.right - 100, clientRect.bottom - 65, 72, 24, 
 			m_hWnd, (HMENU)IDB_CANCEL, m_hInstance, NULL );
 
-		m_KeypadHeight=0;
-
-		//Virtual Keypad
-		if( m_UseKeypad )
-		{
-			int top = 60;
-			int hMargin = 12;
-			int vMargin = 12;
-			int btnwidth = 48;
-			int btnheight = 48;
-			int totwidth = btnwidth*3 + 2*hMargin;
-			int totheight = btnheight*4 +3*vMargin;
-			int left = (clientRect.right - clientRect.left - totwidth)/2;
-			m_KeypadHeight = top + totheight + 8;
-
-			for( int i = 0; i < 4; i++ )
-			{
-				for( int  j = 0; j < 3; j++ )
-				{
-					if( i == 3 && j == 0 )
-						continue;
-					HWND hOkButton = CreateWindow(
-						L"BUTTON", L"", WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_OWNERDRAW, //BS_FLAT, 
-						left + ( btnwidth + hMargin )* j, top + ( btnheight + vMargin ) * i, btnwidth, btnheight, 
-						m_hWnd, (HMENU)(long long)(IDB_KeypadStart + 3*i + j ), m_hInstance, NULL );
-				}
-			}
-
-			ImageKP_BTN[0] = LoadBitmap( m_hInstance, MAKEINTRESOURCE(IDB_KP_0) );
-			ImageKP_BTN[1] = LoadBitmap( m_hInstance, MAKEINTRESOURCE(IDB_KP_1) );
-			ImageKP_BTN[2] = LoadBitmap( m_hInstance, MAKEINTRESOURCE(IDB_KP_2) );
-			ImageKP_BTN[3] = LoadBitmap( m_hInstance, MAKEINTRESOURCE(IDB_KP_3) );
-			ImageKP_BTN[4] = LoadBitmap( m_hInstance, MAKEINTRESOURCE(IDB_KP_4) );
-			ImageKP_BTN[5] = LoadBitmap( m_hInstance, MAKEINTRESOURCE(IDB_KP_5) );
-			ImageKP_BTN[6] = LoadBitmap( m_hInstance, MAKEINTRESOURCE(IDB_KP_6) );
-			ImageKP_BTN[7] = LoadBitmap( m_hInstance, MAKEINTRESOURCE(IDB_KP_7) );
-			ImageKP_BTN[8] = LoadBitmap( m_hInstance, MAKEINTRESOURCE(IDB_KP_8) );
-			ImageKP_BTN[9] = LoadBitmap( m_hInstance, MAKEINTRESOURCE(IDB_KP_9) );
-			ImageKP_BTN[10] = LoadBitmap( m_hInstance, MAKEINTRESOURCE(IDB_KP_CE) );
-			ImageKP_BTN[11] = LoadBitmap( m_hInstance, MAKEINTRESOURCE(IDB_KP_BTN) );
-
-			CreateBitapMask( ImageKP_BTN[11], ImageKP_BTN_Mask );
-			//MWLOG(LEV_DEBUG, MOD_DLG, L" dlgWndAskPIN : Virtual pinpad - LoadBitmap");
-		}
 
 		DWORD dwStyle = WS_CHILD | WS_VISIBLE | WS_TABSTOP | WS_BORDER | ES_PASSWORD;
 		if( pinInfo.ulFlags & PIN_FLAG_DIGITS )
@@ -151,10 +107,7 @@ dlgWndAskPIN::dlgWndAskPIN( DlgPinInfo pinInfo, DlgPinUsage PinPusage, std::wstr
 		LONG pinTop=0;
 		LONG pinLeft=clientRect.right/2 - 100 + 120;
 
-		if( m_UseKeypad )
-			pinTop = clientRect.top + 20;
-		else
-			pinTop = clientRect.bottom - 100;
+		pinTop = clientRect.bottom - 100;
 
 		HWND hTextEdit = CreateWindowEx( WS_EX_CLIENTEDGE,
 			L"EDIT", L"", dwStyle, 
@@ -164,7 +117,7 @@ dlgWndAskPIN::dlgWndAskPIN( DlgPinInfo pinInfo, DlgPinUsage PinPusage, std::wstr
 
 		HWND hStaticText = CreateWindow( 
 			L"STATIC", szPIN, WS_CHILD | WS_VISIBLE | SS_LEFT, 
-			pinLeft, pinTop - 125 , 126, 16, 
+			pinLeft, pinTop - 125 , 172, 26, 
 			m_hWnd, (HMENU)IDC_STATIC, m_hInstance, NULL );
 
 		SendMessage( hStaticText, WM_SETFONT, (WPARAM)TextFont, 0 );
@@ -330,7 +283,7 @@ LRESULT dlgWndAskPIN::ProcecEvent
 		case WM_PAINT:
 		{
 			//MWLOG(LEV_DEBUG, MOD_DLG, L" dlgWndAskPIN : WM_PAINT");
-			m_hDC = BeginPaint( m_hWnd, &ps );
+			m_hDC = BeginPaint ( m_hWnd, &ps );
 
 			HDC hdcMem;
 
@@ -340,29 +293,18 @@ LRESULT dlgWndAskPIN::ProcecEvent
 
 			GetClientRect( m_hWnd, &rect );
 			//Size of the background Image
-			MaskBlt( m_hDC, 4, m_KeypadHeight + 8,
-				410, 261,	hdcMem, 0, 0,
+			MaskBlt( m_hDC, 4, 8,
+				410, 261, hdcMem, 0, 0,
 				ImagePIN_Mask, 0, 0, MAKEROP4( SRCCOPY, 0x00AA0029 ) );
 		
 			
 			SelectObject( hdcMem, oldObj );
 			DeleteDC(hdcMem);
 
-			if( m_UseKeypad )
-			{
-				GetClientRect( m_hWnd, &rect );
-				rect.left += 8;
-				rect.right -= 8;
-				rect.top += 8;
-				rect.bottom = m_KeypadHeight;
-
-				DrawEdge( m_hDC, &rect, EDGE_RAISED, BF_RECT );
-			}
-
 			//Change top header dimensions
 			GetClientRect( m_hWnd, &rect );
 			rect.left += IMG_SIZE + 100;
-			rect.top = m_KeypadHeight + 60;
+			rect.top = 60;
 			rect.right -= 20;
 			rect.bottom = rect.bottom - 60;
 			SetBkColor( m_hDC, GetSysColor( COLOR_3DFACE ) );

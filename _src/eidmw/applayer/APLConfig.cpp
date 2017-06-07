@@ -50,7 +50,7 @@
 						(
 							IN HINTERNET hInternet
 						);
-				
+
 	typedef BOOL (WINAPI *FCTDEF_WinHttpDetectAutoProxyConfigUrl)
 						(
 							__in  DWORD     dwAutoDetectFlags,
@@ -62,17 +62,8 @@
 							IN  HINTERNET                   hSession,
 							IN  LPCWSTR                     lpcwszUrl,
 							IN  WINHTTP_AUTOPROXY_OPTIONS * pAutoProxyOptions,
-							OUT WINHTTP_PROXY_INFO *        pProxyInfo  
+							OUT WINHTTP_PROXY_INFO *        pProxyInfo
 						);
-
-	//#include "pacparser.h"
-	typedef char *( *FCTDEF_pacparser_just_find_proxy )
-						(
-							const char *pacfile,
-							const char *url,
-							const char *host
-                        );
-
 #endif
 
 #ifdef __APPLE__
@@ -316,7 +307,7 @@ void APL_Config::getSpecialValue()
 			else
 			{
 				//If there are the default values, we check if there is special value
-				if(host.compare(CConfig::EIDMW_CONFIG_PARAM_PROXY_HOST.csDefault)==0 
+				if(host.compare(CConfig::EIDMW_CONFIG_PARAM_PROXY_HOST.csDefault)==0
 					&& m_lvalue==m_ldefvalue)
 					getProxySystemWide(L"", m_ldefvalue, L"", NULL, &m_lvalue, NULL);
 			}
@@ -343,7 +334,7 @@ void APL_Config::getSpecialValue()
 			else
 			{
 				//If there are the default values, we check if there is special value
-				if(m_strwvalue.compare(m_strdefvalue)==0 
+				if(m_strwvalue.compare(m_strdefvalue)==0
 					&& port==CConfig::EIDMW_CONFIG_PARAM_PROXY_PORT.lDefault)
 					getProxySystemWide(m_strdefvalue.c_str(), 0, L"", &m_strwvalue, NULL, NULL);
 			}
@@ -392,32 +383,64 @@ void getProxySystemWide(const wchar_t *host_default, long port_default, const wc
 	if(!hLibrary)
 		return;
 
- 	FCTDEF_WinHttpDetectAutoProxyConfigUrl			WinHttpDetectAutoProxyConfigUrl			= (FCTDEF_WinHttpDetectAutoProxyConfigUrl)			GetProcAddress(hLibrary, "WinHttpDetectAutoProxyConfigUrl"); 
-	FCTDEF_WinHttpGetIEProxyConfigForCurrentUser	WinHttpGetIEProxyConfigForCurrentUser	= (FCTDEF_WinHttpGetIEProxyConfigForCurrentUser)	GetProcAddress(hLibrary, "WinHttpGetIEProxyConfigForCurrentUser"); 
-    
+	MWLOG(LEV_DEBUG, MOD_APL, "getProxySystemWide() was called for %s", pac != NULL ? "pacfile" : "host/port");
+
+ 	FCTDEF_WinHttpDetectAutoProxyConfigUrl			WinHttpDetectAutoProxyConfigUrl			= (FCTDEF_WinHttpDetectAutoProxyConfigUrl)			GetProcAddress(hLibrary, "WinHttpDetectAutoProxyConfigUrl");
+	FCTDEF_WinHttpGetIEProxyConfigForCurrentUser	WinHttpGetIEProxyConfigForCurrentUser	= (FCTDEF_WinHttpGetIEProxyConfigForCurrentUser)	GetProcAddress(hLibrary, "WinHttpGetIEProxyConfigForCurrentUser");
+
 	WINHTTP_CURRENT_USER_IE_PROXY_CONFIG proxyConfig;
 
 	// If the function address is valid, call the function.
 
-	if (NULL != WinHttpGetIEProxyConfigForCurrentUser) 
+	if (NULL != WinHttpGetIEProxyConfigForCurrentUser)
 	{
 		if(WinHttpGetIEProxyConfigForCurrentUser(&proxyConfig))
 		{
 			LPWSTR lpszPacUrl=NULL;
 			LPWSTR lpszAutoDetectUrl=NULL;
 
-			//If autodetect is checked, we try to get the pacfile with WinHttpDetectAutoProxyConfigUrl
-			if (proxyConfig.fAutoDetect)
+
+			if (proxyConfig.lpszAutoConfigUrl != NULL)
 			{
-				if(WinHttpDetectAutoProxyConfigUrl(WINHTTP_AUTO_DETECT_TYPE_DHCP | WINHTTP_AUTO_DETECT_TYPE_DNS_A, &lpszAutoDetectUrl))
-				{
-					if (lpszAutoDetectUrl != NULL)
-						lpszPacUrl=lpszAutoDetectUrl;
-				}
+				MWLOG(LEV_DEBUG, MOD_APL, "Getting PAC URL (manual configuration)");
+				lpszPacUrl = proxyConfig.lpszAutoConfigUrl;
 			}
-			else if (proxyConfig.lpszAutoConfigUrl != NULL)
+			else if (proxyConfig.fAutoDetect)
 			{
-				lpszPacUrl=proxyConfig.lpszAutoConfigUrl;
+				MWLOG(LEV_DEBUG, MOD_APL, "Getting PAC URL from WinHttpDetectAutoProxyConfigUrl()");
+				//If autodetect is checked, we try to get the pacfile with WinHttpDetectAutoProxyConfigUrl
+				if(WinHttpDetectAutoProxyConfigUrl(WINHTTP_AUTO_DETECT_TYPE_DHCP, &lpszAutoDetectUrl))
+				{
+					
+					if (lpszAutoDetectUrl != NULL)
+					{
+						lpszPacUrl = lpszAutoDetectUrl;
+						MWLOG(LEV_DEBUG, MOD_APL, L"PAC URL obtained via DHCP: %s", lpszAutoDetectUrl);
+					}
+				}
+				else
+				{
+					unsigned long WinHttpErr = GetLastError();
+
+					MWLOG(LEV_DEBUG, MOD_APL, "Failed to retrieve proxy PAC URL (DHCP). WinHttpDetectAutoProxyConfigUrl Error=%d", WinHttpErr);
+				}
+				lpszAutoDetectUrl = NULL;
+
+				if (WinHttpDetectAutoProxyConfigUrl(WINHTTP_AUTO_DETECT_TYPE_DNS_A, &lpszAutoDetectUrl))
+				{
+
+					if (lpszAutoDetectUrl != NULL)
+					{
+						lpszPacUrl = lpszAutoDetectUrl;
+						MWLOG(LEV_DEBUG, MOD_APL, L"PAC URL obtained via DNS: %s", lpszAutoDetectUrl);
+					}
+				}
+				else
+				{
+					unsigned long WinHttpErr = GetLastError();
+
+					MWLOG(LEV_DEBUG, MOD_APL, "Failed to retrieve proxy PAC URL (DNS). WinHttpDetectAutoProxyConfigUrl Error=%d", WinHttpErr);
+				}
 			}
 
 			//If there is a pac file, host and port keep their default value
@@ -451,15 +474,15 @@ void getProxySystemWide(const wchar_t *host_default, long port_default, const wc
     long                portLong;
 
     // Get the dictionary.
-    
+
     proxyDict = SCDynamicStoreCopyProxies(NULL);
     result = (proxyDict != NULL);
 
-    // Get the proxy host.  DNS names must be in ASCII.  If you 
+    // Get the proxy host.  DNS names must be in ASCII.  If you
     // put a non-ASCII character  in the "Secure Web Proxy"
     // field in the Network preferences panel, the CFStringGetCString
     // function will fail and this function will return false.
-   
+
     if (result) {
         hostStr = (CFStringRef) CFDictionaryGetValue(proxyDict,
                     kCFStreamPropertyHTTPProxyHost);
@@ -471,9 +494,9 @@ void getProxySystemWide(const wchar_t *host_default, long port_default, const wc
         result = CFStringGetCString(hostStr, hostChar,
             (CFIndex) 255, kCFStringEncodingASCII);
     }
-    
+
     // Get the proxy port.
-   
+
     if (result) {
         portNum = (CFNumberRef) CFDictionaryGetValue(proxyDict,
                 kCFStreamPropertyHTTPProxyPort);
@@ -486,7 +509,7 @@ void getProxySystemWide(const wchar_t *host_default, long port_default, const wc
     }
 
     // Clean up.
-    
+
     if (proxyDict != NULL) {
         CFRelease(proxyDict);
     }
@@ -506,35 +529,34 @@ bool GetProxyFromPac(const char *csPacFile,const char *csUrl, std::string *proxy
 	proxy_port->clear();
 
 #ifdef WIN32
+	MWLOG(LEV_DEBUG, MOD_APL, "GetProxyFromPac() was called for URL: %s, PAC URL: %s", csUrl, csPacFile);
 	HMODULE hLibraryWinHttp=LoadLibrary(L"winhttp.dll");
 	if(!hLibraryWinHttp)
 		return bReturn;
 
- 	FCTDEF_WinHttpOpen								WinHttpOpen								= (FCTDEF_WinHttpOpen)								GetProcAddress(hLibraryWinHttp, "WinHttpOpen"); 
- 	FCTDEF_WinHttpCloseHandle						WinHttpCloseHandle						= (FCTDEF_WinHttpCloseHandle)						GetProcAddress(hLibraryWinHttp, "WinHttpCloseHandle"); 
- 	FCTDEF_WinHttpGetProxyForUrl					WinHttpGetProxyForUrl					= (FCTDEF_WinHttpGetProxyForUrl)					GetProcAddress(hLibraryWinHttp, "WinHttpGetProxyForUrl"); 
+ 	FCTDEF_WinHttpOpen								WinHttpOpen								= (FCTDEF_WinHttpOpen)								GetProcAddress(hLibraryWinHttp, "WinHttpOpen");
+ 	FCTDEF_WinHttpCloseHandle						WinHttpCloseHandle						= (FCTDEF_WinHttpCloseHandle)						GetProcAddress(hLibraryWinHttp, "WinHttpCloseHandle");
+ 	FCTDEF_WinHttpGetProxyForUrl					WinHttpGetProxyForUrl					= (FCTDEF_WinHttpGetProxyForUrl)					GetProcAddress(hLibraryWinHttp, "WinHttpGetProxyForUrl");
 
 	std::wstring wsPacFile = utilStringWiden(csPacFile);
 
 	HINTERNET WinHttpSession = WinHttpOpen(L"PTEID MiddleWare",
-											WINHTTP_ACCESS_TYPE_NO_PROXY, 
-											WINHTTP_NO_PROXY_NAME, 
-											WINHTTP_NO_PROXY_BYPASS, 
+											WINHTTP_ACCESS_TYPE_NO_PROXY,
+											WINHTTP_NO_PROXY_NAME,
+											WINHTTP_NO_PROXY_BYPASS,
 											0);
-     
+
 	 //csPacFile must contain http or https uri (like L"http://127.0.0.1/proxy.pac")
-	 //		WinHttpGetProxyForUrl fails with error ERROR_WINHTTP_UNRECOGNIZED_SCHEME if 
-	 //         csPacFile look like L"file://c:/proxy.pac"
 
      WINHTTP_AUTOPROXY_OPTIONS  ProxyOptions;
      ProxyOptions.dwFlags					= WINHTTP_AUTOPROXY_CONFIG_URL;
      ProxyOptions.dwAutoDetectFlags			= 0;
 	 ProxyOptions.lpszAutoConfigUrl			= wsPacFile.c_str();
-	 ProxyOptions.fAutoLogonIfChallenged	= FALSE;		
+	 ProxyOptions.fAutoLogonIfChallenged	= FALSE;
 	 ProxyOptions.dwReserved				= 0;
 	 ProxyOptions.lpvReserved				= NULL;
 
-     WINHTTP_PROXY_INFO ProxyInfo; 
+     WINHTTP_PROXY_INFO ProxyInfo;
 	 memset(&ProxyInfo,0,sizeof(WINHTTP_PROXY_INFO));
 
 	 std::wstring wsUrl = utilStringWiden(csUrl);
@@ -548,48 +570,25 @@ bool GetProxyFromPac(const char *csPacFile,const char *csUrl, std::string *proxy
 	 }
 	 else
 	 {
-		unsigned long WinHttpErr = GetLastError();
+        unsigned long WinHttpErr = GetLastError();
 
-		HMODULE hLibraryPacParser=LoadLibrary(L"pacparser.dll");
+        MWLOG(LEV_ERROR, MOD_APL
+                , "Failed to retrieve proxy info from pac file (%s). WinHttpGetProxyForUrl Error=%d"
+                , csPacFile, WinHttpErr );
 
-		//If the pac parser is available and the pacfile protocol is file, then we try to parse it ourself
-		if(hLibraryPacParser && strncmp(csPacFile,"file://", 7)==0)
-		{
- 			FCTDEF_pacparser_just_find_proxy			pacparser_just_find_proxy				= (FCTDEF_pacparser_just_find_proxy)				GetProcAddress(hLibraryPacParser, "pacparser_just_find_proxy"); 
-			
-			std::string sLocalFile = &csPacFile[7];
+        if (ProxyInfo.lpszProxy != NULL){
+            std::string host = "";
+            std::string port = "";
 
-			//The host parameter is the host part of the url (and not the IP of the callers)
-			//We can prove it by making a pac file return the host parameter.
-			//Here is a test PAC file sample :
-			//
-			//function FindProxyForURL(url, host)
-			//{
-			//	var out="PROXY ";
-			//	out=out.concat(host);
+            getHostAndPortFromSettings(ProxyInfo.lpszProxy, &host, &port);
 
-			//	return out.concat(":4485");
-			//}
-
-			std::string sHost = getHostFromUrl(csUrl);
-
-			char *settings=pacparser_just_find_proxy(sLocalFile.c_str(),csUrl,sHost.c_str());
-			if(settings) 
-			{
-				getHostAndPortFromSettings(settings,proxy_host,proxy_port);
-
-				bReturn=true;
-
-				//free(settings);
-			}
-		}
-		else
-		{
-			MWLOG(LEV_ERROR, MOD_APL, L"Fails to retrieve proxy info from pac file (%ls). WinHttpGetProxyForUrl Error=%d",wsPacFile.c_str(),WinHttpErr);
-		}
-
-		if(hLibraryPacParser)	FreeLibrary(hLibraryPacParser);
-	 }
+            MWLOG(LEV_ERROR, MOD_APL
+                    , "Failed to retrieve proxy info: URL: %s, host: %s, port: %s"
+                    , csUrl
+                    , host.c_str()
+                    , port.c_str() );
+        }
+    }
 
      WinHttpCloseHandle(WinHttpSession);
 

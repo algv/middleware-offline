@@ -1,9 +1,10 @@
 ﻿using System;
 using System.Text;
+using pt.portugal.eid;
 
-namespace pt.portugal.eid
+namespace eidpt
 {
-    public class PTEID_ID {
+    public class PteidId {
     
     private short Version;
     private String DeliveryEntity;
@@ -343,7 +344,7 @@ namespace pt.portugal.eid
         }
     }
 
-    internal PTEID_ID(PTEID_EId id)
+    internal PteidId(PTEID_EId id)
     {
         try {
             version = 0;

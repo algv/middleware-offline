@@ -31,7 +31,9 @@
 #include "PhotoPteid.h"
 #include "ByteArray.h"
 #include "CardPteid.h"
+#include "ScapSSLConnection.h"
 #include "PDFSignature.h"
+#include "SecurityContext.h"
 #include "dialogs.h"
 #include "Util.h"
 #include <sstream>
@@ -47,6 +49,7 @@
 #define INCLUDE_OBJECT_RESPONSE			8
 #define INCLUDE_OBJECT_CUSTOMDOC		9
 #define INCLUDE_OBJECT_ROOT_CA_PK   	10
+#define INCLUDE_OBJECT_ADDRESS   	    11
 
 #define INCLUDE_OBJECT_RAWDATA_ID			21
 #define INCLUDE_OBJECT_RAWDATA_ID_SIG		22
@@ -83,7 +86,7 @@ PTEID_CardType PTEID_Card::getType()
 
 	APL_Card *pcard=static_cast<APL_Card *>(m_impl);
 	out = ConvertCardType(pcard->getType());
-	
+
 	END_TRY_CATCH
 
 	return out;
@@ -112,7 +115,7 @@ PTEID_ByteArray PTEID_Card::Sign(const PTEID_ByteArray& data, bool signatureKey)
 
 	BEGIN_TRY_CATCH
 
-		APL_Card *pcard=static_cast<APL_Card *>(m_impl);
+	APL_Card *pcard=static_cast<APL_Card *>(m_impl);
 
 	CByteArray cData(data.GetBytes(),data.Size());
 	CByteArray result=pcard->Sign(cData, signatureKey);
@@ -120,7 +123,24 @@ PTEID_ByteArray PTEID_Card::Sign(const PTEID_ByteArray& data, bool signatureKey)
 
 	END_TRY_CATCH
 
-		return out;
+	return out;
+}
+
+PTEID_ByteArray PTEID_Card::SignSHA256(const PTEID_ByteArray& data, bool signatureKey)
+{
+	PTEID_ByteArray out;
+
+	BEGIN_TRY_CATCH
+
+	APL_Card *pcard=static_cast<APL_Card *>(m_impl);
+
+	CByteArray cData(data.GetBytes(),data.Size());
+	CByteArray result = pcard->Sign(cData, signatureKey, true);
+	out.Append(result.GetBytes(),result.Size());
+
+	END_TRY_CATCH
+
+	return out;
 }
 
 PTEID_ByteArray PTEID_Card::readFile(const char *fileID, unsigned long  ulOffset, unsigned long  ulMaxLength)
@@ -151,7 +171,7 @@ bool PTEID_Card::writeFile(const char *fileID,const PTEID_ByteArray& oData,unsig
 
 	CByteArray bytearray(oData.GetBytes(),oData.Size());
 	out = pcard->writeFile(fileID,bytearray,ulOffset);
-	
+
 	END_TRY_CATCH
 	return out;
 }
@@ -187,7 +207,7 @@ void PTEID_SmartCard::selectApplication(const PTEID_ByteArray &applicationId)
 	CByteArray bytearray(applicationId.GetBytes(),applicationId.Size());
 
 	pcard->selectApplication(bytearray);
-	
+
 	END_TRY_CATCH
 }
 
@@ -209,7 +229,7 @@ PTEID_ByteArray PTEID_SmartCard::sendAPDU(const PTEID_ByteArray& cmd,PTEID_Pin *
 	CByteArray result=pcard->sendAPDU(apdu,pimplPin,csPinCode);
 
 	out.Append(result.GetBytes(),result.Size());
-	
+
 	END_TRY_CATCH
 
 	return out;
@@ -217,7 +237,7 @@ PTEID_ByteArray PTEID_SmartCard::sendAPDU(const PTEID_ByteArray& cmd,PTEID_Pin *
 
 long PTEID_SmartCard::readFile(const char *fileID, PTEID_ByteArray &in,PTEID_Pin *pin,const char *csPinCode)
 {
-	long out = 0;	
+	long out = 0;
 
 	BEGIN_TRY_CATCH
 
@@ -232,13 +252,14 @@ long PTEID_SmartCard::readFile(const char *fileID, PTEID_ByteArray &in,PTEID_Pin
 
 	out=pcard->readFile(fileID,bytearray,pimplPin,csPinCode);
 	in=bytearray;
-	
+
 	END_TRY_CATCH
 
 	return out;
 }
 
 
+// is_landscape is unused parameter, we keep it here to ensure backwards-compatibility
 int PTEID_EIDCard::SignPDF(PTEID_PDFSignature &sig_handler, int page, int page_sector, bool is_landscape, const char *location, const char *reason,
 			const char *outfile_path)
 {
@@ -253,7 +274,7 @@ int PTEID_EIDCard::SignPDF(PTEID_PDFSignature &sig_handler, int page, int page_s
 	pdf_sig = sig_handler.mp_signature;
 
 	if (page_sector != 0 && page != 0)
-		pdf_sig->setVisible(page, page_sector, is_landscape);
+		pdf_sig->setVisible(page, page_sector);
 
 	rc = pcard->SignPDF(pdf_sig, location, reason, outfile_path);
 
@@ -262,25 +283,56 @@ int PTEID_EIDCard::SignPDF(PTEID_PDFSignature &sig_handler, int page, int page_s
 	return rc;
 }
 
+
 int PTEID_EIDCard::SignPDF(PTEID_PDFSignature &sig_handler, int page, double coord_x, double coord_y, const char *location, const char *reason,
 			const char *outfile_path)
 
 {
 	int rc = 0;
-	
+
 	BEGIN_TRY_CATCH
 
 	APL_Card *pcard = static_cast<APL_Card *>(m_impl);
 
-	PDFSignature *pdf_sig = sig_handler.mp_signature; 
+	PDFSignature *pdf_sig = sig_handler.mp_signature;
 	pdf_sig->setVisibleCoordinates(page, coord_x, coord_y);
 
 	rc = pcard->SignPDF(pdf_sig, location, reason, outfile_path);
-	
+
 	END_TRY_CATCH
 
 	return rc;
 
+}
+
+int PTEID_EIDCard::SignClose( PTEID_PDFSignature &sig_handler, PTEID_ByteArray signature ){
+    int rc = 0;
+
+    BEGIN_TRY_CATCH
+        CByteArray cb( (unsigned char*)signature.GetBytes(), signature.Size() );
+
+        APL_Card *pcard = static_cast<APL_Card *>(m_impl);
+
+        PDFSignature *pdf_sig = sig_handler.mp_signature;
+        rc = pcard->SignClose( pdf_sig, cb );
+    END_TRY_CATCH
+
+    return rc;
+}/* PTEID_EIDCard::SignClose() */
+
+PTEID_ScapConnection::PTEID_ScapConnection(char *host, char *port)
+{
+	m_connection = new ScapSSLConnection(host, port);
+}
+
+PTEID_ScapConnection::~PTEID_ScapConnection()
+{
+	delete m_connection;
+}
+
+char * PTEID_ScapConnection::postSoapRequest(char *endpoint, char *soapAction, char *soapBody)
+{
+	return m_connection->postSoapRequest(endpoint, soapAction, soapBody);
 }
 
 PTEID_PDFSignature::PTEID_PDFSignature()
@@ -296,6 +348,11 @@ PTEID_PDFSignature::PTEID_PDFSignature(const char *input_path)
 PTEID_PDFSignature::~PTEID_PDFSignature()
 {
 	delete mp_signature;
+}
+
+PDFSignature *PTEID_PDFSignature::getPdfSignature(){
+
+    return mp_signature;
 }
 
 void PTEID_PDFSignature::addToBatchSigning(char *input_path)
@@ -348,9 +405,9 @@ int PTEID_PDFSignature::getOtherPageCount(const char *input_path)
 	return mp_signature->getOtherPageCount(input_path);
 }
 
-bool PTEID_SmartCard::writeFile(const char *fileID,const PTEID_ByteArray &baOut,PTEID_Pin *pin,const char *csPinCode)
+bool PTEID_SmartCard::writeFile(const char *fileID,const PTEID_ByteArray &baOut,PTEID_Pin *pin,const char *csPinCode, unsigned long ulOffset)
 {
-	bool out = false;	
+	bool out = false;
 
 	BEGIN_TRY_CATCH
 
@@ -363,22 +420,22 @@ bool PTEID_SmartCard::writeFile(const char *fileID,const PTEID_ByteArray &baOut,
 	if(pin)
 		pimplPin=pcard->getPins()->getPinByNumber(pin->getIndex());
 
-	out=pcard->writeFile(fileID,bytearray,pimplPin,csPinCode);
-	
+	out=pcard->writeFile(fileID,bytearray,pimplPin,csPinCode,ulOffset);
+
 	END_TRY_CATCH
 
 	return out;
 }
 
-unsigned long PTEID_SmartCard::pinCount() 
-{ 
+unsigned long PTEID_SmartCard::pinCount()
+{
 	unsigned long out = 0;
 
 	BEGIN_TRY_CATCH
 
 	APL_SmartCard *pcard=static_cast<APL_SmartCard *>(m_impl);
 	out = pcard->pinCount();
-	
+
 	END_TRY_CATCH
 
 	return out;
@@ -423,9 +480,9 @@ unsigned long PTEID_SmartCard::certificateCount()
 
 	APL_SmartCard *pcard=static_cast<APL_SmartCard *>(m_impl);
 	out = pcard->certificateCount();
-	
+
 	END_TRY_CATCH
-	
+
 	return out;
 }
 
@@ -459,89 +516,6 @@ PTEID_Certificates& PTEID_SmartCard::getCertificates()
 	return *out;
 }
 
-const PTEID_ByteArray& PTEID_SmartCard::getChallenge(bool bForceNewInit)
-{
-	PTEID_ByteArray *out = NULL;
-
-	BEGIN_TRY_CATCH
-
-	APL_SmartCard *pcard=static_cast<APL_SmartCard *>(m_impl);
-
-	if(bForceNewInit)
-	{
-		delObject(INCLUDE_OBJECT_CHALLENGE);
-		delObject(INCLUDE_OBJECT_RESPONSE);
-	}
-
-	out = dynamic_cast<PTEID_ByteArray *>(getObject(INCLUDE_OBJECT_CHALLENGE));
-
-	if(!out)
-	{
-		//CAutoMutex autoMutex(m_mutex);
-
-		//praw=dynamic_cast<PTEID_ByteArray *>(getObject(INCLUDE_OBJECT_CHALLENGE));
-		//if(!praw)
-		//{
-			out = new PTEID_ByteArray(m_context,pcard->getChallenge(bForceNewInit));
-			if(out)
-				m_objects[INCLUDE_OBJECT_CHALLENGE]=out;
-			else
-				throw PTEID_ExUnknown();
-		//}
-	}
-	
-	END_TRY_CATCH
-
-	return *out;
-}
-
-const PTEID_ByteArray& PTEID_SmartCard::getChallengeResponse()
-{
-	PTEID_ByteArray *out = NULL;
-	BEGIN_TRY_CATCH
-
-	APL_SmartCard *pcard=static_cast<APL_SmartCard *>(m_impl);
-
-	out = dynamic_cast<PTEID_ByteArray *>(getObject(INCLUDE_OBJECT_RESPONSE));
-
-	if(!out)
-	{
-		//CAutoMutex autoMutex(m_mutex);
-
-		//praw=dynamic_cast<PTEID_ByteArray *>(getObject(INCLUDE_OBJECT_RESPONSE));
-		//if(!praw)
-		//{
-			out = new PTEID_ByteArray(m_context,pcard->getChallengeResponse());
-			if(out)
-				m_objects[INCLUDE_OBJECT_RESPONSE]=out;
-			else
-				throw PTEID_ExUnknown();
-		//}
-	}
-
-	END_TRY_CATCH
-
-	return *out;
-}
-
-bool PTEID_SmartCard::verifyChallengeResponse(const PTEID_ByteArray &challenge, const PTEID_ByteArray &response) const
-{
-	bool out = false;
-
-	BEGIN_TRY_CATCH
-
-	APL_SmartCard *pcard=static_cast<APL_SmartCard *>(m_impl);
-
-	CByteArray baChallenge(challenge.GetBytes(),challenge.Size());
-	CByteArray baResponse(response.GetBytes(),response.Size());
-
-	out = pcard->verifyChallengeResponse(baChallenge,baResponse);
-	
-	END_TRY_CATCH
-
-	return out;
-}
-
 /*****************************************************************************************
 ---------------------------------------- PTEID_EIDCard -----------------------------------------
 *****************************************************************************************/
@@ -552,82 +526,6 @@ PTEID_EIDCard::PTEID_EIDCard(const SDK_Context *context,APL_Card *impl):PTEID_Sm
 
 PTEID_EIDCard::~PTEID_EIDCard()
 {
-}
-
-bool PTEID_EIDCard::isApplicationAllowed()
-{
-	bool out = true;
-
-	try														
-	{
-		out = APL_EIDCard::isApplicationAllowed();
-	}
-	catch(CMWException &e)
-	{									
-		e.GetError();				    
-		throw PTEID_Exception::THROWException(e);	
-	}				
-
-	return out;
-}
-
-bool PTEID_EIDCard::isTestCard()
-{
-	bool out = true;
-
-	BEGIN_TRY_CATCH
-
-	APL_EIDCard *pcard=static_cast<APL_EIDCard *>(m_impl);
-	out = pcard->isTestCard();
-	
-	END_TRY_CATCH
-
-	return out;
-}
-
-bool PTEID_EIDCard::getAllowTestCard()
-{
-	bool out = false;
-
-	BEGIN_TRY_CATCH
-
-	APL_EIDCard *pcard=static_cast<APL_EIDCard *>(m_impl);
-	out =  pcard->getAllowTestCard();
-	
-	END_TRY_CATCH
-
-	return out;
-}
-
-void PTEID_EIDCard::setAllowTestCard(bool allow)
-{
-	BEGIN_TRY_CATCH
-
-	APL_EIDCard *pcard=static_cast<APL_EIDCard *>(m_impl);
-	pcard->setAllowTestCard(allow);
-	
-	END_TRY_CATCH
-}
-
-PTEID_XMLDoc& PTEID_EIDCard::getDocument(PTEID_DocumentType type)
-{
-	switch(type)
-	{
-	case PTEID_DOCTYPE_ID:
-		return getID();
-	case PTEID_DOCTYPE_ADDRESS:
-		return getAddr();
-	case PTEID_DOCTYPE_SOD:
-		return getSod();
-	case PTEID_DOCTYPE_INFO:
-		return getVersionInfo();
-	case PTEID_DOCTYPE_PINS:
-		return getPins();
-	case PTEID_DOCTYPE_CERTIFICATES:
-		return getCertificates();
-	default:
-		throw PTEID_ExDocTypeUnknown();
-	}
 }
 
 PTEID_CCXML_Doc& PTEID_EIDCard::getXmlCCDoc(PTEID_XmlUserRequestedInfo& userRequestedInfo)
@@ -675,7 +573,7 @@ PTEID_EId& PTEID_EIDCard::getID()
 				throw PTEID_ExUnknown();
 		//}
 	}
-	
+
 	END_TRY_CATCH
 
 	return *out;
@@ -689,21 +587,16 @@ PTEID_Address& PTEID_EIDCard::getAddr()
 
 	APL_EIDCard *pcard=static_cast<APL_EIDCard *>(m_impl);
 
-	out=dynamic_cast<PTEID_Address *>(getObject(INCLUDE_OBJECT_DOCEID));
+	out=dynamic_cast<PTEID_Address *>(getObject(INCLUDE_OBJECT_ADDRESS));
 
 	if(!out)
 	{
-		//CAutoMutex autoMutex(m_mutex);
-
-		//pdoc=dynamic_cast<PTEID_EId *>(getObject(INCLUDE_OBJECT_DOCEID));
-		//if(!pdoc)
-		//{
-			out = new PTEID_Address(m_context,&pcard->getAddr());
-			if(out)
-				m_objects[INCLUDE_OBJECT_DOCEID]=out;
-			else
-				throw PTEID_ExUnknown();
-		//}
+		
+		out = new PTEID_Address(m_context,&pcard->getAddr());
+		if(out)
+			m_objects[INCLUDE_OBJECT_ADDRESS]=out;
+		else
+			throw PTEID_ExUnknown();
 	}
 
 	END_TRY_CATCH
@@ -713,33 +606,34 @@ PTEID_Address& PTEID_EIDCard::getAddr()
 
 PTEID_Sod& PTEID_EIDCard::getSod()
 {
-	PTEID_Sod *out = NULL;
+       PTEID_Sod *out = NULL;
 
-	BEGIN_TRY_CATCH
+       BEGIN_TRY_CATCH
 
-	APL_EIDCard *pcard=static_cast<APL_EIDCard *>(m_impl);
+       APL_EIDCard *pcard=static_cast<APL_EIDCard *>(m_impl);
 
-	out = dynamic_cast<PTEID_Sod *>(getObject(INCLUDE_OBJECT_SODID));
+       out = dynamic_cast<PTEID_Sod *>(getObject(INCLUDE_OBJECT_SODID));
 
-	if(!out)
-	{
-		//CAutoMutex autoMutex(m_mutex);
+       if(!out)
+       {
+               //CAutoMutex autoMutex(m_mutex);
 
-		//ppicture=dynamic_cast<PTEID_Picture *>(getObject(INCLUDE_OBJECT_PICTUREEID));
-		//if(!ppicture)
-		//{
-			out = new PTEID_Sod(m_context,&pcard->getSod());
-			if(out)
-				m_objects[INCLUDE_OBJECT_SODID]=out;
-			else
-				throw PTEID_ExUnknown();
-		//}
-	}
-	
-	END_TRY_CATCH
+               //ppicture=dynamic_cast<PTEID_Picture *>(getObject(INCLUDE_OBJECT_PICTUREEID));
+               //if(!ppicture)
+               //{
+                       out = new PTEID_Sod(m_context,&pcard->getSod());
+                       if(out)
+                               m_objects[INCLUDE_OBJECT_SODID]=out;
+                       else
+                               throw PTEID_ExUnknown();
+               //}
+       }
 
-	return *out;
+       END_TRY_CATCH
+
+       return *out;
 }
+
 
 PTEID_CardVersionInfo& PTEID_EIDCard::getVersionInfo()
 {
@@ -765,7 +659,7 @@ PTEID_CardVersionInfo& PTEID_EIDCard::getVersionInfo()
 				throw PTEID_ExUnknown();
 		//}
 	}
-	
+
 	END_TRY_CATCH
 
 	return *out;
@@ -796,307 +690,6 @@ PTEID_Certificate &PTEID_EIDCard::getSignature()
 	return getCertificates().getCert(PTEID_CERTIF_TYPE_SIGNATURE);
 }
 
-const PTEID_ByteArray& PTEID_EIDCard::getRawData(PTEID_RawDataType type)
-{	
-	switch(type)
-	{
-	case PTEID_RAWDATA_ID:
-		return getRawData_Id();
-	case PTEID_RAWDATA_ID_SIG:
-		return getRawData_IdSig();
-	case PTEID_RAWDATA_TRACE:
-		return getRawData_Trace();
-	case PTEID_RAWDATA_ADDR:
-		return getRawData_Addr();
-	case PTEID_RAWDATA_ADDR_SIG:
-		return getRawData_AddrSig();
-	case PTEID_RAWDATA_SOD:
-		return getRawData_Sod();
-	case PTEID_RAWDATA_CARD_INFO:
-		return getRawData_CardInfo();
-	case PTEID_RAWDATA_TOKEN_INFO:
-		return getRawData_TokenInfo();
-	case PTEID_RAWDATA_CHALLENGE:
-		return getRawData_Challenge();
-	case PTEID_RAWDATA_RESPONSE:
-		return getRawData_Response();
-	case PTEID_RAWDATA_PERSO_DATA:
-		return getRawData_PersoData();
-	default:
-		throw PTEID_ExFileTypeUnknown();
-	}
-}
-
-const PTEID_ByteArray& PTEID_EIDCard::getRawData_Id()
-{
-	PTEID_ByteArray *out = NULL;
-
-	BEGIN_TRY_CATCH
-
-	APL_EIDCard *pcard=static_cast<APL_EIDCard *>(m_impl);
-
-	out = dynamic_cast<PTEID_ByteArray *>(getObject(INCLUDE_OBJECT_RAWDATA_ID));
-
-	if(!out)
-	{
-		//CAutoMutex autoMutex(m_mutex);
-
-		//praw=dynamic_cast<PTEID_ByteArray *>(getObject(INCLUDE_OBJECT_RAWDATA_ID));
-		//if(!praw)
-		//{
-			out = new PTEID_ByteArray(m_context,pcard->getRawData_Id());
-			if(out)
-				m_objects[INCLUDE_OBJECT_RAWDATA_ID]=out;
-			else
-				throw PTEID_ExUnknown();
-		//}
-	}
-	
-	END_TRY_CATCH
-
-	return *out;
-}
-
-const PTEID_ByteArray& PTEID_EIDCard::getRawData_IdSig()
-{
-	PTEID_ByteArray *out = NULL;
-
-	BEGIN_TRY_CATCH
-
-	APL_EIDCard *pcard=static_cast<APL_EIDCard *>(m_impl);
-
-	out = dynamic_cast<PTEID_ByteArray *>(getObject(INCLUDE_OBJECT_RAWDATA_ID_SIG));
-
-	if(!out)
-	{
-		//CAutoMutex autoMutex(m_mutex);
-
-		//praw=dynamic_cast<PTEID_ByteArray *>(getObject(INCLUDE_OBJECT_RAWDATA_ID_SIG));
-		//if(!praw)
-		//{
-			out = new PTEID_ByteArray(m_context,pcard->getRawData_IdSig());
-			if(out)
-				m_objects[INCLUDE_OBJECT_RAWDATA_ID_SIG]=out;
-			else
-				throw PTEID_ExUnknown();
-		//}
-	}
-	
-	END_TRY_CATCH
-
-	return *out;
-}
-
-const PTEID_ByteArray& PTEID_EIDCard::getRawData_Trace()
-{
-	PTEID_ByteArray *out = NULL;
-
-	BEGIN_TRY_CATCH
-
-	APL_EIDCard *pcard=static_cast<APL_EIDCard *>(m_impl);
-
-	out = dynamic_cast<PTEID_ByteArray *>(getObject(INCLUDE_OBJECT_RAWDATA_TRACE));
-
-	if(!out)
-	{
-		//CAutoMutex autoMutex(m_mutex);
-
-		//praw=dynamic_cast<PTEID_ByteArray *>(getObject(INCLUDE_OBJECT_RAWDATA_ADDR));
-		//if(!praw)
-		//{
-			out = new PTEID_ByteArray(m_context,pcard->getRawData_Trace());
-			if(out)
-				m_objects[INCLUDE_OBJECT_RAWDATA_TRACE]=out;
-			else
-				throw PTEID_ExUnknown();
-		//}
-	}
-
-	END_TRY_CATCH
-
-	return *out;
-}
-
-const PTEID_ByteArray& PTEID_EIDCard::getRawData_Addr()
-{
-	PTEID_ByteArray *out = NULL;
-
-	BEGIN_TRY_CATCH
-
-	APL_EIDCard *pcard=static_cast<APL_EIDCard *>(m_impl);
-
-	out = dynamic_cast<PTEID_ByteArray *>(getObject(INCLUDE_OBJECT_RAWDATA_ADDR));
-
-	if(!out)
-	{
-		//CAutoMutex autoMutex(m_mutex);
-
-		//praw=dynamic_cast<PTEID_ByteArray *>(getObject(INCLUDE_OBJECT_RAWDATA_ADDR));
-		//if(!praw)
-		//{
-			out = new PTEID_ByteArray(m_context,pcard->getRawData_Addr());
-			if(out)
-				m_objects[INCLUDE_OBJECT_RAWDATA_ADDR]=out;
-			else
-				throw PTEID_ExUnknown();
-		//}
-	}
-	
-	END_TRY_CATCH
-
-	return *out;
-}
-
-const PTEID_ByteArray& PTEID_EIDCard::getRawData_AddrSig()
-{
-	PTEID_ByteArray *out = NULL;
-
-	BEGIN_TRY_CATCH
-
-	APL_EIDCard *pcard=static_cast<APL_EIDCard *>(m_impl);
-
-	out = dynamic_cast<PTEID_ByteArray *>(getObject(INCLUDE_OBJECT_RAWDATA_ADDR_SIG));
-
-	if(!out)
-	{
-		//CAutoMutex autoMutex(m_mutex);
-
-		//praw=dynamic_cast<PTEID_ByteArray *>(getObject(INCLUDE_OBJECT_RAWDATA_ADDR_SIG));
-		//if(!praw)
-		//{
-			out = new PTEID_ByteArray(m_context,pcard->getRawData_AddrSig());
-			if(out)
-				m_objects[INCLUDE_OBJECT_RAWDATA_ADDR_SIG]=out;
-			else
-				throw PTEID_ExUnknown();
-		//}
-	}
-	
-	END_TRY_CATCH
-
-	return *out;
-}
-
-const PTEID_ByteArray& PTEID_EIDCard::getRawData_Sod()
-{
-	PTEID_ByteArray *out = NULL;
-
-	BEGIN_TRY_CATCH
-
-	APL_EIDCard *pcard=static_cast<APL_EIDCard *>(m_impl);
-
-	out = dynamic_cast<PTEID_ByteArray *>(getObject(INCLUDE_OBJECT_RAWDATA_SOD));
-
-	if(!out)
-	{
-		//CAutoMutex autoMutex(m_mutex);
-
-		//praw=dynamic_cast<PTEID_ByteArray *>(getObject(INCLUDE_OBJECT_RAWDATA_SOD));
-		//if(!praw)
-		//{
-			out = new PTEID_ByteArray(m_context,pcard->getRawData_Sod());
-			if(out)
-				m_objects[INCLUDE_OBJECT_RAWDATA_SOD]=out;
-			else
-				throw PTEID_ExUnknown();
-		//}
-	}
-	
-	END_TRY_CATCH
-
-	return *out;
-}
-
-const PTEID_ByteArray& PTEID_EIDCard::getRawData_CardInfo()
-{
-	PTEID_ByteArray *out = NULL;
-
-	BEGIN_TRY_CATCH
-
-	APL_EIDCard *pcard=static_cast<APL_EIDCard *>(m_impl);
-
-	out = dynamic_cast<PTEID_ByteArray *>(getObject(INCLUDE_OBJECT_RAWDATA_CARD_INFO));
-
-	if(!out)
-	{
-		//CAutoMutex autoMutex(m_mutex);
-
-		//praw=dynamic_cast<PTEID_ByteArray *>(getObject(INCLUDE_OBJECT_RAWDATA_CARD_INFO));
-		//if(!praw)
-		//{
-			out = new PTEID_ByteArray(m_context,pcard->getRawData_CardInfo());
-			if(out)
-				m_objects[INCLUDE_OBJECT_RAWDATA_CARD_INFO]=out;
-			else
-				throw PTEID_ExUnknown();
-		//}
-	}
-	
-	END_TRY_CATCH
-
-	return *out;
-}
-
-const PTEID_ByteArray& PTEID_EIDCard::getRawData_TokenInfo()
-{
-	PTEID_ByteArray *out = NULL;
-
-	BEGIN_TRY_CATCH
-
-	APL_EIDCard *pcard=static_cast<APL_EIDCard *>(m_impl);
-
-	out = dynamic_cast<PTEID_ByteArray *>(getObject(INCLUDE_OBJECT_RAWDATA_TOKEN_INFO));
-
-	if(!out)
-	{
-		//CAutoMutex autoMutex(m_mutex);
-
-		//praw=dynamic_cast<PTEID_ByteArray *>(getObject(INCLUDE_OBJECT_RAWDATA_TOKEN_INFO));
-		//if(!praw)
-		//{
-			out = new PTEID_ByteArray(m_context,pcard->getRawData_TokenInfo());
-			if(out)
-				m_objects[INCLUDE_OBJECT_RAWDATA_TOKEN_INFO]=out;
-			else
-				throw PTEID_ExUnknown();
-		//}
-	}
-	
-	END_TRY_CATCH
-
-	return *out;
-}
-
-const PTEID_ByteArray& PTEID_EIDCard::getRawData_PersoData()
-{
-	PTEID_ByteArray *out = NULL;
-
-	BEGIN_TRY_CATCH
-
-	APL_EIDCard *pcard=static_cast<APL_EIDCard *>(m_impl);
-
-	out = dynamic_cast<PTEID_ByteArray *>(getObject(INCLUDE_OBJECT_RAWDATA_PERSO_DATA));
-
-	if(!out)
-	{
-		//CAutoMutex autoMutex(m_mutex);
-
-		//praw=dynamic_cast<PTEID_ByteArray *>(getObject(INCLUDE_OBJECT_RAWDATA_PERSO_DATA));
-		//if(!praw)
-		//{
-			out = new PTEID_ByteArray(m_context,pcard->getRawData_PersoData());
-			if(out)
-				m_objects[INCLUDE_OBJECT_RAWDATA_PERSO_DATA]=out;
-			else
-				throw PTEID_ExUnknown();
-		//}
-	}
-
-	END_TRY_CATCH
-
-	return *out;
-}
-
 PTEID_PublicKey& PTEID_EIDCard::getRootCAPubKey()
 {
 	PTEID_PublicKey *out = NULL;
@@ -1122,7 +715,8 @@ PTEID_PublicKey& PTEID_EIDCard::getRootCAPubKey()
 	return *out;
 }
 
-bool PTEID_EIDCard::isActive(){
+bool PTEID_EIDCard::isActive()
+{
 	bool out = false;
 
 	BEGIN_TRY_CATCH
@@ -1136,6 +730,7 @@ bool PTEID_EIDCard::isActive(){
 	return out;
 }
 
+/*
 bool PTEID_EIDCard::ChangeCapPin(const char *new_pin){
 	bool out = false;
 
@@ -1144,25 +739,23 @@ bool PTEID_EIDCard::ChangeCapPin(const char *new_pin){
 	APL_EIDCard *pcard = static_cast<APL_EIDCard *>(m_impl);
 
 	out = pcard->ChangeCapPin(new_pin);
-	
+
 	END_TRY_CATCH
 
 	return out;
 }
+*/
 
-bool PTEID_EIDCard::ChangeAddress(char *secretCode, char *process, t_address_change_callback callback, void *callback_data)
+void PTEID_EIDCard::ChangeAddress(char *secretCode, char *process, t_address_change_callback callback, void *callback_data)
 {
-	bool out = false;
 
 	BEGIN_TRY_CATCH
 
 	APL_EIDCard *pcard = static_cast<APL_EIDCard *>(m_impl);
 
-	out = pcard->ChangeAddress(secretCode, process, callback, callback_data);
-	
-	END_TRY_CATCH
+	pcard->ChangeAddress(secretCode, process, callback, callback_data);
 
-	return out;
+	END_TRY_CATCH
 }
 
 bool testPIN(const char* pin){
@@ -1174,58 +767,8 @@ bool testPIN(const char* pin){
 	return true;
 }
 
-bool PTEID_EIDCard::ChangeCapPinCompLayer(const char *old_pin, const char *new_pin, unsigned long &ulRemaining){
-	bool out = false;
-	bool validPins = false;
-	std::string *oldPin;
-	std::string *newPin;
-	PTEID_Pin &pin = getPins().getPinByPinRef(PTEID_Pin::AUTH_PIN);
 
-	if (old_pin && strlen(old_pin) > 0)
-		validPins = testPIN(old_pin);
-	if (new_pin && strlen(new_pin) > 0)
-		validPins &= testPIN(new_pin);
-
-	if (!validPins){
-		wchar_t wsPin1[9]; // 8 + \0
-		wchar_t wsPin2[9]; // 8 + \0
-		DlgPinOperation pinOperation = DLG_PIN_OP_CHANGE;
-		DlgPinUsage usage = DLG_PIN_AUTH;
-		DlgPinInfo pinInfo = {4, 8, PIN_FLAG_DIGITS};
-		DlgRet ret;
-		std::wstring wideLabel(utilStringWiden(pin.getLabel()));
-
-		ret = DlgAskPins(DLG_PIN_OP_CHANGE,
-				DLG_PIN_AUTH, wideLabel.c_str(),
-				pinInfo, wsPin1,8+1,
-				pinInfo, wsPin2,8+1);
-
-		if (ret == DLG_OK){
-			oldPin = new string (utilStringNarrow(wsPin1));
-			newPin = new string (utilStringNarrow(wsPin2));
-		} else
-			return false;
-	} else {
- 		oldPin = new string(old_pin);
-		newPin = new string(new_pin);
-	}
-
-	if (ChangeCapPin(newPin->c_str())){
-		if (!pin.changePin(oldPin->c_str(),newPin->c_str(),ulRemaining, pin.getLabel(),false)){
-			ChangeCapPin(oldPin->c_str());
-			out = false;
-		} else {
-			out = true;
-		}
-	}
-	delete oldPin;
-	delete newPin;
-
-	return out;
-}
-
-
-void PTEID_EIDCard::doSODCheck(bool check){
+void PTEID_EIDCard::doSODCheck(bool check) {
 
 	BEGIN_TRY_CATCH
 
@@ -1235,14 +778,14 @@ void PTEID_EIDCard::doSODCheck(bool check){
 	END_TRY_CATCH
 }
 
-bool PTEID_EIDCard::Activate(const char *pinCode, PTEID_ByteArray &BCDDate){
+bool PTEID_EIDCard::Activate(const char *pinCode, PTEID_ByteArray &BCDDate, bool blockActivationPIN){
 	bool out = false;
 	CByteArray cBCDDate = CByteArray(BCDDate.GetBytes(),BCDDate.Size());
 
 	BEGIN_TRY_CATCH
 
 	APL_EIDCard *pcard=static_cast<APL_EIDCard *>(m_impl);
-	out =  pcard->Activate(pinCode,cBCDDate);
+	out =  pcard->Activate(pinCode, cBCDDate, blockActivationPIN);
 
 	END_TRY_CATCH
 
@@ -1260,7 +803,7 @@ bool PTEID_EIDCard::writePersonalNotes(const PTEID_ByteArray &out,PTEID_Pin *pin
 	return persoNotesDirty;
 }
 
-const char *PTEID_EIDCard::readPersonalNotes(){
+const char *PTEID_EIDCard::readPersonalNotes() {
 	char *out = NULL;
 	BEGIN_TRY_CATCH
 
@@ -1274,66 +817,6 @@ const char *PTEID_EIDCard::readPersonalNotes(){
 	END_TRY_CATCH
 
 	return out;
-}
-
-const PTEID_ByteArray& PTEID_EIDCard::getRawData_Challenge()
-{
-	PTEID_ByteArray *out = NULL;
-
-	BEGIN_TRY_CATCH
-
-	APL_EIDCard *pcard=static_cast<APL_EIDCard *>(m_impl);
-
-	out = dynamic_cast<PTEID_ByteArray *>(getObject(INCLUDE_OBJECT_RAWDATA_CHALLENGE));
-
-	if(!out)
-	{
-		//CAutoMutex autoMutex(m_mutex);
-
-		//praw=dynamic_cast<PTEID_ByteArray *>(getObject(INCLUDE_OBJECT_RAWDATA_CHALLENGE));
-		//if(!praw)
-		//{
-			out = new PTEID_ByteArray(m_context,pcard->getRawData_Challenge());
-			if(out)
-				m_objects[INCLUDE_OBJECT_RAWDATA_CHALLENGE]=out;
-			else
-				throw PTEID_ExUnknown();
-		//}
-	}
-	
-	END_TRY_CATCH
-
-	return *out;
-}
-
-const PTEID_ByteArray& PTEID_EIDCard::getRawData_Response()
-{
-	PTEID_ByteArray *out = NULL;
-
-	BEGIN_TRY_CATCH
-
-	APL_EIDCard *pcard=static_cast<APL_EIDCard *>(m_impl);
-
-	out = dynamic_cast<PTEID_ByteArray *>(getObject(INCLUDE_OBJECT_RAWDATA_RESPONSE));
-
-	if(!out)
-	{
-		//CAutoMutex autoMutex(m_mutex);
-
-		//praw=dynamic_cast<PTEID_ByteArray *>(getObject(INCLUDE_OBJECT_RAWDATA_RESPONSE));
-		//if(!praw)
-		//{
-			out = new PTEID_ByteArray(m_context,pcard->getRawData_Response());
-			if(out)
-				m_objects[INCLUDE_OBJECT_RAWDATA_RESPONSE]=out;
-			else
-				throw PTEID_ExUnknown();
-		//}
-	}
-	
-	END_TRY_CATCH
-
-	return *out;
 }
 
 /*****************************************************************************************
@@ -1369,7 +852,10 @@ void PTEID_XmlUserRequestedInfo::add(XMLUserData xmlUData){
 *****************************************************************************************/
 PTEID_ReaderContext* readerContext = NULL;
 
-// MARTINHO OK
+//This object should be initialized by calling PTEID_CVC_Init() and freed after a CVC_WriteFile() or CVC_ReadFile() operation
+//It will hold all the keys and other values necessary for Secure Messaging operations
+SecurityContext *securityContext = NULL;
+
 PTEIDSDK_API long PTEID_Init(char *ReaderName){
 
 	try {
@@ -1379,22 +865,26 @@ PTEIDSDK_API long PTEID_Init(char *ReaderName){
 			readerContext = &ReaderSet.getReaderByName(ReaderName);
 
 		PTEID_EIDCard &card = readerContext->getEIDCard();
+
+		//Init the compatibility method with PT language
+		PTEID_Config config(PTEID_PARAM_GENERAL_LANGUAGE);
+		config.setString("nl");
 	}
-	catch(PTEID_ExCardBadType &ex)
+	catch(PTEID_ExCardBadType &)
 	{
-		std::cout << "This is not an eid card" << std::endl;
+		std::cerr << "No Pteid Card detected!" << std::endl;
 	}
-	catch(PTEID_ExNoCardPresent &ex)
+	catch(PTEID_ExNoCardPresent &)
 	{
 		return -1104;
 	}
-	catch(PTEID_ExNoReader &ex)
+	catch(PTEID_ExNoReader &)
 	{
 		return -1101;
 	}
 	catch(PTEID_Exception &ex)
 	{
-		std::cout << "PTEID_Exception exception " << ex.GetError()<< std::endl;
+		std::cerr << "PTEID_Exception exception " << ex.GetError()<< std::endl;
 	}
 	catch(...)
 	{
@@ -1403,7 +893,13 @@ PTEIDSDK_API long PTEID_Init(char *ReaderName){
 	return 0;
 }
 
-// MARTINHO - ver segfault
+
+//This is needed so that the native PTEID_CVC_* methods can be called without calling PTEID_Init()
+PTEIDSDK_API void setCompatReaderContext(PTEID_ReaderContext *ctx)
+{
+	readerContext = ctx;
+}
+
 PTEIDSDK_API long PTEID_Exit(unsigned long ulMode){
 	readerContext->Release();
 	PTEID_ReleaseSDK();
@@ -1412,7 +908,6 @@ PTEIDSDK_API long PTEID_Exit(unsigned long ulMode){
 	return 0;
 }
 
-// MARTINHO OK
 PTEIDSDK_API tCompCardType PTEID_GetCardType(){
 
 	if (readerContext!=NULL){
@@ -1431,109 +926,156 @@ PTEIDSDK_API tCompCardType PTEID_GetCardType(){
 	return COMP_CARD_TYPE_ERR;
 }
 
+//Error codes inherited from Pteid Middleware V1: documented in CC_Technical_Reference_1.61
+#define SC_ERROR_AUTH_METHOD_BLOCKED -1212
+#define SC_ERROR_PIN_CODE_INCORRECT -1214
+#define SC_ERROR_INTERNAL -1400
+#define SC_ERROR_OBJECT_NOT_VALID -1406
+#define SC_ERROR_PIN_CODE_INCORRECT -1214
 
 PTEIDSDK_API long PTEID_GetID(PTEID_ID *IDData){
 
-	if (readerContext!=NULL){
-		PTEID_EId &id = readerContext->getEIDCard().getID();
+	if (readerContext!=NULL) {
+		try
+		{
+			PTEID_EId &id = readerContext->getEIDCard().getID();
 
-		memset(IDData, '\0', sizeof(PTEID_ID));
+			memset(IDData, '\0', sizeof(PTEID_ID));
 
-		IDData->version = 0;
-		strncpy(IDData->deliveryEntity, id.getIssuingEntity(),PTEID_MAX_DELIVERY_ENTITY_LEN-1);
-		strncpy(IDData->country, id.getCountry(), PTEID_MAX_COUNTRY_LEN-1);
-		strncpy(IDData->documentType, id.getDocumentType(), PTEID_MAX_DOCUMENT_TYPE_LEN-1);
-		strncpy(IDData->cardNumber, id.getDocumentNumber(), PTEID_MAX_CARDNUMBER_LEN-1);
-		strncpy(IDData->cardNumberPAN, id.getDocumentPAN(), PTEID_MAX_CARDNUMBER_PAN_LEN-1);
-		strncpy(IDData->cardVersion, id.getDocumentVersion(), PTEID_MAX_CARDVERSION_LEN-1);
-		strncpy(IDData->deliveryDate, id.getValidityBeginDate(), PTEID_MAX_DATE_LEN-1);
-		strncpy(IDData->locale, id.getLocalofRequest(), PTEID_MAX_LOCALE_LEN-1);
-		strncpy(IDData->validityDate, id.getValidityEndDate(), PTEID_MAX_DATE_LEN-1);
-		strncpy(IDData->name, id.getSurname(), PTEID_MAX_NAME_LEN-1);
-		strncpy(IDData->firstname, id.getGivenName(), PTEID_MAX_NAME_LEN-1);
-		strncpy(IDData->sex, id.getGender(), PTEID_MAX_SEX_LEN-1);
-		strncpy(IDData->nationality, id.getNationality(), PTEID_MAX_NATIONALITY_LEN-1);
-		strncpy(IDData->birthDate, id.getDateOfBirth(), PTEID_MAX_DATE_LEN-1);
-		strncpy(IDData->height, id.getHeight(), PTEID_MAX_HEIGHT_LEN-1);
-		strncpy(IDData->numBI, id.getCivilianIdNumber(), PTEID_MAX_NUMBI_LEN-1);
-		strncpy(IDData->nameFather, id.getSurnameFather(), PTEID_MAX_NAME_LEN-1);
-		strncpy(IDData->firstnameFather, id.getGivenNameFather(), PTEID_MAX_NAME_LEN-1);
-		strncpy(IDData->nameMother, id.getSurnameMother(), PTEID_MAX_NAME_LEN-1);
-		strncpy(IDData->firstnameMother, id.getGivenNameMother(), PTEID_MAX_NAME_LEN-1);
-		strncpy(IDData->numNIF, id.getTaxNo(), PTEID_MAX_NUMNIF_LEN-1);
-		strncpy(IDData->numSS, id.getSocialSecurityNumber(), PTEID_MAX_NUMSS_LEN-1);
-		strncpy(IDData->numSNS, id.getHealthNumber(), PTEID_MAX_NUMSNS_LEN-1);
-		strncpy(IDData->notes, id.getAccidentalIndications(),PTEID_MAX_INDICATIONEV_LEN-1);
-		strncpy(IDData->mrz1, id.getMRZ1(), PTEID_MAX_MRZ_LEN-1);
-		strncpy(IDData->mrz2, id.getMRZ2(), PTEID_MAX_MRZ_LEN-1);
-		strncpy(IDData->mrz3, id.getMRZ3(), PTEID_MAX_MRZ_LEN-1);
+			IDData->version = 0;
+			strncpy(IDData->deliveryEntity, id.getIssuingEntity(),PTEID_MAX_DELIVERY_ENTITY_LEN-1);
+			strncpy(IDData->country, id.getCountry(), PTEID_MAX_COUNTRY_LEN-1);
+			strncpy(IDData->documentType, id.getDocumentType(), PTEID_MAX_DOCUMENT_TYPE_LEN-1);
+			strncpy(IDData->cardNumber, id.getDocumentNumber(), PTEID_MAX_CARDNUMBER_LEN-1);
+			strncpy(IDData->cardNumberPAN, id.getDocumentPAN(), PTEID_MAX_CARDNUMBER_PAN_LEN-1);
+			strncpy(IDData->cardVersion, id.getDocumentVersion(), PTEID_MAX_CARDVERSION_LEN-1);
+			strncpy(IDData->deliveryDate, id.getValidityBeginDate(), PTEID_MAX_DATE_LEN-1);
+			strncpy(IDData->locale, id.getLocalofRequest(), PTEID_MAX_LOCALE_LEN-1);
+			strncpy(IDData->validityDate, id.getValidityEndDate(), PTEID_MAX_DATE_LEN-1);
+			strncpy(IDData->name, id.getSurname(), PTEID_MAX_NAME_LEN-1);
+			strncpy(IDData->firstname, id.getGivenName(), PTEID_MAX_NAME_LEN-1);
+			strncpy(IDData->sex, id.getGender(), PTEID_MAX_SEX_LEN-1);
+			strncpy(IDData->nationality, id.getNationality(), PTEID_MAX_NATIONALITY_LEN-1);
+			strncpy(IDData->birthDate, id.getDateOfBirth(), PTEID_MAX_DATE_LEN-1);
+			strncpy(IDData->height, id.getHeight(), PTEID_MAX_HEIGHT_LEN-1);
+			strncpy(IDData->numBI, id.getCivilianIdNumber(), PTEID_MAX_NUMBI_LEN-1);
+			strncpy(IDData->nameFather, id.getSurnameFather(), PTEID_MAX_NAME_LEN-1);
+			strncpy(IDData->firstnameFather, id.getGivenNameFather(), PTEID_MAX_NAME_LEN-1);
+			strncpy(IDData->nameMother, id.getSurnameMother(), PTEID_MAX_NAME_LEN-1);
+			strncpy(IDData->firstnameMother, id.getGivenNameMother(), PTEID_MAX_NAME_LEN-1);
+			strncpy(IDData->numNIF, id.getTaxNo(), PTEID_MAX_NUMNIF_LEN-1);
+			strncpy(IDData->numSS, id.getSocialSecurityNumber(), PTEID_MAX_NUMSS_LEN-1);
+			strncpy(IDData->numSNS, id.getHealthNumber(), PTEID_MAX_NUMSNS_LEN-1);
+			strncpy(IDData->notes, id.getAccidentalIndications(),PTEID_MAX_INDICATIONEV_LEN-1);
+			strncpy(IDData->mrz1, id.getMRZ1(), PTEID_MAX_MRZ_LEN-1);
+			strncpy(IDData->mrz2, id.getMRZ2(), PTEID_MAX_MRZ_LEN-1);
+			strncpy(IDData->mrz3, id.getMRZ3(), PTEID_MAX_MRZ_LEN-1);
+		}
+		catch (PTEID_Exception &ex)
+		{
+			long errorCode = ex.GetError();
+
+			if (errorCode >= EIDMW_SOD_UNEXPECTED_VALUE &&
+				errorCode <= EIDMW_SOD_ERR_VERIFY_SOD_SIGN)
+			{
+				return SC_ERROR_OBJECT_NOT_VALID;
+			}
+			else
+			{
+				return SC_ERROR_INTERNAL;
+			}
+
+
+		}
 	}
 
 	return 0;
 }
 
-PTEIDSDK_API long PTEID_GetAddr(PTEID_ADDR *AddrData){
-	int pin_id;
+PTEIDSDK_API long PTEID_GetAddr(PTEID_ADDR *AddrData) {
 	unsigned long remaining_tries;
 
-	if (readerContext!=NULL){
+	if (readerContext!=NULL)
+	{
 
-		PTEID_Pins &pins = readerContext->getEIDCard().getPins();
-		for (unsigned long PinIdx=0; PinIdx < pins.count(); PinIdx++){
-				PTEID_Pin&	Pin	= pins.getPinByNumber(PinIdx);
-				if (strstr(Pin.getLabel(), "PIN da Morada")){
-					if (!Pin.verifyPin("",remaining_tries))
-						return -1;
-					break;
-				}
-		}
-
-		PTEID_Address &addr = readerContext->getEIDCard().getAddr();
-
-		memset(AddrData, '\0', sizeof(PTEID_ADDR));
-
-		AddrData->version = 0;
-		strncpy(AddrData->country, addr.getCountryCode(), PTEID_MAX_ADDR_COUNTRY_LEN-1);
-		strncpy(AddrData->numMor, addr.getGeneratedAddressCode(), PTEID_MAX_NUMMOR_LEN-1);
-
-		if (addr.isNationalAddress())
+		try
 		{
-			strncpy(AddrData->addrType, COMP_LAYER_NATIONAL_ADDRESS, PTEID_MAX_ADDR_TYPE_LEN-1);
-			strncpy(AddrData->district, addr.getDistrictCode(), PTEID_MAX_DISTRICT_LEN-1);
-			strncpy(AddrData->districtDesc, addr.getDistrict(), PTEID_MAX_DISTRICT_DESC_LEN-1);
-			strncpy(AddrData->municipality, addr.getMunicipalityCode(), PTEID_MAX_DISTRICT_CON_LEN-1);
-			strncpy(AddrData->municipalityDesc, addr.getMunicipality(), PTEID_MAX_DISTRICT_CON_DESC_LEN-1);
-			strncpy(AddrData->freguesia, addr.getCivilParishCode(), PTEID_MAX_DISTRICT_FREG_LEN-1);
-			strncpy(AddrData->freguesiaDesc, addr.getCivilParish(), PTEID_MAX_DISTRICT_FREG_DESC_LEN-1);
-			strncpy(AddrData->streettypeAbbr, addr.getAbbrStreetType(), PTEID_MAX_ROAD_ABBR_LEN-1);
-			strncpy(AddrData->streettype, addr.getStreetType(), PTEID_MAX_ROAD_LEN-1);
-			strncpy(AddrData->street, addr.getStreetName(), PTEID_MAX_ROAD_DESIG_LEN-1);
-			strncpy(AddrData->buildingAbbr, addr.getAbbrBuildingType(), PTEID_MAX_HOUSE_ABBR_LEN-1);
-			strncpy(AddrData->building, addr.getBuildingType(), PTEID_MAX_HOUSE_LEN-1);
-			strncpy(AddrData->door, addr.getDoorNo(), PTEID_MAX_NUMDOOR_LEN-1);
-			strncpy(AddrData->floor, addr.getFloor(), PTEID_MAX_FLOOR_LEN-1);
-			strncpy(AddrData->side, addr.getSide(), PTEID_MAX_SIDE_LEN-1);
-			strncpy(AddrData->place, addr.getPlace(), PTEID_MAX_PLACE_LEN-1);
-			strncpy(AddrData->locality, addr.getLocality(), PTEID_MAX_LOCALITY_LEN-1);
-			strncpy(AddrData->cp4, addr.getZip4(), PTEID_MAX_CP4_LEN-1);
-			strncpy(AddrData->cp3, addr.getZip3(), PTEID_MAX_CP3_LEN-1);
-			strncpy(AddrData->postal, addr.getPostalLocality(), PTEID_MAX_POSTAL_LEN-1);
-		} else {
-			strncpy(AddrData->addrType, COMP_LAYER_FOREIGN_ADDRESS, PTEID_MAX_ADDR_TYPE_LEN-1);
-			strncpy(AddrData->countryDescF, addr.getForeignCountry(), PTEID_MAX_ADDR_COUNTRYF_DESC_LEN-1);
-			strncpy(AddrData->addressF, addr.getForeignAddress(), PTEID_MAX_ADDRF_LEN-1);
-			strncpy(AddrData->cityF, addr.getForeignCity(), PTEID_MAX_CITYF_LEN-1);
-			strncpy(AddrData->regioF, addr.getForeignRegion(), PTEID_MAX_REGIOF_LEN-1);
-			strncpy(AddrData->localityF, addr.getForeignLocality(), PTEID_MAX_LOCALITYF_LEN-1);
-			strncpy(AddrData->postalF, addr.getForeignPostalCode(), PTEID_MAX_POSTALF_LEN-1);
+
+			PTEID_Pins &pins = readerContext->getEIDCard().getPins();
+			for (unsigned long PinIdx=0; PinIdx < pins.count(); PinIdx++){
+					PTEID_Pin&	Pin	= pins.getPinByNumber(PinIdx);
+					if (strstr(Pin.getLabel(), "PIN da Morada")){
+						if (!Pin.verifyPin("",remaining_tries))
+							return -1;
+						break;
+					}
+			}
+
+			PTEID_Address &addr = readerContext->getEIDCard().getAddr();
+
+			memset(AddrData, '\0', sizeof(PTEID_ADDR));
+
+			AddrData->version = 0;
+			strncpy(AddrData->country, addr.getCountryCode(), PTEID_ADDR_COUNTRY_LEN);
+
+			if (addr.isNationalAddress())
+			{
+				strncpy(AddrData->addrType, COMP_LAYER_NATIONAL_ADDRESS, PTEID_ADDR_TYPE_LEN);
+				strncpy(AddrData->district, addr.getDistrictCode(), PTEID_DISTRICT_LEN);
+				strncpy(AddrData->districtDesc, addr.getDistrict(), PTEID_DISTRICT_DESC_LEN);
+				strncpy(AddrData->municipality, addr.getMunicipalityCode(), PTEID_DISTRICT_CON_LEN);
+				strncpy(AddrData->municipalityDesc, addr.getMunicipality(), PTEID_DISTRICT_CON_DESC_LEN);
+				strncpy(AddrData->freguesia, addr.getCivilParishCode(), PTEID_DISTRICT_FREG_LEN);
+				strncpy(AddrData->freguesiaDesc, addr.getCivilParish(), PTEID_DISTRICT_FREG_DESC_LEN);
+				strncpy(AddrData->streettypeAbbr, addr.getAbbrStreetType(), PTEID_ROAD_ABBR_LEN);
+				strncpy(AddrData->streettype, addr.getStreetType(), PTEID_ROAD_LEN);
+				strncpy(AddrData->street, addr.getStreetName(), PTEID_ROAD_DESIG_LEN);
+				strncpy(AddrData->buildingAbbr, addr.getAbbrBuildingType(), PTEID_HOUSE_ABBR_LEN);
+				strncpy(AddrData->building, addr.getBuildingType(), PTEID_HOUSE_LEN);
+				strncpy(AddrData->door, addr.getDoorNo(), PTEID_NUMDOOR_LEN);
+				strncpy(AddrData->floor, addr.getFloor(), PTEID_FLOOR_LEN);
+				strncpy(AddrData->side, addr.getSide(), PTEID_SIDE_LEN);
+				strncpy(AddrData->place, addr.getPlace(), PTEID_PLACE_LEN);
+				strncpy(AddrData->locality, addr.getLocality(), PTEID_LOCALITY_LEN);
+				strncpy(AddrData->cp4, addr.getZip4(), PTEID_CP4_LEN);
+				strncpy(AddrData->cp3, addr.getZip3(), PTEID_CP3_LEN);
+				strncpy(AddrData->postal, addr.getPostalLocality(), PTEID_POSTAL_LEN);
+                strncpy(AddrData->numMor, addr.getGeneratedAddressCode(), PTEID_NUMMOR_LEN);
+			}
+			else {
+				strncpy(AddrData->addrType, COMP_LAYER_FOREIGN_ADDRESS, PTEID_ADDR_TYPE_LEN);
+				strncpy(AddrData->countryDescF, addr.getForeignCountry(), PTEID_ADDR_COUNTRYF_DESC_LEN);
+				strncpy(AddrData->addressF, addr.getForeignAddress(), PTEID_ADDRF_LEN);
+				strncpy(AddrData->cityF, addr.getForeignCity(), PTEID_CITYF_LEN);
+				strncpy(AddrData->regioF, addr.getForeignRegion(), PTEID_REGIOF_LEN);
+				strncpy(AddrData->localityF, addr.getForeignLocality(), PTEID_LOCALITYF_LEN);
+				strncpy(AddrData->postalF, addr.getForeignPostalCode(), PTEID_POSTALF_LEN);
+                strncpy(AddrData->numMorF, addr.getGeneratedAddressCode(), PTEID_NUMMOR_LEN);
+			}
 		}
+		catch (PTEID_Exception &ex)
+		{
+			long errorCode = ex.GetError();
+
+			if (errorCode >= EIDMW_SOD_UNEXPECTED_VALUE &&
+				errorCode <= EIDMW_SOD_ERR_VERIFY_SOD_SIGN)
+			{
+				return SC_ERROR_OBJECT_NOT_VALID;
+			}
+			else
+			{
+				return SC_ERROR_INTERNAL;
+			}
+
+		}
+
 	}
 	return 0;
 }
 
 PTEIDSDK_API long PTEID_GetPic(PTEID_PIC *PicData){
 
-	if (readerContext!=NULL){
+	if (readerContext!=NULL) {
 
 		PTEID_Photo &photoOjb = readerContext->getEIDCard().getID().getPhotoObj();
 
@@ -1556,47 +1098,62 @@ PTEIDSDK_API long PTEID_GetPic(PTEID_PIC *PicData){
 }
 
 PTEIDSDK_API long PTEID_GetCertificates(PTEID_Certifs *Certifs){
-	if (readerContext!=NULL){
+	if (readerContext!=NULL) {
 		PTEID_Certificates &certificates = readerContext->getEIDCard().getCertificates();
 		PTEID_ByteArray ba;
+		unsigned long i = 0;
 		memset(Certifs, 0, sizeof(PTEID_Certifs));
 
-		for (int i=0 ; i< certificates.countAll(); i++){
+		for (; i < certificates.countAll(); i++) {
+			if (i == PTEID_MAX_CERT_NUMBER)
+				break;
 			PTEID_Certificate &cert = certificates.getCert(i);
 			cert.getFormattedData(ba);
 			memcpy(Certifs->certificates[i].certif, ba.GetBytes(),(PTEID_MAX_CERT_LEN >= ba.Size()) ? ba.Size() : PTEID_MAX_CERT_LEN);
 			Certifs->certificates[i].certifLength = (PTEID_MAX_CERT_LEN >= ba.Size()) ? ba.Size() : PTEID_MAX_CERT_LEN;
 			strncpy(Certifs->certificates[i].certifLabel, cert.getLabel(), (PTEID_MAX_CERT_LABEL_LEN >= strlen(cert.getLabel()) ? strlen(cert.getLabel()) : PTEID_MAX_CERT_LABEL_LEN-1));
 		}
-		Certifs->certificatesLength = certificates.countAll();
+		Certifs->certificatesLength = i;
 	}
 
 	return 0;
 }
 
 
-PTEIDSDK_API long PTEID_VerifyPIN(unsigned char PinId,	char *Pin, long *triesLeft){
-	unsigned long id;
+PTEIDSDK_API long PTEID_VerifyPIN(unsigned char PinId,	char *Pin, long *triesLeft) {
 	unsigned long tleft=-1;
 	bool ret;
 
-	if (readerContext!=NULL){
+	if (readerContext!=NULL) {
 		if (PinId != 1 && PinId != 129 && PinId != 130 && PinId != 131)
 			return 0;
 
-		PTEID_Pins &pins = readerContext->getEIDCard().getPins();
-		for (unsigned long pinIdx=0; pinIdx < pins.count(); pinIdx++){
-			PTEID_Pin&	pin	= pins.getPinByNumber(pinIdx);
-			if (pin.getPinRef() == PinId){
-				ret = pin.verifyPin("",tleft);
-				//martinho: verify pin is not working properly for readers without pinpad at this moment,
-				//this is a workaround
-				*triesLeft = pin.getTriesLeft();
+        try{
+            PTEID_Pins &pins = readerContext->getEIDCard().getPins();
+            for (unsigned long pinIdx=0; pinIdx < pins.count(); pinIdx++) {
+                PTEID_Pin&	pin	= pins.getPinByNumber(pinIdx);
+                if (pin.getPinRef() == PinId) {
+                    if (Pin != NULL)
+                        ret = pin.verifyPin(Pin, tleft, false);
+                    else
+                        ret = pin.verifyPin("", tleft);
+                    //martinho: verify pin is not working properly for readers without pinpad at this moment,
+                    //this is a workaround
+                    *triesLeft = pin.getTriesLeft();
 
-				if (ret)
-					return 0;
-				return -1;
-			}
+                    if (ret)
+                        return 0;
+                    else if (*triesLeft == 0)
+                        return SC_ERROR_AUTH_METHOD_BLOCKED;
+                    else
+                        return SC_ERROR_PIN_CODE_INCORRECT;
+
+                }
+            }
+		}
+		catch(PTEID_Exception &)
+		{
+			return SC_ERROR_AUTH_METHOD_BLOCKED;
 		}
 	}
 
@@ -1679,14 +1236,14 @@ PTEIDSDK_API long PTEID_GetTokenInfo(PTEID_TokenInfo *tokenData){
 	return 0;
 }
 
-PTEIDSDK_API long PTEID_ReadSOD(unsigned char *out, unsigned long *outlen){
+PTEIDSDK_API long PTEID_ReadSOD(unsigned char *out, unsigned long *outlen) {
 	if (readerContext!=NULL){
 		PTEID_ByteArray temp;
 		PTEID_EIDCard &card = readerContext->getEIDCard();
 
 		temp = card.getSod().getData();
 		CByteArray cb((unsigned char*)temp.GetBytes(), temp.Size());
-		cb.TrimRight(0);
+		/*cb.TrimRight(0);*/
 		memset(out,0,*outlen);
 		if (cb.Size() < *outlen)
 			*outlen = cb.Size();
@@ -1697,42 +1254,56 @@ PTEIDSDK_API long PTEID_ReadSOD(unsigned char *out, unsigned long *outlen){
 }
 
 PTEIDSDK_API long PTEID_UnblockPIN(unsigned char PinId,	char *pszPuk, char *pszNewPin, long *triesLeft){
-	unsigned long id;
+	
+	return PTEID_UnblockPIN_Ext(PinId, pszPuk, pszNewPin, triesLeft, UNBLOCK_FLAG_NEW_PIN);
+}
+
+PTEIDSDK_API long PTEID_UnblockPIN_Ext(unsigned char PinId,	char *pszPuk, char *pszNewPin, long *triesLeft, unsigned long ulFlags) {
 	unsigned long tleft;
 
-	if (readerContext!=NULL){
+	if (readerContext!=NULL) {
 		if (PinId != 1 && PinId != 129 && PinId != 130 && PinId != 131)
 			return 0;
 
-		PTEID_Pins &pins = readerContext->getEIDCard().getPins();
-		for (unsigned long pinIdx=0; pinIdx < pins.count(); pinIdx++){
-			PTEID_Pin&	pin	= pins.getPinByNumber(pinIdx);
-			if (pin.getPinRef() == PinId){
-				pin.unlockPin(pszPuk, pszNewPin,tleft);
-				*triesLeft = tleft;
+		try
+		{
+			PTEID_Pins &pins = readerContext->getEIDCard().getPins();
+			for (unsigned long pinIdx=0; pinIdx < pins.count(); pinIdx++) {
+				PTEID_Pin&	pin	= pins.getPinByNumber(pinIdx);
+				if (pin.getPinRef() == PinId) {
+					bool ret = pin.unlockPin(pszPuk, pszNewPin,tleft, ulFlags);
+					*triesLeft = tleft;
+					return ret ? PTEID_OK: SC_ERROR_PIN_CODE_INCORRECT;
+				}
 			}
+		}
+		catch(PTEID_Exception &)
+		{
+			return PTEID_E_NOT_INITIALIZED;
 		}
 	}
 
-	return 0;
-}
+	return PTEID_E_NOT_INITIALIZED;
 
-PTEIDSDK_API long PTEID_UnblockPIN_Ext(unsigned char PinId,	char *pszPuk, char *pszNewPin, long *triesLeft, unsigned long ulFlags){
-	if (readerContext!=NULL){
-		return PTEID_UnblockPIN(PinId,	pszPuk,pszNewPin,triesLeft);
-	}
-
-	return -1;
 }
 
 PTEIDSDK_API long PTEID_SelectADF(unsigned char *adf, long adflen){
-	if (readerContext!=NULL){
-		PTEID_EIDCard &card = readerContext->getEIDCard();
-		unsigned char ap[4] = {0x00, 0xA4, 0x00, 0x0C};
-		PTEID_ByteArray apdu(ap,(unsigned long)(sizeof(ap)/sizeof(unsigned char)));
-		apdu.Append((unsigned char*)&adflen,sizeof(unsigned char));
-		apdu.Append(adf,(unsigned long) adflen);
-		card.sendAPDU(apdu);
+
+	if (readerContext!=NULL) {
+
+		try {
+
+			PTEID_EIDCard &card = readerContext->getEIDCard();
+			unsigned char ap[4] = {0x00, 0xA4, 0x00, 0x0C};
+			PTEID_ByteArray apdu(ap,(unsigned long)(sizeof(ap)/sizeof(unsigned char)));
+			apdu.Append((unsigned char*)&adflen,sizeof(unsigned char));
+			apdu.Append(adf,(unsigned long) adflen);
+			card.sendAPDU(apdu);
+			}
+		catch(PTEID_Exception &)
+		{
+			return PTEID_E_NOT_INITIALIZED;
+		}
 	}
 
 	return 0;
@@ -1746,7 +1317,7 @@ PTEIDSDK_API long PTEID_ReadFile(unsigned char *file,int filelen,unsigned char *
 		PTEID_ByteArray in;
 		PTEID_Pin*	pin = NULL;
 
-		if (PinId != PTEID_NO_PIN_NEEDED){
+		if (PinId != PTEID_NO_PIN_NEEDED) {
 			PTEID_Pins &pins = readerContext->getEIDCard().getPins();
 			for (unsigned long pinIdx=0; pinIdx < pins.count(); pinIdx++){
 				pin	= &(pins.getPinByNumber(pinIdx));
@@ -1760,7 +1331,6 @@ PTEIDSDK_API long PTEID_ReadFile(unsigned char *file,int filelen,unsigned char *
 		card.readFile(filePath.ToString(false).c_str(),in, pin,"");
 
 		CByteArray cb(in.GetBytes(), in.Size());
-		cb.TrimRight(0);
 
 		*outlen = (*outlen>cb.Size() ? cb.Size() : *outlen);
 		memcpy(out, cb.GetBytes(),*outlen);
@@ -1770,6 +1340,12 @@ PTEIDSDK_API long PTEID_ReadFile(unsigned char *file,int filelen,unsigned char *
 }
 
 PTEIDSDK_API long PTEID_WriteFile(unsigned char *file, int filelen,	unsigned char *in, unsigned long inlen,	unsigned char PinId){
+	return PTEID_WriteFile_inOffset( file, filelen, in, 0/* inOffset */, inlen, PinId );
+}
+
+PTEIDSDK_API long PTEID_WriteFile_inOffset(unsigned char *file, int filelen, unsigned char *in,
+	     unsigned long inOffset, unsigned long inlen, unsigned char PinId)
+{
 	if (readerContext!=NULL && (PinId == 1 || PinId == 129)){
 		PTEID_EIDCard &card = readerContext->getEIDCard();
 		CByteArray temp;
@@ -1788,7 +1364,7 @@ PTEIDSDK_API long PTEID_WriteFile(unsigned char *file, int filelen,	unsigned cha
 
 		out.Append(in,inlen);
 		temp.Append(file,filelen);
-		if (card.writeFile(temp.ToString(false).c_str(),out, pin,""))
+		if (card.writeFile(temp.ToString(false).c_str(),out, pin,"", inOffset))
 			return 0;
 		return -1;
 	}
@@ -1805,33 +1381,53 @@ PTEIDSDK_API long PTEID_IsActivated(unsigned long *pulStatus){
 
 PTEIDSDK_API long PTEID_Activate(char *pszPin, unsigned char *pucDate, unsigned long ulMode){
 	long retval = 0;
-	if (readerContext!=NULL){
-		PTEID_ByteArray bcd(pucDate,BCD_DATE_LEN);
-		if (readerContext->getEIDCard().Activate(pszPin,bcd))
-			return 0;
-		return -1;
+	if (readerContext!=NULL) {
+		try
+		{
+
+			PTEID_ByteArray bcd(pucDate, BCD_DATE_LEN);
+			if (readerContext->getEIDCard().Activate(pszPin,bcd, ulMode == MODE_ACTIVATE_BLOCK_PIN))
+				return 0;
+			return -1;
+		}
+		catch(PTEID_Exception &)
+		{
+			return PTEID_E_INTERNAL;
+		}
 	}
 
 	return 0;
 }
 
-PTEIDSDK_API long PTEID_SetSODChecking(int bDoCheck){
+PTEIDSDK_API long PTEID_SetSODChecking(int bDoCheck) {
 	if (readerContext!=NULL)
 		readerContext->getEIDCard().doSODCheck(bDoCheck!=0);
 
 	return 0;
 }
 
-PTEIDSDK_API long PTEID_SetSODCAs(PTEID_Certifs *Certifs){
-	if (readerContext!=NULL){
-		for(int i=0;i<Certifs->certificatesLength;i++){
+PTEIDSDK_API long PTEID_SetSODCAs(PTEID_Certifs *Certifs) {
+	if (readerContext!=NULL) {
+
+		PTEID_Certificates & _certifs = readerContext->getEIDCard().getCertificates();
+
+		//if called with Certifs = NULL revert to use the default SOD CAs
+		if (Certifs == NULL)
+		{
+			_certifs.resetSODCAs();
+			return PTEID_OK;
+
+		}
+
+		for (int i=0; i < Certifs->certificatesLength; i++) {
 			PTEID_ByteArray *pba = new PTEID_ByteArray(Certifs->certificates[i].certif,Certifs->certificates[i].certifLength);
-			readerContext->getEIDCard().getCertificates().addCertificate(*pba);
+			_certifs.addToSODCAs(*pba);
 			delete pba;
 		}
+		return PTEID_OK;
 	}
 
-	return 0;
+	return PTEID_E_NOT_INITIALIZED;
 }
 
 PTEIDSDK_API long PTEID_GetCardAuthenticationKey(PTEID_RSAPublicKey *pCardAuthPubKey){
@@ -1861,7 +1457,7 @@ PTEIDSDK_API long PTEID_GetCVCRoot(PTEID_RSAPublicKey *pCVCRootKey){
 }
 
 PTEIDSDK_API long PTEID_SendAPDU(const unsigned char *ucRequest, unsigned long ulRequestLen, unsigned char *ucResponse, unsigned long *ulResponseLen){
-	if (readerContext!=NULL){
+	if (readerContext != NULL){
 		PTEID_EIDCard &card = readerContext->getEIDCard();
 		PTEID_ByteArray sApdu(ucRequest,ulRequestLen);
 		PTEID_ByteArray resp;
@@ -1875,28 +1471,231 @@ PTEIDSDK_API long PTEID_SendAPDU(const unsigned char *ucRequest, unsigned long u
 	return 0;
 }
 
-PTEIDSDK_API long PTEID_CAP_ChangeCapPin(const char *csServer, const unsigned char *ucServerCaCert,	unsigned long ulServerCaCertLen, tProxyInfo *proxyInfo,	const char *pszOldPin, const char *pszNewPin, long *triesLeft){
+PTEIDSDK_API int PTEID_IsPinpad() {
 
+	if (readerContext != NULL) {
+		try
+		{
+			return readerContext->isPinpad() ? 1 : 0;
+		}
+		catch (PTEID_Exception &)
+		{
+			return 0;
+		}
+
+	}
+
+	return 0;
+}
+
+// Not even sure what this should check in the reader, this function is available here only for backwards compat
+PTEIDSDK_API int PTEID_IsEMVCAP() {
+	return PTEID_OK;
+}
+
+
+//This should implement all the Mutual Auth Process and generate the input to the Signature that's sent in the
+//EXTERNAL AUTHENTICATE command
+PTEIDSDK_API long PTEID_CVC_Init(const unsigned char *pucCert, int iCertLen,
+    unsigned char *pucChallenge, int iChallengeLen)
+{
+	unsigned long buffer_len = iChallengeLen;
+
+	if (readerContext != NULL) {
+		try {
+
+			PTEID_EIDCard &card = readerContext->getEIDCard();
+
+			//Accessing PTEID_EIDCard internal object, hope he doesn't mind :)
+			APL_Card *card_impl = static_cast<APL_Card *>(card.m_impl);
+			securityContext = new SecurityContext(card_impl);
+
+			CByteArray cvc_certificate(pucCert, iCertLen);
+			securityContext->verifyCVCCertificate(cvc_certificate);
+
+			CByteArray signature_input = securityContext->getExternalAuthenticateChallenge();
+
+			if (buffer_len < signature_input.Size())
+			{
+				//No space in supplied buffer: return error
+				return PTEID_E_BAD_PARAM;
+			}
+			memcpy(pucChallenge, signature_input.GetBytes(), signature_input.Size());
+			return PTEID_OK;
+		}
+		catch (CMWException &)
+		{
+			return PTEID_E_INTERNAL;
+		}
+	}
+
+	return PTEID_E_NOT_INITIALIZED;
+
+}
+
+PTEIDSDK_API PTEID_ByteArray PTEID_CVC_Init(PTEID_ByteArray cvc_cert)
+{
+	unsigned char challenge[128];
+	long ret = PTEID_CVC_Init(cvc_cert.GetBytes(), cvc_cert.Size(), challenge, sizeof(challenge));
+
+	if (ret != PTEID_OK)
+	{
+		throw PTEID_Exception(ret);
+	}
+
+	return PTEID_ByteArray(challenge, sizeof(challenge));
+}
+
+PTEIDSDK_API PTEID_ByteArray PTEID_CVC_ReadFile(PTEID_ByteArray fileID)
+{
+	//Should be enough for any file on the card
+	unsigned char buffer[15000];
+	unsigned long outlen = sizeof(buffer);
+
+	long ret = PTEID_CVC_ReadFile(fileID.GetBytes(), fileID.Size(), buffer, &outlen);
+
+	if (ret != PTEID_OK)
+	{
+		throw PTEID_Exception(ret);
+	}
+	return PTEID_ByteArray(buffer, outlen);
+}
+
+PTEIDSDK_API void PTEID_CVC_Authenticate(PTEID_ByteArray signedChallenge)
+{
+	long ret = PTEID_CVC_Authenticate((unsigned char *)signedChallenge.GetBytes(), signedChallenge.Size());
+
+	if (ret != PTEID_OK)
+		throw PTEID_Exception(ret);
+}
+
+PTEIDSDK_API long PTEID_CVC_Authenticate(unsigned char *pucSignedChallenge, int iSignedChallengeLen)
+{
+	if (securityContext != NULL) {
+		try {
+
+			CByteArray signed_challenge(pucSignedChallenge, iSignedChallengeLen);
+
+			bool ret = securityContext->verifySignedChallenge(signed_challenge);
+
+			if (ret)
+				return PTEID_OK;
+			else
+				return PTEID_E_INTERNAL;
+		}
+		catch (CMWException &)
+		{
+			return PTEID_E_INTERNAL;
+		}
+	}
+
+	return PTEID_E_NOT_INITIALIZED;
+}
+
+
+PTEIDSDK_API long PTEID_CVC_GetAddr(PTEID_ADDR *AddrData)
+{
+	unsigned char addressFile[] = {0x3F, 0x00, 0x5F, 0x00, 0xEF, 0x05};
+	unsigned char fileBuffer[1200];
+	unsigned int offset = 0;
+	unsigned long outLen = sizeof(fileBuffer);
+
+	if (securityContext != NULL) {
+
+		memset(fileBuffer, 0, outLen);
+
+		if (PTEID_CVC_ReadFile(addressFile, sizeof(addressFile), fileBuffer, &outLen) != PTEID_OK)
+		{
+			return PTEID_E_INTERNAL;
+		}
+
+		AddrData->version = 0;
+
+		//Evil cast but this should work because the PTEID_ADDR struct is 1-byte aligned
+		char * ptr = (char *)AddrData;
+
+		if (fileBuffer[0] == 'N')
+		{
+			//Skip the manually filled version field
+			memcpy(ptr + 2, fileBuffer, outLen);
+		}
+		else {
+			//Buffer size for the Foreign address specific fields
+			size_t foreign_addr_len = 812;
+			//Manually write first 2 fields
+			strncpy(AddrData->addrType, (const char *)fileBuffer, PTEID_ADDR_TYPE_LEN);
+			strncpy(AddrData->country, (const char *)fileBuffer + PTEID_ADDR_TYPE_LEN, PTEID_ADDR_COUNTRY_LEN);
+
+			ptr = (char *)&(AddrData->countryDescF);
+			memcpy(ptr, fileBuffer+6, foreign_addr_len);
+		}
+
+		return PTEID_OK;
+	}
+
+	return PTEID_E_NOT_INITIALIZED;
+}
+
+
+PTEIDSDK_API long PTEID_CVC_ReadFile(const unsigned char *file, int filelen, unsigned char *out, unsigned long *outlen)
+{
+	CByteArray file_contents;
+
+	if (securityContext != NULL) {
+		try
+		{
+			file_contents = securityContext->readFile((unsigned char *)file, filelen, *outlen);
+		}
+		catch (CMWException &)
+		{
+			return PTEID_E_INTERNAL;
+		}
+
+		memcpy(out, file_contents.GetBytes(), file_contents.Size());
+		*outlen = file_contents.Size();
+
+		return PTEID_OK;
+	}
+
+	return PTEID_E_NOT_INITIALIZED;
+}
+
+
+//This is not implemented on purpose: this function is available here only for backwards compat
+PTEIDSDK_API long PTEID_CVC_WriteFile(unsigned char *file, int filelen, unsigned long ulFileOffset,
+	const unsigned char *in, unsigned long inlen, unsigned long ulMode)
+{
+
+	return PTEID_OK;
+}
+
+
+
+PTEIDSDK_API long PTEID_CAP_ChangeCapPin(const char *csServer, const unsigned char *ucServerCaCert,	unsigned long ulServerCaCertLen, tProxyInfo *proxyInfo,	const char *pszOldPin, const char *pszNewPin, long *triesLeft){
+#if 0
 	PTEID_EIDCard& card = readerContext->getEIDCard();
 	bool ret = card.ChangeCapPinCompLayer(pszOldPin, pszNewPin, (unsigned long int&)*triesLeft);
 
 	return ret ? 0 : -1;
+#else
+        return PTEID_OK;
+#endif
 }
 
-/* not implemented */
+
 PTEIDSDK_API tCapPinChangeState PTEID_CAP_GetCapPinChangeProgress(){
 	return CAP_INITIALISING;
 }
 
-/* not implemented */
+
 PTEIDSDK_API void PTEID_CAP_SetCapPinChangeCallback(void(_USERENTRY * callback)(tCapPinChangeState state)){
 	return;
 }
 
-/* not implemented */
 PTEIDSDK_API void PTEID_CAP_CancelCapPinChange(){
 	return;
 }
+
 
 
 }

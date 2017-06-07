@@ -39,7 +39,7 @@ replace $install by string in install parameter
 - SetString writes data into the registry/ini-file.
 
 - You can specify a default value for each Getxxxx.  The default value is returned in case that the specified key does not exist.
-- Getxxx will first search in the HKEY_CURRENT_USER/CurrentUser  section, 
+- Getxxx will first search in the HKEY_CURRENT_USER/CurrentUser  section,
   the HKEY_LOCAL_MACHINE/AllUsers is searched secondly in case that the key was not found.
   The error "invalid_argument" is thrown when the key is not found and no default valued is specified.
 
@@ -50,32 +50,32 @@ replace $install by string in install parameter
                                                 Registry                                 Ini-file
     +------------------------------------------+----------------------------------------+--------------------------------+
     Hardcoded in the project-file:              location in registry                     ini-file name & path
-                                                
-                                       
-    GetString(                         
+
+
+    GetString(
         const std::wstring & csKey,              key                                      key
         const std::wstring & section             1 directory-level                        1 level of [section]
-            )                          
+            )
                                                 Search first in HKEY_CURRENT_USER,      Search first in "Current Users"
                                                 then in HKEY_LOCAL_MACHINE                then in "All User"
-                                       
-    SetString(                         
+
+    SetString(
         tLocation location,                     SYSTEM -> HKEY_LOCAL_MACHINE\...         SYSTEM -> "All Users"
                                                 USER   -> HKEY_CURRENT_USER\...          USER   -> "Current User"
-                                       
-        const std::wstring & csKey,              key                                      key 
+
+        const std::wstring & csKey,              key                                      key
         const std::wstring & section,            value-name, 1 directory-level            1 level of [section]
         const std::wstring & csValue             value                                    value
-            )                          
+            )
 
 
-    DelString(                         
+    DelString(
         tLocation location,                     SYSTEM -> HKEY_LOCAL_MACHINE\...         SYSTEM -> "All Users"
                                                 USER   -> HKEY_CURRENT_USER\...          USER   -> "Current User"
-                                       
-        const std::wstring & csKey,              key                                      key 
+
+        const std::wstring & csKey,              key                                      key
         const std::wstring & section,            directory, max 1 level                   [section], max 1 level
-            )                          
+            )
 
     +------------------------------------------+----------------------------------------+--------------------------------+
 </PRE>
@@ -93,10 +93,10 @@ replace $install by string in install parameter
     RegQueryValueEx get the data for one value
     RegGetValue     get the data for one value, strings are always 0-terminated : only on win server... !!!
     RegSetValueEx   set the data for one value
-    
+
     RegDeleteValue  delete key-value
 
-    REG_DWORD  A 32-bit number. 
+    REG_DWORD  A 32-bit number.
     REG_QWORD  a 64-bit number
     REG_SZ     0-terminated wstring
 
@@ -108,7 +108,7 @@ replace $install by string in install parameter
     - create key
     - write data
 
-    read: 
+    read:
     - construct path.sys (in the system section)
     - check if key present
     - if no key present yet, construct path.user (in the user section)
@@ -130,15 +130,18 @@ replace $install by string in install parameter
 
 #define EIDMW_CNF_SECTION_GENERAL       L"general"              //section with the general pupose parameters
 #define EIDMW_CNF_GENERAL_INSTALLDIR    L"install_dirname"      //string, directory of the basic eid software; �c:/Program Files/pteid/�
-#define EIDMW_CNF_GENERAL_INSTALL_PRO_DIR L"install_pro_dirname"  //string, directory of the pro eid software; �c:/Program Files/pteid/�
-#define EIDMW_CNF_GENERAL_INSTALL_SDK_DIR L"install_sdk_dirname"  //string, directory of the sdk eid software; �c:/Program Files/pteid/�
 #define EIDMW_CNF_GENERAL_CACHEDIR      L"cache_dirname"        //string, cache directory for card-file; $common/pteid/crlcache/
-#define EIDMW_CNF_GENERAL_LANGUAGE      L"language"             //string, user lanugage: fr, nl, en, de, es, � 
+#define EIDMW_CNF_GENERAL_CERTSDIR      L"certs_dir"
+#define EIDMW_CNF_GENERAL_CERTSDIR_TEST      L"certs_dir_test"
+#define EIDMW_CNF_GENERAL_LANGUAGE      L"language"             //string, user lanugage: fr, nl, en, de, es, �
 #define EIDMW_CNF_GENERAL_CARDTXDELAY   L"card_transmit_delay"  //number, delay while communicating with the smartcard, in mili-seconds, default 1 mSec
 #define EIDMW_CNF_GENERAL_CARDCONNDELAY L"card_connect_delay"   //number, delay before connecting to a smartcard, in mili-seconds, default 0 mSec
 #define EIDMW_CNF_GENERAL_BUILDNBR		L"build_number"			//Number of the installed build
 #define EIDMW_CNF_GENERAL_OTP_SERVER    L"otp_server"
 #define EIDMW_CNF_GENERAL_SAM_SERVER    L"sam_server"
+#define EIDMW_CNF_GENERAL_SCAP_HOST     L"scap_host"
+#define EIDMW_CNF_GENERAL_SCAP_PORT     L"scap_port"
+#define EIDMW_CNF_GENERAL_SHOW_JAVA_APPS L"show_java_apps"
 
 #define EIDMW_CNF_SECTION_LOGGING       L"logging"              //section with the logging parameters
 #define EIDMW_CNF_LOGGING_DIRNAME       L"log_dirname"          //string, location of the log-file; $home/pteid/	Full path with volume name.
@@ -167,13 +170,14 @@ replace $install by string in install parameter
 #define EIDMW_CNF_CERTCACHE_WAITDELAY   L"cert_cache_waitdelay"     //number
 
 #define EIDMW_CNF_SECTION_PROXY         L"proxy"                    //section with the proxy parameters
-#define EIDMW_CNF_PROXY_HOST            L"proxy_host"               //string; 
+#define EIDMW_CNF_PROXY_HOST            L"proxy_host"               //string;
 #define EIDMW_CNF_PROXY_PORT            L"proxy_port"               //number
-#define EIDMW_CNF_PROXY_PACFILE         L"proxy_pacfile"            //string; 
+#define EIDMW_CNF_PROXY_USERNAME        L"proxy_username"           //string
+#define EIDMW_CNF_PROXY_PASSWORD        L"proxy_password"           //string
+#define EIDMW_CNF_PROXY_PACFILE         L"proxy_pacfile"            //string;
 #define EIDMW_CNF_PROXY_CONNECT_TIMEOUT  L"connect_timeout"          //number
 
 #define EIDMW_CNF_SECTION_SECURITY      L"security"                 //section with the security parameters
-#define EIDMW_CNF_SECURITY_SINGLESIGNON L"single_signon"            //number; 0=no, 1=yes; If yes, the PIN is requested by the driver and asked only once with multiple applications.
 
 #define EIDMW_CNF_SECTION_GUITOOL       L"configuretool"            //section with the configure tool parameters
 #define EIDMW_CNF_GUITOOL_STARTWIN      L"start_with_windows"       //number; 0=no(default), 1=yes
@@ -183,7 +187,7 @@ replace $install by string in install parameter
 #define EIDMW_CNF_GUITOOL_SHOWTBAR      L"show_toolbar"             //number; 0=no, 1=yes
 #define EIDMW_CNF_GUITOOL_VIRTUALKBD    L"use_virtual_keypad"       //number; 0=no, 1=yes
 #define EIDMW_CNF_GUITOOL_AUTOCARDREAD  L"automatic_cardreading"    //number; 0=no, 1=yes(default)
-#define EIDMW_CNF_GUITOOL_CARDREADNUMB  L"cardreader"               //number; -1(not specified), 0-10	
+#define EIDMW_CNF_GUITOOL_CARDREADNUMB  L"cardreader"               //number; -1(not specified), 0-10
 #define EIDMW_CNF_GUITOOL_REGCERTIF     L"registrate_certificate"   //number; 0=no, 1=yes(default)
 #define EIDMW_CNF_GUITOOL_REMOVECERTIF  L"remove_certificate"       //number; 0=no, 1=yes(default)
 #define EIDMW_CNF_GUITOOL_FILESAVE		L"default_save_path"        //string; path, ""(default)
@@ -192,7 +196,7 @@ replace $install by string in install parameter
 #define EIDMW_CNF_XSIGN_TSAURL			L"tsa_url"					//string url of the tsa
 #define EIDMW_CNF_XSIGN_ONLINE			L"online"					//number; 0=no(default), 1=yes
 #define EIDMW_CNF_XSIGN_WORKINGDIR		L"working_dir"				//string working directory
-#define EIDMW_CNF_XSIGN_TIMEOUT			L"timeout"					//number; 
+#define EIDMW_CNF_XSIGN_TIMEOUT			L"timeout"					//number;
 
 #define EIDMW_CNF_SECTION_AUTOUPDATES       L"autoupdates"            //section with the autoupdates parameters
 #define EIDMW_CNF_AUTOUPDATES_URL      L"serverurl"       //string
@@ -272,12 +276,16 @@ public:
     static const struct Param_Str EIDMW_CONFIG_PARAM_GENERAL_CACHEDIR;
     static const struct Param_Str EIDMW_CONFIG_PARAM_GENERAL_PTEID_CACHEDIR;
     static const struct Param_Str EIDMW_CONFIG_PARAM_GENERAL_CERTS_DIR;
+    static const struct Param_Str EIDMW_CONFIG_PARAM_GENERAL_CERTS_DIR_TEST;
     static const struct Param_Str EIDMW_CONFIG_PARAM_GENERAL_LANGUAGE;
     static const struct Param_Num EIDMW_CONFIG_PARAM_GENERAL_CARDTXDELAY;
     static const struct Param_Num EIDMW_CONFIG_PARAM_GENERAL_CARDCONNDELAY;
     static const struct Param_Num EIDMW_CONFIG_PARAM_GENERAL_BUILDNBR;
     static const struct Param_Str EIDMW_CONFIG_PARAM_GENERAL_OTP_SERVER;
     static const struct Param_Str EIDMW_CONFIG_PARAM_GENERAL_SAM_SERVER;
+    static const struct Param_Num EIDMW_CONFIG_PARAM_GENERAL_SHOW_JAVA_APPS;
+    static const struct Param_Str EIDMW_CONFIG_PARAM_GENERAL_SCAP_HOST;
+    static const struct Param_Str EIDMW_CONFIG_PARAM_GENERAL_SCAP_PORT;
 
     //LOGGING
     static const struct Param_Str EIDMW_CONFIG_PARAM_LOGGING_DIRNAME;
@@ -309,10 +317,9 @@ public:
     static const struct Param_Str EIDMW_CONFIG_PARAM_PROXY_HOST;
     static const struct Param_Num EIDMW_CONFIG_PARAM_PROXY_PORT;
     static const struct Param_Str EIDMW_CONFIG_PARAM_PROXY_PACFILE;
+    static const struct Param_Str EIDMW_CONFIG_PARAM_PROXY_USERNAME;
+    static const struct Param_Str EIDMW_CONFIG_PARAM_PROXY_PWD;
     static const struct Param_Num EIDMW_CONFIG_PARAM_PROXY_CONNECT_TIMEOUT;
-
-    //SECURITY
-    static const struct Param_Num EIDMW_CONFIG_PARAM_SECURITY_SINGLESIGNON;
 
     //GUI
     static const struct Param_Num EIDMW_CONFIG_PARAM_GUITOOL_STARTWIN;

@@ -67,8 +67,7 @@ private:
 	void doSODCheck(bool check) {}
 
 	/**
-	  * Check if the ID signature correspond to this file (using RRN certificate)
-	  * @return - if bad RRN file => status of RRN file
+	  * Check if the ID signature correspond to this file
 	  * @return - if bad signature file => status of signature file
 	  * @return - if signature error => CARDFILESTATUS_ERROR_SIGNATURE
 	  * @return - else => CARDFILESTATUS_ERROR_OK
@@ -119,17 +118,11 @@ public:
 	const char *getSurname();						/**< Return field Surname */
 	const char *getGender();						/**< Return field Gender */
 	const char *getDateOfBirth();					/**< Return field DateOfBirth */
-	const char *getLocationOfBirth();				/**< Return field LocationOfBirth */
 	const char *getNationality();					/**< Return field Nationality */
-	const char *getDuplicata();						/**< Return field Duplicata */
-	const char *getSpecialOrganization();			/**< Return field SpecialOrganization */
-	const char *getMemberOfFamily();				/**< Return field MemberOfFamily */
-	const char *getLogicalNumber();					/**< Return field LogicalNumber */
 	const char *getDocumentPAN();					/**< Return field DocumentPAN */
 	const char *getValidityBeginDate();				/**< Return field ValidityBeginDate */
 	const char *getValidityEndDate();				/**< Return field ValidityEndDate */
 	const char *getLocalofRequest();				/**< Return field LocalofRequest */
-	const char *getSpecialStatus();					/**< Return field SpecialStatus */
 	/*New status for PTeid-ng */
 	const char *getHeight();						/**< Return field Height */
 	const char *getDocumentNumber();				/**< Return field DocumentNumber */
@@ -163,8 +156,7 @@ private:
 	APL_EidFile_ID &operator= (const APL_EidFile_ID& file);	/**< Copy not allowed - not implemented */
 
 	/**
-	  * Check if the ID signature correspond to this file (using RRN certificate)
-	  * @return - if bad RRN file => status of RRN file
+	  * Check if the ID signature correspond to this file
 	  * @return - if bad signature file => status of signature file
 	  * @return - if signature error => CARDFILESTATUS_ERROR_SIGNATURE
 	  * @return - else => CARDFILESTATUS_ERROR_OK
@@ -199,17 +191,11 @@ private:
 	std::string m_Surname;									/**< Field Surname */
 	std::string m_Gender;									/**< Field Gender */
 	std::string m_DateOfBirth;								/**< Field DateOfBirth */
-	std::string m_LocationOfBirth;							/**< Field LocationOfBirth */
 	std::string m_Nationality;								/**< Field Nationality */
 	std::string m_CivilianIdNumber;							/**< Field NationalNumber */
-	std::string m_Duplicata;								/**< Field Duplicata */
-	std::string m_SpecialOrganization;						/**< Field SpecialOrganization */
-	std::string m_MemberOfFamily;							/**< Field MemberOfFamily */
-	std::string m_LogicalNumber;							/**< Field LogicalNumber */
 	std::string m_ValidityBeginDate;						/**< Field ValidityBeginDate */
 	std::string m_ValidityEndDate;							/**< Field ValidityEndDate */
 	std::string m_LocalofRequest;							/**< Field IssuingMunicipality */
-	std::string m_SpecialStatus;							/**< Field SpecialStatus */
 	std::string m_Height;									/**< Field Height */
 	std::string m_ChipNumber;								/**< Field ChipNumber */
 	std::string m_DocumentNumber;							/**< Field DocumentNumber */
@@ -233,46 +219,7 @@ friend 	APL_EidFile_ID *APL_EIDCard::getFileID();	/**< This method must access p
 };
 
 /******************************************************************************//**
-  * Class that represent the file containing ID signature on a PTEID card
-  *
-  * This class is for internal use in APL_EIDCard
-  *
-  * To get APL_EidFile_IDSign object, we have to ask it from APL_EIDCard 
-  *********************************************************************************/
-class APL_EidFile_IDSign : public APL_CardFile
-{
-public:
-	/**
-	  * Destructor
-	  */
-	virtual ~APL_EidFile_IDSign();
-
-protected:
-	/**
-	  * Constructor
-	  *		Used only in APL_EIDCard::getFileIDSign()
-	  */    
-	APL_EidFile_IDSign(APL_EIDCard *card);
-	
-private:
-	APL_EidFile_IDSign(const APL_EidFile_IDSign& file);				/**< Copy not allowed - not implemented */
-	APL_EidFile_IDSign &operator= (const APL_EidFile_IDSign& file);	/**< Copy not allowed - not implemented */
-
-
-	/**
-	  * No verification for this file
-	  * Always return CARDFILESTATUS_OK
-	  */
-	virtual tCardFileStatus VerifyFile();
-	virtual bool MapFields() {return true;}							/**< Nothing to do m_data contains the file */
-	virtual void EmptyFields() {}									/**< Nothing to do m_data contains the file */
-	void doSODCheck(bool check) {}
-
-friend 	APL_EidFile_IDSign *APL_EIDCard::getFileIDSign();	/**< This method must access protected constructor */
-};
-
-/******************************************************************************//**
-  * Class that represent the file containing address informations on a PTEID card
+  * Class that represents the file containing citizen address information on a PTEID card
   *
   * This class is for internal use in APL_EIDCard
   *
@@ -286,13 +233,12 @@ public:
 	  */
 	virtual ~APL_EidFile_Address();
 
-	/*New status for PTeid-ng */
-	bool isNationalAddress();							/**<is the address a portuguese address? */
-	const char *getCountryCode();						/**<residence country */
+	bool isNationalAddress();							/** is the address a portuguese address? */
+	const char *getCountryCode();						/** residence country */
 
 	const char *getDistrict();
 	const char *getDistrictCode();
-	const char *getMunicipality();						/**< Return field Municipality */
+	const char *getMunicipality();						/** Return field Municipality */
 	const char *getMunicipalityCode();
 	const char *getCivilParish();
 	const char *getCivilParishCode();
@@ -332,8 +278,7 @@ private:
 	APL_EidFile_Address &operator= (const APL_EidFile_Address& file);	/**< Copy not allowed - not implemented */
 
 	/**
-	  * Check if the Address signature correspond to this file (using RRN certificate)
-	  * @return - if bad RRN file => status of RRN file
+	  * Check if the Address signature correspond to the file
 	  * @return - if bad signature file => status of signature file
 	  * @return - if signature error => CARDFILESTATUS_ERROR_SIGNATURE
 	  * @return - else => CARDFILESTATUS_ERROR_OK
@@ -398,44 +343,6 @@ friend 	APL_EidFile_Address *APL_EIDCard::getFileAddress();	/**< This method mus
 };
 
 /******************************************************************************//**
-  * Class that represent the file containing address signature on a PTEID card
-  *
-  * This class is for internal use in APL_EIDCard
-  *
-  * To get APL_EidFile_AddressSign object, we have to ask it from APL_EIDCard 
-  *********************************************************************************/
-class APL_EidFile_AddressSign : public APL_CardFile
-{
-public:
-	/**
-	  * Destructor
-	  */
-	virtual ~APL_EidFile_AddressSign();
-
-protected:
-	/**
-	  * Constructor
-	  *		Used only in APL_EIDCard::getFileAddressSign()
-	  */    
-	APL_EidFile_AddressSign(APL_EIDCard *card);
-
-private:
-	APL_EidFile_AddressSign(const APL_EidFile_AddressSign& file);				/**< Copy not allowed - not implemented */
-	APL_EidFile_AddressSign &operator= (const APL_EidFile_AddressSign& file);	/**< Copy not allowed - not implemented */
-
-	/**
-	  * No verification for this file
-	  * Always return CARDFILESTATUS_OK
-	  */
-	virtual tCardFileStatus VerifyFile();
-	virtual bool MapFields() {return true;}							/**< Nothing to do m_data contains the file */
-	virtual void EmptyFields() {}									/**< Nothing to do m_data contains the file */
-	void doSODCheck(bool check) {}
-
-friend 	APL_EidFile_AddressSign *APL_EIDCard::getFileAddressSign();	/**< This method must access protected constructor */
-};
-
-/******************************************************************************//**
   * Class that represent the file containing the SOD on a PTEID card
   *
   * This class is for internal use in APL_EIDCard
@@ -473,14 +380,8 @@ private:
 	APL_EidFile_Sod(const APL_EidFile_Sod& file);				/**< Copy not allowed - not implemented */
 	APL_EidFile_Sod &operator= (const APL_EidFile_Sod& file);	/**< Copy not allowed - not implemented */
 
-	/**
-	  * Check if the hash in the ID file correspond to this file
-	  * @return - if bad ID file => status of ID file
-	  * @return - if hash error => CARDFILESTATUS_ERROR_HASH
-	  * @return - else => CARDFILESTATUS_ERROR_OK
-	  */
-	virtual bool MapFields();									/**< Nothing to do m_data contains the file */
-	virtual void EmptyFields();									/**< Nothing to do m_data contains the file */
+	virtual bool MapFields();
+	virtual void EmptyFields();
 
 	/**
 	  * Return true if data can be showned

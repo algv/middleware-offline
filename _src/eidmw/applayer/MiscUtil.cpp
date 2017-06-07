@@ -19,6 +19,12 @@
 **************************************************************************** */
 #include "MiscUtil.h"
 
+
+#include <openssl/bio.h>
+#include <openssl/evp.h>
+#include <openssl/buffer.h>
+#include <openssl/pem.h>
+
 #ifdef WIN32
 #include <Windows.h>
 #include <io.h> //For _sopen and _chsize
@@ -31,6 +37,7 @@
 #include <cstdio>
 #include <cstring>
 
+
 #include <sys/types.h>
 #include <sys/stat.h>
 #ifndef WIN32
@@ -42,9 +49,25 @@
 #include "eidErrors.h"
 #include "ByteArray.h"
 
+#define STR_BEGIN_CERTIFICATE   "-----BEGIN CERTIFICATE-----"
+#define STR_END_CERTIFICATE     "-----END CERTIFICATE-----"
 
 namespace eIDMW
 {
+
+/*  *********************************************************
+    ***          getCPtr()                                ***
+    ********************************************************* */
+char *getCPtr( std::string inStr, int *outLen ){
+    char *c_str;
+
+    c_str = (char *)malloc( inStr.length() + 1 );
+    strcpy( c_str, inStr.c_str() );
+
+    if ( outLen != NULL ) *outLen = strlen( c_str );
+
+    return c_str;
+}/* getCPtr() */
 
 const void *memmem(const void *haystack, size_t n, const void *needle, size_t m)
 {
@@ -83,7 +106,7 @@ const void *memmem(const void *haystack, size_t n, const void *needle, size_t m)
 		char filename[_MAX_FNAME];
 		char ext[_MAX_EXT];
 		char *basename = (char *)malloc(2*_MAX_FNAME);
-	
+
 		_splitpath(absolute_path, NULL, NULL, filename, ext);
 		strcpy(basename, filename);
 		strcat(basename, ext);
@@ -104,12 +127,12 @@ const void *memmem(const void *haystack, size_t n, const void *needle, size_t m)
 		return result;
 	}
 
-#else	
+#else
 	char * Basename(char *absolute_path)
 	{
 		return basename(absolute_path); //POSIX basename()
 	}
-	
+
 	int Truncate(const char *path)
 	{
 		return truncate(path, 0); //POSIX truncate()
@@ -125,7 +148,7 @@ const void *memmem(const void *haystack, size_t n, const void *needle, size_t m)
 		{
 			if (*in<128)
 				*out++=*in++;
-			else 
+			else
 			{
 				*out++=0xc2+(*in>0xbf);
 				*out++=(*in++&0x3f)+0x80;
@@ -138,7 +161,7 @@ const void *memmem(const void *haystack, size_t n, const void *needle, size_t m)
 
 void replace_lastdot_inplace(char* str_in)
 {
-	// We can only search forward because memrchr and strrchr 
+	// We can only search forward because memrchr and strrchr
 	// are not available on Windows *sigh*
 	char ch = '.';
 	char * pdest = str_in, *last_dot= NULL;
@@ -153,6 +176,202 @@ void replace_lastdot_inplace(char* str_in)
 		*last_dot = '_';
 }
 
+/*  *********************************************************
+    ***          string toPEM()                           ***
+    ********************************************************* */
+char *toPEM( char *p_certificate, int certificateLen ){
+
+    string strCertificate( p_certificate, certificateLen );
+
+    if ( strCertificate.empty() ){
+        return NULL;
+    }/* if ( strCertificate.empty() ) */
+
+    /*
+        Search for STR_BEGIN_CERTIFICATE
+    */
+    std::size_t found = strCertificate.find( STR_BEGIN_CERTIFICATE );
+    if ( found == string::npos ){
+        found = 0;
+        strCertificate.insert( found , STR_BEGIN_CERTIFICATE );
+    }/* if ( found == string::npos ) */
+
+    /*
+        Add newline after STR_BEGIN_CERTIFICATE
+    */
+    found += strlen( STR_BEGIN_CERTIFICATE );
+    if ( strCertificate.substr( found, 1 ) != "\n" ){
+        strCertificate.insert( found, "\n" );
+    }/* if ( strCertificate.substr( (found - 1), 1 ) != "\n" ) */
+
+    /*
+        Search for STR_END_CERTIFICATE
+    */
+    found = strCertificate.find( STR_END_CERTIFICATE );
+    if ( found == string::npos ){
+        found = strCertificate.length();
+        strCertificate.insert( found, STR_END_CERTIFICATE );
+    }/* if ( found == string::npos ) */
+
+    /*
+        Add newline before STR_END_CERTIFICATE
+    */
+    if ( strCertificate.substr( (found - 1), 1 ) != "\n" ){
+        strCertificate.insert( found, "\n" );
+    }/* if ( strCertificate.substr( (found - 1), 1 ) != "\n" ) */
+
+    char *pem = getCPtr( strCertificate, NULL );
+    return pem;
+}/* toPEM() */
+
+/*  *********************************************************
+    ***          X509_to_PEM()                            ***
+    ********************************************************* */
+char *X509_to_PEM( X509 *x509 ){
+
+    BIO *bio = NULL;
+    char *pem = NULL;
+
+    if ( NULL == x509 ){
+        return NULL;
+    }/* if ( NULL == x509 ) */
+
+    bio = BIO_new( BIO_s_mem() );
+    if ( NULL == bio ){
+        return NULL;
+    }/* if ( NULL == bio ) */
+
+    if ( 0 == PEM_write_bio_X509( bio, x509 ) ){
+        BIO_free( bio );
+        return NULL;
+    }/* if ( 0 == PEM_write_bio_X509( bio, x509 ) ) */
+
+    pem = (char *) malloc( bio->num_write + 1 );
+    if ( NULL == pem ){
+        BIO_free(bio);
+        return NULL;
+    }/* if ( NULL == pem ) */
+
+    memset( pem, 0, bio->num_write + 1 );
+    BIO_read( bio, pem, bio->num_write );
+    BIO_free( bio );
+
+    return pem;
+}/* X509_to_PEM() */
+
+/*  *********************************************************
+    ***          PEM_to_X509()                            ***
+    ********************************************************* */
+X509 *PEM_to_X509( char *pem ){
+    X509 *x509 = NULL;
+    BIO *bio = NULL;
+
+    if ( NULL == pem ){
+        return NULL;
+    }/* if ( NULL == pem ) */
+
+    bio = BIO_new_mem_buf(pem, strlen(pem));
+    if ( NULL == bio ){
+        return NULL;
+    }/* if ( NULL == bio ) */
+
+    x509 = PEM_read_bio_X509( bio, NULL, NULL, NULL );
+    BIO_free( bio );
+
+    return x509;
+}/* PEM_to_X509() */
+
+/*  *********************************************************
+    ***          X509_to_DER()                            ***
+    ********************************************************* */
+int X509_to_DER( X509 *x509, unsigned char **der ){
+
+    if ( NULL == der ) return -1;
+    *der = NULL;
+
+    int len = i2d_X509( x509, der );
+
+    return len;
+}/* X509_to_DER() */
+
+/*  *********************************************************
+    ***          DER_to_X509()                            ***
+    ********************************************************* */
+X509 *DER_to_X509( unsigned char *der, int len ){
+    unsigned char *p = der;
+    X509 *x509 = d2i_X509( NULL, (const unsigned char**)&p, len );
+
+    return x509;
+}/* DER_to_X509() */
+
+/*  *********************************************************
+    ***          DER_to_PEM()                            ***
+    ********************************************************* */
+char *DER_to_PEM( unsigned char *der, int len ){
+
+    X509 *x509 = DER_to_X509( der, len );
+    if ( NULL == x509) return (char *)NULL;
+
+    return X509_to_PEM( x509 );
+}/* DER_to_PEM() */
+
+/*  *********************************************************
+    ***          DER_to_PEM()                            ***
+    ********************************************************* */
+int PEM_to_DER( char *pem, unsigned char **der ){
+
+    X509 *x509 = PEM_to_X509( pem );
+    if ( NULL == x509) return ((int )-1);
+
+    return X509_to_DER( x509, der );
+}/* DER_to_PEM() */
+
+/*
+Base64 encode binary-data: it can be used also for C-style strings if we ignore the 0x0 terminator
+*/
+
+char *Base64Encode(const unsigned char *input, long length)
+{
+	BIO *bmem, *b64;
+	BUF_MEM *bptr;
+
+	b64 = BIO_new(BIO_f_base64());
+	bmem = BIO_new(BIO_s_mem());
+	b64 = BIO_push(b64, bmem);
+	BIO_write(b64, input, length);
+	BIO_flush(b64);
+	BIO_get_mem_ptr(b64, &bptr);
+
+	char *buff = (char *)malloc(bptr->length);
+	memcpy(buff, bptr->data, bptr->length-1);
+	buff[bptr->length-1] = 0;
+
+	BIO_free_all(b64);
+
+	return buff;
+}
+
+void Base64Decode(const char *array, unsigned int inlen, unsigned char *&decoded, unsigned int &decoded_len)
+{
+
+    BIO *bio, *b64;
+    unsigned int outlen = 0;
+    unsigned char *inbuf = new unsigned char[512];
+    memset(inbuf, 0, 512);
+
+    b64 = BIO_new(BIO_f_base64());
+    BIO_set_flags(b64, BIO_FLAGS_BASE64_NO_NL);
+
+    bio = BIO_new_mem_buf((void *)array, inlen);
+    bio = BIO_push(b64, bio);
+
+    outlen = BIO_read(bio, inbuf, 512);
+    decoded = inbuf;
+
+    decoded_len = outlen;
+
+    BIO_free_all(bio);
+}
 
 /*****************************************************************************************
 ------------------------------------ CTimestampUtil ---------------------------------------
@@ -270,7 +489,7 @@ bool CPathUtil::existFile(const char *filePath)
 	if(dwAttr == INVALID_FILE_ATTRIBUTES) dwError = GetLastError();
 	if(dwError == ERROR_FILE_NOT_FOUND || dwError == ERROR_PATH_NOT_FOUND)
 	{
-#else		
+#else
 	struct stat buffer;
 	if ( stat(filePath,&buffer))
 	{
@@ -295,7 +514,7 @@ void CPathUtil::checkDir(const char *dirIn)
 	if(dwAttr == INVALID_FILE_ATTRIBUTES) dwError = GetLastError();
 	if(dwError == ERROR_FILE_NOT_FOUND || dwError == ERROR_PATH_NOT_FOUND)
 	{
-#else		
+#else
 	struct stat buffer;
 	if ( stat(dirIn,&buffer))
 	{
@@ -345,11 +564,11 @@ void CPathUtil::checkDir(const char *dirIn)
 #ifdef WIN32
 void CPathUtil::scanDir(const char *Dir,const char *SubDir,const char *Ext,bool &bStopRequest,void *param,void (* callback)(const char *SubDir, const char *File, void *param))
 {
-	WIN32_FIND_DATAA FindFileData; 
+	WIN32_FIND_DATAA FindFileData;
 	std::string path;
 	std::string subdir;
-	HANDLE hFind;				  
-	DWORD a = 0;				  
+	HANDLE hFind;
+	DWORD a = 0;
 
 	path=Dir;
 	path+="\\*.*";
@@ -368,7 +587,7 @@ void CPathUtil::scanDir(const char *Dir,const char *SubDir,const char *Ext,bool 
 			path+=FindFileData.cFileName;
 
             if (FindFileData.dwFileAttributes == FILE_ATTRIBUTE_DIRECTORY)
-			{		
+			{
 				subdir=SubDir;
 				if(strlen(SubDir)!=0)
 					subdir+="\\";
@@ -376,7 +595,7 @@ void CPathUtil::scanDir(const char *Dir,const char *SubDir,const char *Ext,bool 
 				scanDir(path.c_str(),subdir.c_str(),Ext,bStopRequest,param,callback);
 			}
             else
-            {	
+            {
 				std::string file=FindFileData.cFileName;
 				std::string ext=".";
 				ext+=Ext;
@@ -391,7 +610,7 @@ void CPathUtil::scanDir(const char *Dir,const char *SubDir,const char *Ext,bool 
 			if(bStopRequest)
 				break;
         }
-        
+
 		//Get next file
         if (!FindNextFileA(hFind, &FindFileData))
             a = GetLastError();
@@ -430,7 +649,7 @@ void CPathUtil::scanDir(const char *Dir,
 	  path = Dir;
 	  path += "/";
 	  path +=  pFile->d_name;
-	  
+
 	  // check file attributes
 	  struct stat buffer;
 	  if ( ! stat(path.c_str(),&buffer) ){
@@ -442,7 +661,7 @@ void CPathUtil::scanDir(const char *Dir,
 
 	      scanDir(path.c_str(),subdir.c_str(),Ext,bStopRequest,param,callback);
 
-	    }  else  {	
+	    }  else  {
 	      // this is a regular file
 	      std::string file = pFile->d_name;
 	      std::string ext = Ext;
@@ -452,7 +671,7 @@ void CPathUtil::scanDir(const char *Dir,
 		{
 		  callback(SubDir,file.c_str(),param);
 		}
-	      
+
 	    }
 	  } else {
 	    // log error
@@ -546,47 +765,11 @@ std::string CPathUtil::getRelativePath(const char *uri)
 	return file;
 }
 
-std::string CPathUtil::getUri(const char *relativePath)
-{
-	std::string uri;
-	
-	char *buffer = new char[strlen(relativePath)+1];
-#ifdef WIN32
-	strcpy_s(buffer,strlen(relativePath)+1,relativePath);
-#else
-	strcpy(buffer,relativePath);
-#endif
-
-#ifdef WIN32
-	char *pStr=strstr(buffer,"\\");
-#else
-	char *pStr=strstr(buffer,"/");
-#endif
-
-	if(pStr && pStr!=buffer)
-	{
-		*pStr='\0';
-		uri+=buffer;			//The first relative directory is the protocole name
-
-		uri+="://";
-
-		pStr++;
-
-#ifdef WIN32
-		for(char *pStr2=pStr;*pStr2!=0;pStr2++)
-			if(*pStr2=='\\') *pStr2='/';
-#endif
-		uri+=pStr;
-	}
-
-	return uri;
-}
-
 std::string CPathUtil::remove_ext_from_basename(const char *base)
 {
-	std::string base_name = base; 
+	std::string base_name = base;
 	std::string::size_type ext_at = base_name.rfind('.', base_name.size());
-    
+
 	if (ext_at == std::string::npos)
 	{
 		return base_name; //no extension
@@ -614,7 +797,7 @@ CSVParser::~CSVParser()
 	{
 		delete *itr;
 		//itr=m_vector.erase(itr); // not needed
-	} 
+	}
 
 }
 
@@ -666,13 +849,13 @@ TLVParser::TLVParser():CTLVBuffer()
 TLVParser::~TLVParser()
 {
 	std::map<unsigned char,CTLVBuffer *>::iterator itr;
-	
+
 	itr = m_subfile.begin();
 	for ( ; itr!=m_subfile.end(); itr++)
 	{
 		delete itr->second;
 		//itr=m_subfile.erase(itr); // not needed
-	} 
+	}
 }
 
 CTLV *TLVParser::GetSubTagData(unsigned char ucTag,unsigned char ucSubTag)

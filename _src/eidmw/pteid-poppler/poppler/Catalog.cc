@@ -47,9 +47,13 @@
 #include <stdlib.h>
 #include <time.h>
 #include <iostream>
+//For auto_ptr
+#include <memory>
 #include <sstream>
 #include <string>
 #include <math.h>
+//For MW version string
+#include "pteidversions.h"
 #include "goo/gmem.h"
 #include "Object.h"
 #include "PDFDoc.h"
@@ -109,6 +113,7 @@ Catalog::Catalog(PDFDoc *docA) {
   attrsList = NULL;
   kidsIdxList = NULL;
   lastCachedPage = 0;
+  m_sig_dict = NULL;
 
 
   xref->getCatalog(&catDict);
@@ -189,6 +194,7 @@ Catalog::~Catalog() {
   delete form;
   delete optContent;
   delete viewerPrefs;
+  delete m_sig_dict;
   metadata.free();
   structTreeRoot.free();
   outline.free();
@@ -245,7 +251,8 @@ unsigned int getBigRandom()
 
 fallback:
 	srand(time(NULL));
-	return rand();
+	//The cast to unsigned is safe because: The rand() function returns a pseudo-random integer in the range 0 to RAND_MAX inclusive
+	return (unsigned int) rand();
 }
 
 #endif
@@ -255,10 +262,12 @@ fallback:
 void Catalog::prepareSignature(PDFRectangle *rect, const char * name, Ref *firstPageRef,
 	       	const char *location, const char *civil_number,
 		const char *reason, unsigned long filesize, int page, int sig_sector,
-		unsigned char *img_data, unsigned long img_length) 
+		unsigned char *img_data, unsigned long img_length, bool isPTLanguage)
 {
 
 	Object signature_field;
+	Object build_prop;
+	Object build_prop_app;
 	Object *signature_dict = new Object();
 	Object acroform;
 
@@ -308,8 +317,17 @@ void Catalog::prepareSignature(PDFRectangle *rect, const char * name, Ref *first
 	signature_field.dictAdd(copyString("T"), obj2.initString(GooString::format("Signature{0:ud}", 
 					getBigRandom())));
 
+	Page *page_obj = getPage(page);
+
+	bool rotate_signature = false;
+
+	if (page_obj->getRotate() == 90)
+	{
+		rotate_signature = true;
+	}
+
 	addSignatureAppearance(&signature_field, name, civil_number, date_outstr,
-		 location, reason, r2-r0 - 1, r3-r1 -1, img_data, img_length);
+		 location, reason, r2-r0 - 1, r3-r1 -1, img_data, img_length, rotate_signature, isPTLanguage);
 
 	memset(date_outstr, 0, sizeof(date_outstr));
 
@@ -338,9 +356,32 @@ void Catalog::prepareSignature(PDFRectangle *rect, const char * name, Ref *first
 
 	signature_dict->dictAdd(copyString("Contents"), obj1.initString(sig_content));
 	signature_dict->dictAdd(copyString("SubFilter"), obj1.initName("adbe.pkcs7.detached"));
-	signature_dict->dictAdd(copyString("Name"), obj1.initString(new GooString(utf8_to_latin1(name))));
+
+	char * name_latin1 = utf8_to_latin1(name);
+	signature_dict->dictAdd(copyString("Name"), obj1.initString(new GooString(name_latin1)));
+
+	build_prop.initDict(xref);
+	build_prop_app.initDict(xref);
+
+	//Add name and version of the Signature Creation App to the Build_Prop->App Dictionary
+	build_prop_app.dictAdd(copyString("REx"), obj1.initString(
+		new GooString(PTEID_PRODUCT_VERSION"-"SVN_REVISION_STR)));
+	build_prop_app.dictAdd(copyString("Name"), obj1.initName("Portugal eID Middleware"));
+#ifdef _WIN32	
+	build_prop_app.dictAdd(copyString("OS"), obj1.initName("Win"));
+#elif __APPLE__	
+	build_prop_app.dictAdd(copyString("OS"), obj1.initName("MacOS"));
+#else
+	build_prop_app.dictAdd(copyString("OS"), obj1.initName("Linux"));
+#endif
+
+	build_prop.dictAdd(copyString("App"), &build_prop_app);
+
+	free(name_latin1);
+
 	const char *loc = location != NULL ? utf8_to_latin1(location) : "";
 	signature_dict->dictAdd(copyString("Location"), obj1.initString(new GooString(loc)));
+
 	const char *rea = reason != NULL ? utf8_to_latin1(reason): "";
 	signature_dict->dictAdd(copyString("Reason"), obj1.initString(new GooString(rea)));
 	if (strftime(date_outstr, sizeof(date_outstr), "D:%Y%m%d%H%M%S+00'00'", tmp_date) == 0) {
@@ -349,6 +390,7 @@ void Catalog::prepareSignature(PDFRectangle *rect, const char * name, Ref *first
 	else
 		signature_dict->dictAdd(copyString("M"), obj1.initString(new GooString(date_outstr)));
 
+	signature_dict->dictAdd(copyString("Prop_Build"), &build_prop);
 	signature_dict->dictAdd(copyString("Filter"), obj1.initName("Adobe.PPKLite"));
 
 	m_sig_dict = signature_dict;
@@ -399,7 +441,7 @@ void Catalog::prepareSignature(PDFRectangle *rect, const char * name, Ref *first
 	Object o1;
 	o1.initNull();
 	//Remove NeedApperances field if present
-	local_acroForm.dictSet(copyString("NeedAppearances"), &o1);
+	local_acroForm.dictSet("NeedAppearances", &o1);
 
 	local_acroForm.dictLookup("Fields", &fields_array);
 	if (fields_array.isArray())
@@ -440,9 +482,17 @@ void Catalog::prepareSignature(PDFRectangle *rect, const char * name, Ref *first
 
 	}
 
-	else if(!incremental_update)
+	else
 		xref->setModifiedObject(&catDict, catalog_ref);
 
+	gfree(placeholder);
+
+	//We can't free a pointer to static data i.e. the literal string ""
+	if (reason != NULL)
+		free((char *)rea);
+
+	if (location != NULL)
+		free((char *)loc);
 
 }
 
@@ -466,7 +516,7 @@ int Catalog::setSignatureByteRange(unsigned long sig_contents_offset, unsigned
 
 	obj.arrayAdd(obj2.initInt(off4)); //This is correct if the updated ByteRange has the same number of chars
 
-	m_sig_dict->dictSet(copyString("ByteRange"), &obj);
+	m_sig_dict->dictSet("ByteRange", &obj);
 
 	int actual_size = snprintf(tmp, sizeof(tmp),
 		       	"/ByteRange [0 %d %d %d ] ", off2, off3, off4);
@@ -482,16 +532,21 @@ int Catalog::setSignatureByteRange(unsigned long sig_contents_offset, unsigned
 void Catalog::closeSignature(const char * signature_contents, unsigned long len)
 {
 	Object obj;
-	char * padded_string = (char *)gmalloc(len+1);
 
 	if (signature_contents == NULL)
 	{
-      		error(errInternal, -1, "closeSignature(): Signature object is NULL!");
+    	error(errInternal, -1, "closeSignature(): Signature object is NULL!");
 		return;
 	}
 
+	char * padded_string = (char *)gmalloc(len+1);
+
 	if (strlen(signature_contents) > len)
-      		error(errInternal, -1, "Signature length is greater than allocated buffer!");
+	{
+      	error(errInternal, -1, "Signature length is greater than allocated buffer!");
+      	gfree(padded_string);
+      	return;
+	}
 
 	memset(padded_string, '0', len);
 	padded_string[len] = 0;
@@ -501,9 +556,11 @@ void Catalog::closeSignature(const char * signature_contents, unsigned long len)
 	GooString * sig_content = new GooString(padded_string);
 	sig_content->setHexString();
 
-	m_sig_dict->dictSet(copyString("Contents"), obj.initString(sig_content));
+	m_sig_dict->dictSet("Contents", obj.initString(sig_content));
 
 	xref->setModifiedObject(m_sig_dict, m_sig_ref);
+
+	gfree(padded_string);
 }
 
 GBool Catalog::addSigRefToPage(Ref * refPage, Object* sig_ref)
@@ -592,22 +649,26 @@ Ref Catalog::newXObject(char *plain_text_stream, int height, int width, bool nee
 	{
 		unsigned char *data = NULL; 
 		unsigned long data_length = 0;
+		int img_width = 0;
+		int img_height = 0;
 
 		//Use a custom image
 		if (img_data != NULL)
 		{
 			data = img_data;
 			data_length = img_length;
+			img_width = CUSTOM_IMAGE_BITMAP_WIDTH;
+			img_height = CUSTOM_IMAGE_BITMAP_HEIGHT;
 		}
 		else //Use the CC Official logo encoded as JPEG from a static array 
 		{
 			data = CC_LOGO_BITMAP_COMPRESSED;
 			data_length = sizeof(CC_LOGO_BITMAP_COMPRESSED);
+			img_width = CC_LOGO_BITMAP_WIDTH;
+			img_height = CC_LOGO_BITMAP_HEIGHT;
 		}
 
-		//TODO: the image size is for now equal to the CC logo, it will probably change in the future...
-		Ref image_background = addImageXObject(CC_LOGO_BITMAP_WIDTH, CC_LOGO_BITMAP_HEIGHT, data,
-			data_length);
+		Ref image_background = addImageXObject(img_width, img_height, data,	data_length);
 
 		ref_to_dict.initRef(image_background.num, image_background.gen);
 		Object image_dict;
@@ -645,6 +706,9 @@ Ref Catalog::newXObject(char *plain_text_stream, int height, int width, bool nee
 	aStream->initStream(mStream);
 
 	Ref ref_to_appearance = xref->addIndirectObject(aStream);
+
+	delete aStream;
+	delete appearance_obj;
 	return ref_to_appearance;
 }
 
@@ -691,6 +755,10 @@ Ref Catalog::addImageXObject(int width, int height, unsigned char *data, unsigne
 	aStream->initStream(mStream);
 
 	Ref ref_to_appearance = xref->addIndirectObject(aStream);
+
+	delete aStream;
+	delete image_obj;
+
 	return ref_to_appearance;
 }
 
@@ -785,7 +853,10 @@ GooString *formatMultilineString(char *content, double available_space, double f
 				horizontal_shift = 0;
 
 			//Line spacing
-			multi_line->append(GooString::format("{0:f} -10 Td\r\n", horizontal_shift)); 
+			GooString * tmp = GooString::format("{0:f} -10 Td\r\n", horizontal_shift);
+			multi_line->append(tmp);
+
+			delete tmp; 
 			//Space first line is only relevant for the 1st line
 			space_first_line = 0;
 			multi_line->append("("); 	  //Begin new line
@@ -819,10 +890,28 @@ GooString *formatMultilineString(char *content, double available_space, double f
 
 void Catalog::addSignatureAppearance(Object *signature_field, const char *name, const char *civil_number,
 	char * date_str, const char* location, const char* reason, int rect_x, int rect_y,
-	unsigned char *img_data, unsigned long img_length)
+	unsigned char *img_data, unsigned long img_length, bool rotate_signature, bool isPTLanguage)
 {
+	char * strings_pt[] = { "(Assinado por : ) Tj\r\n{0:f} 0 Td\r\n/F3 {1:d} Tf\r\n", 
+							"(Num. de Identifica\xE7\xE3o Civil: {0:s}) Tj\r\n",
+							"0 -10 Td\r\n(Data: {0:s}) Tj\r\n",
+							"Localiza\xE7\xE3o: {0:s}"};
+
+	char * strings_en[] = { "(Signed by : ) Tj\r\n{0:f} 0 Td\r\n/F3 {1:d} Tf\r\n",
+							"(Civil identification number: {0:s}) Tj\r\n",
+							"0 -10 Td\r\n(Date: {0:s}) Tj\r\n",
+							"Location: {0:s}"};
+
 	Object ap_dict, appearance_obj, obj1, obj2, obj3,
 	       ref_to_dict, ref_to_dict2, ref_to_n2, ref_to_n0, font_dict, xobject_layers;
+
+	GooString ap_command_toplevel;
+
+	if (rotate_signature)
+	{
+		ap_command_toplevel.appendf("0 1 -1 0 {0:d} 0 cm \r\n", rect_x);
+
+	}
 
 	std::string commands_template;
 
@@ -830,43 +919,54 @@ void Catalog::addSignatureAppearance(Object *signature_field, const char *name, 
 	if (small_signature_format)
 		commands_template = "q\r\n40.5 0 0 31.5 0 0 cm\r\n/Im1 Do\r\nQ\r\nq 0.30588 0.54117 0.74509 rg\r\nBT\r\n0 {0:d} Td\r\n/F2 {1:d} Tf\r\n";
 	else
-		commands_template = "q\r\n40.5 0 0 31.5 0 43 cm\r\n/Im1 Do\r\nQ\r\nq\r\n138.0 0 0 30.0 0 0 cm\r\n/Im0 Do\r\nQ\r\nq 0.30588 0.54117 0.74509 rg\r\nBT\r\n0 {0:d} Td\r\n/F2 {1:d} Tf\r\n";
+		commands_template = "q\r\n40.5 0 0 31.5 0 43 cm\r\n/Im1 Do\r\nQ\r\nq\r\n139.29 0 0 30.87 0 0 cm\r\n/Im0 Do\r\nQ\r\nq 0.30588 0.54117 0.74509 rg\r\nBT\r\n0 {0:d} Td\r\n/F2 {1:d} Tf\r\n";
+		//commands_template = "q\r\n/Im1 Do\r\nQ\r\nq\r\n/Im0 Do\r\nQ\r\nq 0.30588 0.54117 0.74509 rg\r\nBT\r\n0 {0:d} Td\r\n/F2 {1:d} Tf\r\n";
 
 	initBuiltinFontTables();
 	
-	const char appearance_command1[] = 
-		"q 1 0 0 1 0 0 cm /n0 Do Q\r\nq 1 0 0 1 0 0 cm /n2 Do Q\r\n";
-	
+	//const char appearance_command1[] = 
+	ap_command_toplevel.append("q 1 0 0 1 0 0 cm /n0 Do Q\r\nq 1 0 0 1 0 0 cm /n2 Do Q\r\n");
+		
 	char n0_commands[] = "% DSBlank\n";
 	const float font_size = 8;
-	//Start with Italics font
-	GooString *n2_commands = new GooString(
-           GooString::format(commands_template.c_str(), rect_y - 10, (int)font_size));
+	int rect_width = rotate_signature ? rect_y : rect_x;
+	int rect_height = rotate_signature ? rect_x : rect_y;
 	
+	//Start with Italics font
+	GooString *n2_commands = GooString::format(commands_template.c_str(), rect_height - 10, (int)font_size);
 
 	if (!small_signature_format && reason != NULL && strlen(reason) > 0)
 	{
-		GooString *abc = new GooString(utf8_to_latin1(reason));
-		n2_commands->append(formatMultilineString(abc->getCString(), rect_x, font_size, MYRIAD_ITALIC, 2));
+		char * reason_latin1 = utf8_to_latin1(reason);
+		GooString * multiline = formatMultilineString(reason_latin1, rect_width, font_size, MYRIAD_ITALIC, 2);
+		n2_commands->append(multiline);
+
+		free(reason_latin1);
+		delete multiline;
 	}
 
 	n2_commands->append("0 -10 Td\r\n");
+	GooString * buf = GooString::format("0 0 0 rg\r\n/F1 {0:d} Tf\r\n", (int)font_size);
 	//Change font to regular black font
-	n2_commands->append(GooString::format("0 0 0 rg\r\n/F1 {0:d} Tf\r\n",
-			       	(int)font_size));
+	n2_commands->append(buf);
+
+	delete buf;
 
 	double assinado_por_length = 51.0;
 	//Change to bold font for the signer name
-	n2_commands->append(GooString::format("(Assinado por: ) Tj\r\n{0:f} 0 Td\r\n/F3 {1:d} Tf\r\n",
+	std::auto_ptr<GooString> str1(GooString::format(isPTLanguage ? strings_pt[0] : strings_en[0],
 		assinado_por_length, (int)font_size));
+
+	n2_commands->append(str1.get());
 	
 	//The parameter 5 in lines is intended to allow as much lines as needed to the name field	
-	GooString *name_str = formatMultilineString(utf8_to_latin1(name), 
-					rect_x, font_size, MYRIAD_BOLD, 5, rect_x - assinado_por_length);
+	char * name_latin1 = utf8_to_latin1(name);
+	GooString *name_str = formatMultilineString(name_latin1, 
+					rect_width, font_size, MYRIAD_BOLD, 5, rect_width - assinado_por_length);
 	n2_commands->append(name_str);
 
 	int lines = 0;
-        char *haystack = name_str->getCString();
+    char *haystack = name_str->getCString();
 	while ((haystack = strstr(haystack, "Tj")) != NULL)
 	{
 		haystack += 2; //Skip current match of "Tj"
@@ -875,27 +975,38 @@ void Catalog::addSignatureAppearance(Object *signature_field, const char *name, 
 
 	if (lines < 2)
 	{
-		n2_commands->append(GooString::format("{0:f} -10 Td\r\n", -assinado_por_length)); 
+		std::auto_ptr<GooString> str2(GooString::format("{0:f} -10 Td\r\n", -assinado_por_length));
+		n2_commands->append(str2.get()); 
 	}
 	else
 		n2_commands->append("0 -10 Td\r\n");
 
 	//Back to regular font
-	n2_commands->append(GooString::format("/F1 {0:d} Tf\r\n", (int)font_size));
+	std::auto_ptr<GooString> str3(GooString::format("/F1 {0:d} Tf\r\n", (int)font_size));
+	n2_commands->append(str3.get());
 
-	n2_commands->append(GooString::format("(Num. de Identifica\xE7\xE3o Civil: {0:s}) Tj\r\n",
+	std::auto_ptr<GooString> str4(GooString::format(isPTLanguage ? strings_pt[1] : strings_en[1],
 				civil_number));
+	n2_commands->append(str4.get());
 
-	n2_commands->append(GooString::format("0 -10 Td\r\n(Data: {0:s}) Tj\r\n",
+	std::auto_ptr<GooString> str5(GooString::format(isPTLanguage ? strings_pt[2] : strings_en[2],
 		date_str));
+	n2_commands->append(str5.get());
 
 	if (!small_signature_format && location != NULL && strlen(location) > 0)
 	{
 		n2_commands->append("0 -10 Td\r\n");
-		GooString * tmp_location = GooString::format("Localiza\xE7\xE3o: {0:s}",
-					utf8_to_latin1(location));
-		n2_commands->append(formatMultilineString(tmp_location->getCString(), 
-					rect_x, font_size, MYRIAD_REGULAR, 1));
+		char * location_latin1 = utf8_to_latin1(location);
+		GooString * tmp_location = GooString::format(isPTLanguage ? strings_pt[3] : strings_en[3],
+					location_latin1);
+
+		GooString * multiline2 = formatMultilineString(tmp_location->getCString(), 
+					rect_width, font_size, MYRIAD_REGULAR, 1); 
+		n2_commands->append(multiline2);
+
+		delete multiline2;
+		delete tmp_location;
+		free(location_latin1);
 	}
 
 	n2_commands->append("\r\nET\r\n");
@@ -915,7 +1026,8 @@ void Catalog::addSignatureAppearance(Object *signature_field, const char *name, 
 	resources.dictAdd(copyString("ProcSet"), &procset);
 
 	xobject_layers.initDict(xref);
-	Ref n2_layer = newXObject(n2_commands->getCString(), rect_x, rect_y, true, true, img_data, img_length);
+	Ref n2_layer = newXObject(n2_commands->getCString(), rotate_signature ? rect_y : rect_x, rotate_signature ? rect_x : rect_y,
+	 true, true, img_data, img_length);
 	ref_to_n2.initRef(n2_layer.num, n2_layer.gen);
 	xobject_layers.dictAdd(copyString("n2"), &ref_to_n2);
 
@@ -938,12 +1050,12 @@ void Catalog::addSignatureAppearance(Object *signature_field, const char *name, 
 	obj1.arrayAdd(obj2.initReal(rect_y));
 	appearance_obj.dictAdd(copyString("BBox"), &obj1);
 	appearance_obj.dictAdd(copyString("Length"), 
-			obj1.initInt(strlen(appearance_command1)));
+			obj1.initInt(ap_command_toplevel.getLength()));
 
 	//appearance_obj.dictAdd(copyString("Filter"), obj1.initName("FlateDecode"));
 
-	MemStream *mStream = new MemStream(strdup(appearance_command1), 0,
-			sizeof(appearance_command1), &appearance_obj);
+	MemStream *mStream = new MemStream(strdup(ap_command_toplevel.getCString()), 0,
+			ap_command_toplevel.getLength(), &appearance_obj);
 
 	mStream->setNeedFree(gTrue);
 	Object aStream;
@@ -957,6 +1069,10 @@ void Catalog::addSignatureAppearance(Object *signature_field, const char *name, 
 	
 	signature_field->dictAdd(copyString("AP"), &ap_dict);
 
+	delete name_str;
+	delete n2_commands;
+
+	free(name_latin1);
 }
 
 
@@ -1175,6 +1291,7 @@ GBool Catalog::cachePageTree(int page)
 
       if (lastCachedPage >= numPages) {
         error(errSyntaxError, -1, "Page count in top-level pages object is incorrect");
+        delete p;
         kidRef.free();
         kid.free();
         return gFalse;

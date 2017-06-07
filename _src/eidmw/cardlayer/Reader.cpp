@@ -82,6 +82,8 @@ CReader::~CReader(void)
 {
     if (m_poCard != NULL)
         Disconnect(DISCONNECT_LEAVE_CARD);
+
+    delete m_oPinpad;
 }
 
 std::string & CReader::GetReaderName()
@@ -223,7 +225,7 @@ void CReader::Disconnect(tDisconnectMode disconnectMode)
 		// this doesn't hurt except that after a Ctrl-C, m_poCard->Disconnect()
 		// throws us out of this function WITHOUT an exception! So the m_poCard
 		// is not deleted() and set to NULL allthough the next call to this function
-		// it contains rubbisch => CRASH.
+		// it contains rubbish => CRASH.
 		// So we set m_poCard = NULL in advance, and only if an exception is thrown
 		// we assign it the old value.
 		CCard *poTemp = m_poCard;
@@ -260,14 +262,6 @@ tCardType CReader::GetCardType()
         throw CMWEXCEPTION(EIDMW_ERR_NO_CARD);
 
     return m_poCard->GetType();
-}
-
-CByteArray CReader::GetInfo()
-{
-    if (m_poCard == NULL)
-        throw CMWEXCEPTION(EIDMW_ERR_NO_CARD);
-
-    return m_poCard->GetInfo();
 }
 
 std::string CReader::GetSerialNr()
@@ -400,29 +394,30 @@ CByteArray CReader::RootCAPubKey(){
     return m_poCard->RootCAPubKey();
 }
 
-bool CReader::Activate(const char *pinCode, CByteArray &BCDDate){
+bool CReader::Activate(const char *pinCode, CByteArray &BCDDate, bool blockActivationPIN){
     if (m_poCard == NULL)
         throw CMWEXCEPTION(EIDMW_ERR_NO_CARD);
 
-    return m_poCard->Activate(pinCode,BCDDate);
+    return m_poCard->Activate(pinCode, 	BCDDate, blockActivationPIN);
 }
 
-bool CReader::unlockPIN(const tPin &pin, const tPin *puk, const char *pszPuk, const char *pszNewPin, unsigned long &triesLeft){
+bool CReader::unlockPIN(const tPin &pin, const tPin *puk, const char *pszPuk, const char *pszNewPin, unsigned long &triesLeft, unsigned long unblockFlags){
 	if (m_poCard == NULL)
 		throw CMWEXCEPTION(EIDMW_ERR_NO_CARD);
 
-	return m_poCard->unlockPIN(pin, puk, pszPuk, pszNewPin, triesLeft);
+	return m_poCard->unlockPIN(pin, puk, pszPuk, pszNewPin, triesLeft, unblockFlags);
 }
 
 
 bool CReader::PinCmd(tPinOperation operation, const tPin & Pin,
     const std::string & csPin1, const std::string & csPin2,
-    unsigned long & ulRemaining, bool bShowDlg)
+    unsigned long & ulRemaining, bool bShowDlg, void *wndGeometry, unsigned long unblockFlags)
 {
     if (m_poCard == NULL)
         throw CMWEXCEPTION(EIDMW_ERR_NO_CARD);
 
-    return m_poCard->PinCmd(operation, Pin, csPin1, csPin2, ulRemaining, NULL, bShowDlg);
+    return m_poCard->PinCmd(operation, Pin, csPin1, csPin2,
+           ulRemaining, NULL, bShowDlg, wndGeometry, unblockFlags);
 }
 
 unsigned long CReader::GetSupportedAlgorithms()
@@ -493,38 +488,6 @@ CByteArray CReader::Sign(const tPrivKey & key, unsigned long algo,
 		throw CMWEXCEPTION(EIDMW_ERR_CHECK);
 }
 
-CByteArray CReader::Sign(const tPrivKey & key, unsigned long algo,
-    CHash & oHash)
-{
-    if (m_poCard == NULL)
-        throw CMWEXCEPTION(EIDMW_ERR_NO_CARD);
-
-	unsigned long ulSupportedAlgos = m_poCard->GetSupportedAlgorithms();
-	if ((algo & ulSupportedAlgos & SIGN_ALGO_MD5_RSA_PKCS) ||
-		(algo & ulSupportedAlgos & SIGN_ALGO_SHA1_RSA_PKCS) ||
-		(algo & ulSupportedAlgos & SIGN_ALGO_SHA256_RSA_PKCS) ||
-		(algo & ulSupportedAlgos & SIGN_ALGO_SHA384_RSA_PKCS) ||
-		(algo & ulSupportedAlgos & SIGN_ALGO_SHA512_RSA_PKCS) ||
-		(algo & ulSupportedAlgos & SIGN_ALGO_RIPEMD160_RSA_PKCS))
-	{
-	    return m_poCard->Sign(key, GetPinByID(key.ulAuthID), algo, oHash);
-	}
-	else
-	{
-		CByteArray oHashResult = oHash.GetHash();
-		return Sign(key, algo, oHashResult);
-	}
-}
-
-CByteArray CReader::Decrypt(const tPrivKey & key, unsigned long algo,
-    const CByteArray & oData)
-{
-    if (m_poCard == NULL)
-        throw CMWEXCEPTION(EIDMW_ERR_NO_CARD);
-
-    return m_poCard->Decrypt(key, algo, oData);
-}
-
 CByteArray CReader::GetRandom(unsigned long ulLen)
 {
     if (m_poCard == NULL)
@@ -539,14 +502,6 @@ CByteArray CReader::SendAPDU(const CByteArray & oCmdAPDU)
         throw CMWEXCEPTION(EIDMW_ERR_NO_CARD);
 
     return m_poCard->SendAPDU(oCmdAPDU);
-}
-
-CByteArray CReader::Ctrl(long ctrl, const CByteArray & oCmdData)
-{
-    if (m_poCard == NULL)
-        throw CMWEXCEPTION(EIDMW_ERR_NO_CARD);
-
-    return m_poCard->Ctrl(ctrl, oCmdData);
 }
 
 unsigned long CReader::PinCount()

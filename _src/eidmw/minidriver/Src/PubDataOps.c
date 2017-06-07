@@ -235,14 +235,9 @@ DWORD WINAPI   CardReadFile
          DirFound++;
 			if (_stricmp("cmapfile", pszFileName) == 0)			      /* /mscp/cmapfile */
          {
+			WORD keySize;
             FileFound++;
-				*pcbData = sizeof(cmr);
-				*ppbData = (PBYTE)pCardData->pfnCspAlloc(*pcbData);
-				if ( *ppbData == NULL )
-				{
-					LogTrace(LOGTYPE_ERROR, WHERE, "Error allocating memory for [*ppbData]");
-					CLEANUP(SCARD_E_NO_MEMORY);
-				}
+				
 				dwReturn = CardGetProperty(pCardData, 
 					CP_CARD_SERIAL_NO, 
 					pbSerialNumber, 
@@ -253,11 +248,14 @@ DWORD WINAPI   CardReadFile
 					LogTrace(LOGTYPE_ERROR, WHERE, "Error CardGetProperty for [CP_CARD_SERIAL_NO]: 0x08X", dwReturn);
 					CLEANUP(dwReturn);
 				}
+				/* We dont need to convert it to ASCII
 				for (i=0; i < 16; i++) {
 					sprintf(szSerialNumber + 2*i*sizeof(char),
 						"%02X", pbSerialNumber[i]);
 				}
-				szSerialNumber[32] = '\0';
+				*/
+				sprintf(szSerialNumber, "%s", pbSerialNumber);
+				szSerialNumber[16] = '\0';
 
 				/* Cleanup CMR first */
 				memset(&cmr, '\0', sizeof(cmr));
@@ -267,6 +265,19 @@ DWORD WINAPI   CardReadFile
 				/***************************/
 				/* Container name for Authentication key */
 				sprintf (szContainerName, "DS_%s", szSerialNumber);
+				
+				PteidReadPrKDF(pCardData, pcbData, ppbData);
+
+				dwReturn = PteidParsePrKDF(pCardData, pcbData, *ppbData, &keySize);
+
+				if (dwReturn != SCARD_S_SUCCESS)
+				{
+					LogTrace(LOGTYPE_ERROR, WHERE, "Error PteidParsePrKDF: 0x08X", dwReturn);
+					CLEANUP(dwReturn);
+				}
+				//Save this value for the next call of CardSignData...
+				g_keySize = keySize;
+		
 				memset(cmr[0].wszGuid, '\0', sizeof(cmr[0].wszGuid));
 				iReturn = MultiByteToWideChar(CP_UTF8, 0, szContainerName, strlen(szContainerName), cmr[0].wszGuid, sizeof(cmr[0].wszGuid));
 
@@ -278,7 +289,7 @@ DWORD WINAPI   CardReadFile
 				}
 				cmr[0].bFlags                     = CONTAINER_MAP_VALID_CONTAINER|CONTAINER_MAP_DEFAULT_CONTAINER;
 				cmr[0].bReserved                  = 0;
-				cmr[0].wSigKeySizeBits            = 1024;
+				cmr[0].wSigKeySizeBits            = keySize;
 				cmr[0].wKeyExchangeKeySizeBits    = 0;
 
 				/****************************/
@@ -297,8 +308,17 @@ DWORD WINAPI   CardReadFile
 				}
 				cmr[1].bFlags                     = CONTAINER_MAP_VALID_CONTAINER;
 				cmr[1].bReserved                  = 0;
-				cmr[1].wSigKeySizeBits            = 1024;
+				cmr[1].wSigKeySizeBits            = keySize;
 				cmr[1].wKeyExchangeKeySizeBits    = 0;
+
+				*pcbData = sizeof(cmr);
+				*ppbData = (PBYTE)pCardData->pfnCspReAlloc(*ppbData, *pcbData);
+				if ( *ppbData == NULL )
+				{
+					LogTrace(LOGTYPE_ERROR, WHERE, "Error allocating memory for [*ppbData]");
+					CLEANUP(SCARD_E_NO_MEMORY);
+				}
+
 				memcpy (*ppbData, &cmr, *pcbData);
 			}
 			if ( _stricmp("ksc00", pszFileName) == 0)					   /* /mscp/ksc00 */
@@ -321,7 +341,8 @@ DWORD WINAPI   CardReadFile
 					CLEANUP(SCARD_E_UNEXPECTED);
 				}
 			}
-			if ( _stricmp("msroots", pszFileName) == 0)					/* /mscp/msroots */
+			
+			if ( _stricmp("msroots", pszFileName) == 0)					// /mscp/msroots
 			{
 				FileFound++;
 				dwReturn = PteidCreateMSRoots(pCardData, pcbData, ppbData);
@@ -601,7 +622,8 @@ DWORD WINAPI   CardGetFileInfo
 					CLEANUP(SCARD_E_UNEXPECTED);
 				}
 			}
-			if ( _stricmp("msroots", pszFileName) == 0)					/* /mscp/msroots */
+
+			if ( _stricmp("msroots", pszFileName) == 0)					// /mscp/msroots
 			{
 				FileFound++;
 				dwReturn = PteidCreateMSRoots(pCardData, &(pCardFileInfo->cbFileSize), NULL);

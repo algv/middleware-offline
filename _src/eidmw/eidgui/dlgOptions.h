@@ -30,9 +30,8 @@ class dlgOptions : public QDialog
     Q_OBJECT
 
 private slots:
-	void on_chbShowToolbar_toggled( bool bChecked );
+
 	void on_chbShowPicture_toggled( bool bChecked );
-	//void on_chbUseKeyPad_toggled( bool bChecked );
 	void on_chbAutoCardReading_toggled( bool bChecked );
 	void on_chbWinAutoStart_toggled( bool bChecked );
 	void on_chbStartMinimized_toggled( bool bChecked );
@@ -40,19 +39,24 @@ private slots:
 	void on_chbRegCert_toggled( bool bChecked );
 	void on_chbRemoveCert_toggled( bool bChecked );
 	void on_chbShowNotification_toggled( bool bChecked );
+	void on_checkBox_proxy_toggled(bool bChecked);
+	void on_checkBox_proxyAuth_toggled(bool bChecked);
+	void on_okButton_clicked();
 
 public:
-	dlgOptions( GUISettings& settings, QWidget *parent = 0);
+	dlgOptions( GUISettings& settings, QString &currentReaderName, QWidget *parent = 0);
     ~dlgOptions();
 
-//	void setUseKeyPad( bool Checked )	{ ui.chbUseKeyPad->setChecked( Checked ); };
-//	bool getUseKeyPad( void )			{ return ui.chbUseKeyPad->isChecked(); };
-	void setShowToolbar( bool Checked )	{ ui.chbShowToolbar->setChecked( Checked ); };
-	bool getShowToolbar( void )			{ return ui.chbShowToolbar->isChecked(); };
 	void setShowPicture( bool Checked )	{ ui.chbShowPicture->setChecked( Checked ); };
 	bool getShowPicture( void )			{ return ui.chbShowPicture->isChecked(); };
 	void setShowNotification( bool Checked )	{ ui.chbShowNotification->setChecked( Checked ); };
 	bool getShowNotification( void )			{ return ui.chbShowNotification->isChecked(); };
+
+	QString getProxyHost();
+	int getProxyPort();
+	bool getProxyAuth();
+    void checkBox_proxy_EnableGroup(bool checked);
+    void checkBox_proxyAuth_EnableGroup(bool checked);
 
 private:
     Ui_dlgOptions ui;

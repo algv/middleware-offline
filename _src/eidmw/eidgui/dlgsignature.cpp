@@ -23,6 +23,11 @@
 
 #include <QListView>
 #include <QFileInfo>
+#include <QFileDialog>
+#include <QtConcurrent>
+#include <QtConcurrent>
+#include <QDesktopWidget>
+#include <QProgressDialog>
 #include <QDir>
 
 #include <fstream>
@@ -35,6 +40,7 @@
 #include "mainwnd.h"
 
 #include "eidErrors.h"
+#include "dlgUtils.h"
 
 using namespace eIDMW;
 
@@ -191,11 +197,7 @@ void dlgSignature::on_pbSign_clicked ( void )
 		QString s = QDir::toNativeSeparators(strlist.at(n_files));
 
 		cpychar = new char[listtotalLength+1];
-#ifdef WIN32		
-		strcpy(cpychar, s.toStdString().c_str());
-#else		
-		strcpy(cpychar, s.toUtf8().constData());
-#endif		
+		strcpy(cpychar, getPlatformNativeString(s) );
 		files_to_sign[n_files] = cpychar;
 		PTEID_LOG(PTEID_LOG_LEVEL_DEBUG, "eidgui", "File to Sign: %s", files_to_sign[n_files]);
 	}
@@ -218,8 +220,10 @@ void dlgSignature::on_pbSign_clicked ( void )
 		savefilepath = QFileDialog::getSaveFileName(this, tr("Save File"), 
 				nativedafaultpath, tr("XAdES Signatures (*.ccsigned)"));
 
-	if (savefilepath.isNull() || savefilepath.isEmpty())
+	if (savefilepath.isNull() || savefilepath.isEmpty()) {
+		delete[] files_to_sign;
 		return;
+	}
 
 	QString native_path = QDir::toNativeSeparators(savefilepath);
 
@@ -230,6 +234,7 @@ void dlgSignature::on_pbSign_clicked ( void )
 	pdialog->setMinimum(0);
 	pdialog->setMaximum(0);
 	connect(&this->FutureWatcher, SIGNAL(finished()), pdialog, SLOT(cancel()));
+	pdialog->reset();
 
 	//Get the Xades-T checkbox value
 	// QCheckBox *xades_t = ui.checkbox_timestamp;
@@ -237,21 +242,13 @@ void dlgSignature::on_pbSign_clicked ( void )
 
 	XadesLevel level = getSelectedXadesLevel();
 
+	output_file = new char[native_path.size() + 1];
+	strcpy(output_file, getPlatformNativeString(native_path));
 
-#ifdef WIN32		
-	size_t len_2 = strlen(native_path.toStdString().c_str());
-	output_file = new char[len_2+1];
-	strcpy(output_file,(char*)native_path.toStdString().c_str());
-#else
-	int outp_len = native_path.size(); 
-	output_file =  new char[outp_len*2];
-	strncpy(output_file, native_path.toUtf8().constData(), outp_len*2);
-#endif	    
 	PTEID_LOG(PTEID_LOG_LEVEL_DEBUG, "eidgui", "Save to file %s", output_file);
 	if (individual_sigs)
 		future = 
 			QtConcurrent::run(this, &dlgSignature::run_multiple_sign, files_to_sign, n_files, output_file, level);
-		
 	else
 		future = 
 			QtConcurrent::run(this, &dlgSignature::runsign, files_to_sign, n_files, output_file, level);
@@ -264,9 +261,7 @@ void dlgSignature::on_pbSign_clicked ( void )
 	else
 		ShowErrorMsgBox();
 
-	delete []files_to_sign;
 	delete []cpychar;
-	delete []output_file;
 
 	this->close();
 }
@@ -283,11 +278,9 @@ void dlgSignature::runsign(const char ** paths, unsigned int n_paths, const char
 		{
 
 			if (level == XADES_T)
-				SignXades = card->SignXadesT(paths, n_paths, output_path);
+				SignXades = card->SignXadesT(output_path, paths, n_paths);
 			else if (level == XADES_B)
-				SignXades = card->SignXades(paths, n_paths, output_path);
-			//else if (level == XADES_A)
-			//	SignXades = card->SignXadesA(paths, n_paths, output_path);
+				SignXades = card->SignXades(output_path, paths, n_paths);
 			
 			this->error_code = 0;
 			keepTrying = false;
@@ -310,6 +303,9 @@ void dlgSignature::runsign(const char ** paths, unsigned int n_paths, const char
 		}
 	}
 	while(keepTrying);
+
+	delete[] paths;
+	delete output_path;
 	return;
 }
 
@@ -344,6 +340,7 @@ PTEID_EIDCard& dlgSignature::getNewCard()
 
 					}
 			}
+			//LL delete(&ReaderContext);
 		}
 }
 
@@ -356,16 +353,18 @@ void dlgSignature::run_multiple_sign(const char ** paths, unsigned int n_paths, 
 		PTEID_EIDCard*	Card = dynamic_cast<PTEID_EIDCard*>(m_CI_Data.m_pCard);
 
 		if (level == XADES_T)
-			Card->SignXadesTIndividual(paths, n_paths, output_path);
+			Card->SignXadesTIndividual(output_path, paths, n_paths);
 		else if (level == XADES_B)
-			Card->SignXadesIndividual(paths, n_paths, output_path);
+			Card->SignXadesIndividual(output_path, paths, n_paths);
 		else if (level == XADES_A)
-			Card->SignXadesAIndividual(paths, n_paths, output_path);
+			Card->SignXadesAIndividual(output_path, paths, n_paths);
 		this->error_code = 0;
 	}
 	catch (PTEID_Exception &e)
 	{
 		this->error_code = e.GetError();
 	}
+	delete [] paths;
+	delete output_path;
 	return;
 }

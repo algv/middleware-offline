@@ -20,6 +20,7 @@
 #include "eidlibException.h"
 #include "MWException.h"
 #include "eidErrors.h"
+#include <iostream>
 
 
 namespace eIDMW
@@ -79,8 +80,6 @@ PTEID_Exception PTEID_Exception::THROWException(CMWException &e)
 		throw PTEID_ExReaderSetChanged();
 	case EIDMW_ERR_NO_READER:
 		throw PTEID_ExNoReader();
-	case EIDMW_ERR_NOT_ALLOW_BY_USER:
-		throw PTEID_ExNotAllowByUser();
 	case EIDMW_SOD_UNEXPECTED_VALUE:
 	case EIDMW_SOD_UNEXPECTED_ASN1_TAG:
 	case EIDMW_SOD_UNEXPECTED_ALGO_OID:
@@ -290,27 +289,6 @@ PTEID_ExNoReader::~PTEID_ExNoReader()
 {
 }
 
-/*****************************************************************************************
----------------------------------------- PTEID_ExNotAllowByUser --------------------------------------
-*****************************************************************************************/
-PTEID_ExNotAllowByUser::PTEID_ExNotAllowByUser():PTEID_Exception(EIDMW_ERR_NOT_ALLOW_BY_USER)
-{
-}
-
-PTEID_ExNotAllowByUser::~PTEID_ExNotAllowByUser()
-{
-}
-
-/*****************************************************************************************
----------------------------------------- PTEID_ExUserMustAnswer --------------------------------------
-*****************************************************************************************/
-PTEID_ExUserMustAnswer::PTEID_ExUserMustAnswer():PTEID_Exception(EIDMW_ERR_USER_MUST_ANSWER)
-{
-}
-
-PTEID_ExUserMustAnswer::~PTEID_ExUserMustAnswer()
-{
-}
 
 /*****************************************************************************************
 ---------------------------- PTEID_ExUnexpectedValue --------------------------------------

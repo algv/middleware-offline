@@ -20,6 +20,7 @@
 
 #include <time.h>
 #include <fstream>
+#include <algorithm>
 
 #include "openssl/evp.h"
 #include "openssl/x509.h"
@@ -59,30 +60,27 @@ APL_CertifStatus ConvertStatus(FWK_CertifStatus eStatus,APL_ValidationProcess eP
 {
 	//Convert the status out of the Crypto framework into an APL_CertifStatus
 	switch(eStatus)
-	{ 
-	case FWK_CERTIF_STATUS_TEST:
-		return APL_CERTIF_STATUS_TEST;
+	{
+		case FWK_CERTIF_STATUS_REVOKED:
+			return APL_CERTIF_STATUS_REVOKED;
 
-	case FWK_CERTIF_STATUS_DATE:
-		return APL_CERTIF_STATUS_DATE;
+		case FWK_CERTIF_STATUS_UNKNOWN:
+			return APL_CERTIF_STATUS_UNKNOWN;
 
-	case FWK_CERTIF_STATUS_REVOKED:
-		return APL_CERTIF_STATUS_REVOKED;
+		case FWK_CERTIF_STATUS_CONNECT:
+			return APL_CERTIF_STATUS_CONNECT;
 
-	case FWK_CERTIF_STATUS_UNKNOWN:
-		return APL_CERTIF_STATUS_UNKNOWN;
+		case FWK_CERTIF_STATUS_ERROR:
+			return APL_CERTIF_STATUS_ERROR;
 
-	case FWK_CERTIF_STATUS_CONNECT:
-		return APL_CERTIF_STATUS_CONNECT;
+		case FWK_CERTIF_STATUS_VALID:
+		    return APL_CERTIF_STATUS_VALID;
 
-	case FWK_CERTIF_STATUS_ERROR:
-		return APL_CERTIF_STATUS_ERROR;
+		case FWK_CERTIF_STATUS_SUSPENDED:
+			return APL_CERTIF_STATUS_SUSPENDED;
 
-	case FWK_CERTIF_STATUS_VALID:
-	       	return APL_CERTIF_STATUS_VALID;
-	
-	default:
-		return APL_CERTIF_STATUS_UNCHECK;
+		default:
+			return APL_CERTIF_STATUS_UNCHECK;
 	}
 }
 
@@ -95,6 +93,11 @@ APL_Certifs::APL_Certifs(APL_SmartCard *card)
 
 	loadCard();
 	loadFromFile();
+
+	//initMyCerts();
+	initSODCAs();
+	defaultSODCertifs = true;
+
 }
 
 APL_Certifs::APL_Certifs()
@@ -103,11 +106,133 @@ APL_Certifs::APL_Certifs()
 	loadFromFile();
 }
 
-void APL_Certifs::init(APL_SmartCard *card){
+/*
+void APL_Certifs::initMyCerts()
+{
+	//Fill a seperate cert vector that only contains the chain relevant for the current card
+
+	my_certifs.push_back(getAuthentication());
+	my_certifs.push_back(getSignature());
+	APL_Certif * cert = getSignatureSubCA();
+	my_certifs.push_back(cert);
+	my_certifs.push_back(getAuthenticationSubCA());
+
+        // Add Cert with 'Cartão de Cidadão 00x', where x: 1, 2, 3
+        std::vector<unsigned long>::const_iterator itrOrder;
+        std::map<unsigned long, APL_Certif *>::const_iterator itrCert;
+        for(itrOrder=m_certifsOrder.begin();itrOrder!=m_certifsOrder.end();itrOrder++)
+        {
+            itrCert = m_certifs.find(*itrOrder);
+            if( itrCert == m_certifs.end() ) {
+                //The certif is not in the map
+                //Should not happend
+                MWLOG(LEV_ERROR, MOD_APL, L"Exception in initMyCerts(): certificate not found!" );
+                throw CMWEXCEPTION(EIDMW_ERR_PARAM_RANGE);
+            }
+
+            cert = itrCert->second;
+            if ( strcmp( cert->getIssuerName(), "ECRaizEstado" ) == 0 ){
+                my_certifs.push_back(cert);
+            }
+        }
+
+	APL_Certif * issuer = findIssuer(cert);
+	APL_Certif * new_issuer = NULL;
+
+	while((new_issuer = findIssuer(issuer)) != issuer)
+	{
+        
+		my_certifs.push_back(new_issuer);
+		issuer = new_issuer;
+	}
+
+}
+*/
+
+//This should select the certificates which are part of the chain for SOD signatures for production cards
+
+void APL_Certifs::initSODCAs()
+{
+	APL_Certif *cert=NULL;
+	unsigned long ulCount=0;
+
+	defaultSODCertifs = true;
+
+	std::vector<unsigned long>::const_iterator itrOrder;
+	std::map<unsigned long, APL_Certif *>::const_iterator itrCert;
+
+	for(itrOrder=m_certifsOrder.begin();itrOrder!=m_certifsOrder.end();itrOrder++)
+	{
+		itrCert = m_certifs.find(*itrOrder);
+		if(itrCert == m_certifs.end())
+		{
+			//The certif is not in the map
+			//Should not happen
+			MWLOG(LEV_ERROR, MOD_APL, L"Exception in initSODCAs(): certificate not found!" );
+			throw CMWEXCEPTION(EIDMW_ERR_PARAM_RANGE);
+		}
+
+		cert = itrCert->second;
+		//Add certificate if it was NOT loaded from card
+		if (!cert->isFromCard())
+		{
+			m_sod_cas.push_back(cert);
+			MWLOG(LEV_DEBUG, MOD_APL, "initSODCAs(): Adding certificate for card: %s Valid from: %s to: %s", 
+				cert->getOwnerName(), cert->getValidityBegin(), cert->getValidityEnd());
+
+		}
+	}
+}
+
+void APL_Certifs::clearSODCAs()
+{
+	MWLOG(LEV_DEBUG, MOD_APL, L"resetSODCAs() called");
+	m_sod_cas = std::vector<APL_Certif *>();
+}
+
+
+void APL_Certifs::addToSODCAs(const CByteArray &cert_ba)
+{
+	if (defaultSODCertifs)
+	{
+		clearSODCAs();
+		defaultSODCertifs = false;
+	}
+
+	APL_Certif * cert = new APL_Certif(this, cert_ba, APL_CERTIF_TYPE_ROOT, false);
+	MWLOG(LEV_DEBUG, MOD_APL, "addToSODCAs(): Adding certificate %s", cert->getOwnerName());
+	m_sod_cas.push_back(cert);
+}
+
+unsigned long APL_Certifs::countSODCAs()
+{
+	MWLOG(LEV_DEBUG, MOD_APL, L"DEBUG: countSODCAs returns %lu", m_sod_cas.size());
+	return m_sod_cas.size();
+}
+
+APL_Certif * APL_Certifs::getSODCA(int index)
+{
+	if (index >= m_sod_cas.size())
+		throw CMWEXCEPTION(EIDMW_ERR_PARAM_RANGE);
+
+	return m_sod_cas[index];
+}
+
+void APL_Certifs::init(APL_SmartCard *card) {
 
 	APL_Config certs_dir(CConfig::EIDMW_CONFIG_PARAM_GENERAL_CERTS_DIR);
+	APL_Config certs_dir_test(CConfig::EIDMW_CONFIG_PARAM_GENERAL_CERTS_DIR_TEST);
+
+	APL_Config sam_server(CConfig::EIDMW_CONFIG_PARAM_GENERAL_SAM_SERVER);
 	m_certs_dir = certs_dir.getString();
+
+	//Load test certificates from different directory
+	if (strstr(sam_server.getString(), "teste") != NULL)
+		m_certs_dir = certs_dir_test.getString();
+
 	m_cryptoFwk=AppLayer.getCryptoFwk();
+	//Crypto framework needs the card instance to access the CA certs
+	m_cryptoFwk->setActiveCard(card);
 
 	m_card=card;
 	m_certExtension = "der";
@@ -116,12 +241,12 @@ void APL_Certifs::init(APL_SmartCard *card){
 APL_Certifs::~APL_Certifs(void)
 {
 	std::map<unsigned long,APL_Certif *>::iterator itr;
-	
+
 	for(itr=m_certifs.begin();itr!=m_certifs.end();itr++)
 	{
 		delete itr->second;
 		itr->second=NULL;
-	} 
+	}
 	m_certifs.clear();
 	m_certifsOrder.clear();
 }
@@ -131,14 +256,9 @@ bool APL_Certifs::isAllowed()
 	return true;
 }
 
+
 CByteArray APL_Certifs::getXML(bool bNoHeader)
 {
-/*
-	<certificates count=��>
-		<certificate>
-		</certificate>
-	</certificates>
-*/
 	char buffer[50];
 	CByteArray xml;
 
@@ -146,13 +266,13 @@ CByteArray APL_Certifs::getXML(bool bNoHeader)
 		xml+="<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
 
 	xml+="<certificates count=\"";
-	sprintf_s(buffer,sizeof(buffer),"%ld",countAll(true));
+	sprintf_s(buffer,sizeof(buffer),"%ld",countAll());
 
 	xml+=buffer;
 	xml+="\">\n";
-	for(unsigned long i=0;i<countAll(true);i++)
+	for(unsigned long i=0; i < countAll();i++)
 	{
-		xml+=getCert(i,true)->getXML(true);
+		xml+=getCert(i)->getXML(true);
 	}
 	xml+="</certificates>\n";
 
@@ -167,12 +287,12 @@ certificatescount;certificate1;certificate2;...
 	char buffer[50];
 	CByteArray csv;
 
-	sprintf_s(buffer,sizeof(buffer),"%ld",countAll(true));
+	sprintf_s(buffer,sizeof(buffer),"%ld",countAll());
 	csv+=buffer;
 	csv+=CSV_SEPARATOR;
-	for(unsigned long i=0;i<countAll(true);i++)
+	for(unsigned long i=0;i<countAll();i++)
 	{
-		csv+=getCert(i,true)->getCSV();
+		csv+=getCert(i)->getCSV();
 	}
 
 	return csv;
@@ -184,13 +304,13 @@ CByteArray APL_Certifs::getTLV()
 	CTLVBuffer tlvNested;
 
 	CByteArray baCount;
-	baCount.AppendLong(countAll(true));
+	baCount.AppendLong(countAll());
 	tlvNested.SetTagData(0x00,baCount.GetBytes(),baCount.Size());	//Tag 0x00 contain the number of certificates
-	
+
 	unsigned char j=1;
-	for(unsigned long i=0;i<countAll(true);i++)
+	for(unsigned long i=0;i<countAll();i++)
 	{
-		APL_Certif *cert=getCert(i,true);
+		APL_Certif *cert=getCert(i);
 		CByteArray baCert=cert->getTLV();
 		tlvNested.SetTagData(j++,baCert.GetBytes(),baCert.Size());
 	}
@@ -212,7 +332,7 @@ CByteArray APL_Certifs::getTLV()
 	CByteArray ba(pucData,ulLen);
 
 	delete[] pucData;
-	
+
 	return ba;
 }
 
@@ -224,27 +344,11 @@ unsigned long APL_Certifs::countFromCard()
 	return m_card->certificateCount();
 }
 
-unsigned long APL_Certifs::countAll(bool bOnlyVisible)
+unsigned long APL_Certifs::countAll()
 {
-	if(bOnlyVisible)
-	{
-		unsigned long count=0;
-		std::map<unsigned long ,APL_Certif *>::const_iterator itr;
-		APL_Certif *cert=NULL;
 
-		for(itr=m_certifs.begin();itr!=m_certifs.end();itr++)
-		{
-			cert=itr->second;
-			if(!cert->isHidden())
-				count++;
-		}
 
-		return count;
-	}
-	else
-	{
-		return (unsigned long)m_certifs.size();
-	}
+	return (unsigned long)m_certifs.size();
 }
 
 APL_Certif *APL_Certifs::getCertFromCard(unsigned long ulIndex)
@@ -252,7 +356,7 @@ APL_Certif *APL_Certifs::getCertFromCard(unsigned long ulIndex)
 	if(!m_card)
 		throw CMWEXCEPTION(EIDMW_ERR_BAD_USAGE);
 
-	if(ulIndex<0 || ulIndex>=countFromCard())
+	if (ulIndex >= countFromCard())
 		throw CMWEXCEPTION(EIDMW_ERR_PARAM_RANGE);
 
 	std::map<unsigned long ,APL_Certif *>::const_iterator itr;
@@ -277,50 +381,10 @@ APL_Certif *APL_Certifs::getCertFromCard(unsigned long ulIndex)
 
 		cert = new APL_Certif(m_card,this,ulIndex);
 
-		////////////////////////////Cert CACHE//////////////////////////
-		/*CByteArray certfilecache;
-		certfilecache.Append(cert->getData());
-		try
-		{
-			ofstream myfile;
-			APL_Config conf_dir(CConfig::EIDMW_CONFIG_PARAM_GENERAL_PTEID_CACHEDIR);
-			std::string	m_cachedirpath = conf_dir.getString();
-			std::string pteidfile = m_cachedirpath;
-			pteidfile.append("/pteidng-");
-			pteidfile.append(m_InitSerialNumber);
-			pteidfile.append("-");
-			if (ulIndex == 0)
-			{
-				pteidfile.append(PTEID_FILE_CERT_AUTHENTICATION);
-			}
-			else if (ulIndex == 1)
-			{
-				pteidfile.append(PTEID_FILE_CERT_SIGNATURE);
-			}
-			else if (ulIndex == 2)
-			{
-				pteidfile.append(PTEID_FILE_CERT_ROOT_SIGN);
-			}
-			else if (ulIndex == 3)
-			{
-				pteidfile.append(PTEID_FILE_CERT_ROOT_AUTH);
-			}
-			else if (ulIndex == 4)
-			{
-				pteidfile.append(PTEID_FILE_CERT_ROOT);
-			}
-			pteidfile.append(".bin");
-			myfile.open (pteidfile.c_str(), ios::binary);
-			std::string certFile;
-			certFile.assign((char*)certfilecache.GetBytes(), certfilecache.Size());
-			myfile << certFile;
-			myfile.close();
-		}
-		catch(CMWException& e)
-		{
-			MWLOG(LEV_INFO, MOD_APL, L"Write cache certificate file %d on disk failed", ulIndex);
-		}*/
-		////////////////////////////////////////////////////////////////
+		//Don't load the self-signed root cert from Card!
+		// We ship the right version in eidstore...
+		if (strcmp(cert->getLabel(), "ROOT CA") == 0)
+			return NULL; 
 
 		unsigned long ulUniqueId=cert->getUniqueId();
 		itr = m_certifs.find(ulUniqueId);
@@ -335,6 +399,9 @@ APL_Certif *APL_Certifs::getCertFromCard(unsigned long ulIndex)
 
 }
 
+/* This is used to add certificate from file. If the same certificate was already loaded from the card, we store the new one 
+	in m_certifs instead, we need this so that initSODCAs() picks up all the certificates in eidstore 
+ */
 APL_Certif *APL_Certifs::addCert(const CByteArray &certIn,APL_CertifType type,bool bHidden)
 {
 
@@ -342,41 +409,18 @@ APL_Certif *APL_Certifs::addCert(const CByteArray &certIn,APL_CertifType type,bo
 
 	unsigned long ulUniqueId=m_cryptoFwk->GetCertUniqueID(certIn);
 
-	itr = m_certifs.find(ulUniqueId);
-	if(itr!=m_certifs.end())
-	{
-		if(m_certifs[ulUniqueId]->m_hidden && !bHidden)
-			m_certifs[ulUniqueId]->m_hidden=bHidden;
-
-		if(m_certifs[ulUniqueId]->m_type==APL_CERTIF_TYPE_UNKNOWN)
-			m_certifs[ulUniqueId]->m_type=type;
-
-		//We put the added cert at the end of order list
-		std::vector<unsigned long>::iterator itrOrder;
-		for(itrOrder=m_certifsOrder.begin();itrOrder!=m_certifsOrder.end();itrOrder++)
-		{
-			if(ulUniqueId==(*itrOrder))
-			{
-				m_certifsOrder.erase(itrOrder);
-				m_certifsOrder.push_back(ulUniqueId);
-				break;
-			}
-		}
-
-		return m_certifs[ulUniqueId];
-	}
-
 	{
 		CAutoMutex autoMutex(&m_Mutex);		//We lock for unly one instanciation
 
-		itr = m_certifs.find(ulUniqueId);
-		if(itr!=m_certifs.end())
-			return m_certifs[ulUniqueId];
-
 		APL_Certif *cert=NULL;
 		cert = new APL_Certif(this,certIn,type,bHidden);
-		m_certifs[ulUniqueId]=cert;
-		m_certifsOrder.push_back(ulUniqueId);
+		m_certifs[ulUniqueId] = cert;
+
+		std::vector<unsigned long>::iterator itrOrder;
+		//Check for duplicate
+		itrOrder = std::find(m_certifsOrder.begin(), m_certifsOrder.end(), ulUniqueId);
+  		if (itrOrder == m_certifsOrder.end())
+			m_certifsOrder.push_back(ulUniqueId);
 
 		resetFlags();
 
@@ -407,7 +451,7 @@ APL_Certif *APL_Certifs::addCert(APL_CardFile_Certificate *file,APL_CertifType t
 	}
 
 	{
-		CAutoMutex autoMutex(&m_Mutex);		//We lock for unly one instanciation
+		CAutoMutex autoMutex(&m_Mutex);		//We lock for only one instanciation
 
 		itr = m_certifs.find(ulUniqueId);
 		if(itr!=m_certifs.end())
@@ -447,8 +491,10 @@ APL_Certif *APL_Certifs::addCert(APL_CardFile_Certificate *file,APL_CertifType t
 	}
 }
 
-APL_Certif *APL_Certifs::getCert(unsigned long ulIndex, bool bOnlyVisible)
+
+APL_Certif *APL_Certifs::getCert(unsigned long ulIndex)
 {
+
 	APL_Certif *cert=NULL;
 	unsigned long ulCount=0;
 
@@ -461,22 +507,24 @@ APL_Certif *APL_Certifs::getCert(unsigned long ulIndex, bool bOnlyVisible)
 		if(itrCert==m_certifs.end())
 		{
 			//The certif is not in the map
-			//Should not happend
-			throw CMWEXCEPTION(EIDMW_ERR_PARAM_RANGE); 
+			//Shouldn't happen
+			throw CMWEXCEPTION(EIDMW_ERR_PARAM_RANGE);
 		}
 
 		cert=itrCert->second;
 
-		if(!bOnlyVisible || !cert->isHidden())
-		{
-			if(ulCount==ulIndex)
-				return cert;
-			else
-				ulCount++;
-		}
+		if(ulCount==ulIndex)
+			return cert;
+		else
+			ulCount++;
 	}
 
 	throw CMWEXCEPTION(EIDMW_ERR_PARAM_RANGE);
+
+	//if (ulIndex >= my_certifs.size())
+	//	throw CMWEXCEPTION(EIDMW_ERR_PARAM_RANGE);
+
+	//return my_certifs[ulIndex];
 }
 
 APL_Certif *APL_Certifs::getCertUniqueId(unsigned long ulUniqueId)
@@ -491,7 +539,7 @@ APL_Certif *APL_Certifs::getCertUniqueId(unsigned long ulUniqueId)
 
 }
 
-unsigned long APL_Certifs::countCert(APL_CertifType type,bool bOnlyVisible)
+unsigned long APL_Certifs::countCert(APL_CertifType type)
 {
 	unsigned long count=0;
 	std::map<unsigned long ,APL_Certif *>::const_iterator itr;
@@ -500,14 +548,15 @@ unsigned long APL_Certifs::countCert(APL_CertifType type,bool bOnlyVisible)
 	for(itr=m_certifs.begin();itr!=m_certifs.end();itr++)
 	{
 		cert=itr->second;
-		if((!bOnlyVisible || !cert->isHidden()) && cert->isType(type))
+
+		if(cert->isType(type))
 			count++;
 	}
 
 	return count;
 }
 
-APL_Certif *APL_Certifs::getCert(APL_CertifType type,unsigned long ulIndex,bool bOnlyVisible)
+APL_Certif *APL_Certifs::getCert(APL_CertifType type, unsigned long ulIndex)
 {
 	APL_Certif *cert=NULL;
 	unsigned long ulCount=0;
@@ -518,18 +567,18 @@ APL_Certif *APL_Certifs::getCert(APL_CertifType type,unsigned long ulIndex,bool 
 	for(itrOrder=m_certifsOrder.begin();itrOrder!=m_certifsOrder.end();itrOrder++)
 	{
 		itrCert = m_certifs.find(*itrOrder);
-		if(itrCert==m_certifs.end())
+		if (itrCert==m_certifs.end())
 		{
 			//The certif is not in the map
-			//Should not happend
-			throw CMWEXCEPTION(EIDMW_ERR_PARAM_RANGE); 
+			//Should not happen
+			throw CMWEXCEPTION(EIDMW_ERR_PARAM_RANGE);
 		}
 
 		cert=itrCert->second;
 
-		if((!bOnlyVisible || !cert->isHidden()) && cert->isType(type))
+		if (cert->isType(type))
 		{
-			//If no index we return the first root from the card
+			//If no index we return the first certificate that matches
 			if(ulIndex==ANY_INDEX)
 			{
 				if(cert->isFromCard())
@@ -545,19 +594,19 @@ APL_Certif *APL_Certifs::getCert(APL_CertifType type,unsigned long ulIndex,bool 
 		}
 	}
 
-	if(type==APL_CERTIF_TYPE_ROOT)
+	if (type == APL_CERTIF_TYPE_ROOT)
 		throw CMWEXCEPTION(EIDMW_ERR_CERT_NOROOT);
 
 	throw CMWEXCEPTION(EIDMW_ERR_PARAM_RANGE);
 
 }
 
-unsigned long APL_Certifs::countRoot(bool bOnlyVisible)
+unsigned long APL_Certifs::countRoot()
 {
 	return countCert(APL_CERTIF_TYPE_ROOT);
 }
 
-APL_Certif *APL_Certifs::getRoot(unsigned long ulIndex,bool bOnlyVisible)
+APL_Certif *APL_Certifs::getRoot(unsigned long ulIndex)
 {
 	try
 	{
@@ -572,32 +621,37 @@ APL_Certif *APL_Certifs::getRoot(unsigned long ulIndex,bool bOnlyVisible)
 	}
 }
 
-unsigned long APL_Certifs::countAuthentication(bool bOnlyVisible)
+unsigned long APL_Certifs::countAuthentication()
 {
 	return countCert(APL_CERTIF_TYPE_AUTHENTICATION);
 }
 
-APL_Certif *APL_Certifs::getAuthentication(unsigned long ulIndex,bool bOnlyVisible)
+APL_Certif *APL_Certifs::getAuthentication(unsigned long ulIndex)
 {
 	return getCert(APL_CERTIF_TYPE_AUTHENTICATION);
 }
 
-unsigned long APL_Certifs::countSignature(bool bOnlyVisible)
+unsigned long APL_Certifs::countSignature()
 {
 	return countCert(APL_CERTIF_TYPE_SIGNATURE);
 }
 
-APL_Certif *APL_Certifs::getSignature(unsigned long ulIndex,bool bOnlyVisible)
+APL_Certif *APL_Certifs::getSignature(unsigned long ulIndex)
 {
 	return getCert(APL_CERTIF_TYPE_SIGNATURE);
 }
 
-unsigned long APL_Certifs::countCA(bool bOnlyVisible)
+unsigned long APL_Certifs::countCA()
 {
 	return countCert(APL_CERTIF_TYPE_ROOT_AUTH);
 }
 
-APL_Certif *APL_Certifs::getCA(unsigned long ulIndex,bool bOnlyVisible)
+APL_Certif *APL_Certifs::getSignatureSubCA()
+{
+	return getCert(APL_CERTIF_TYPE_ROOT_SIGN);
+}
+
+APL_Certif *APL_Certifs::getAuthenticationSubCA()
 {
 	return getCert(APL_CERTIF_TYPE_ROOT_AUTH);
 }
@@ -609,7 +663,7 @@ unsigned long APL_Certifs::countChildren(const APL_Certif *certif)
 
 	std::map<unsigned long,APL_Certif *> *store;
 	store = &m_certifs;
-	
+
 	std::map<unsigned long ,APL_Certif *>::const_iterator itr;
 	for(itr=store->begin();itr!=store->end();itr++)
 	{
@@ -642,7 +696,7 @@ APL_Certif *APL_Certifs::getChildren(const APL_Certif *certif,unsigned long ulIn
 		{
 			//The certif is not in the map
 			//Should not happend
-			throw CMWEXCEPTION(EIDMW_ERR_PARAM_RANGE); 
+			throw CMWEXCEPTION(EIDMW_ERR_PARAM_RANGE);
 		}
 
 		children=itrCert->second;
@@ -720,15 +774,23 @@ void APL_Certifs::foundCertificate(const char *SubDir, const char *File, void *p
 		goto err;
 	}
 
-	if (fread(buf, sizeof( unsigned char ), bufsize, m_stream) != bufsize)
+	if (fread(buf, sizeof( unsigned char ), bufsize, m_stream) != bufsize){
+        free(buf);
 		goto err;
+	}
 
 	cert = new CByteArray(buf,bufsize);
 	certifs->addCert(*cert, APL_CERTIF_TYPE_UNKNOWN, false);
+	delete cert;
+
+    free(buf);
 	fclose(m_stream);
 	return;
 
-	err:
+err:
+	if (m_stream)
+		fclose(m_stream);
+
 	MWLOG(LEV_DEBUG, MOD_APL, L"APL_Certifs::foundCertificate: problem with file %ls ", utilStringWiden(string(path)).c_str());
 }
 
@@ -811,14 +873,6 @@ void APL_Certifs::resetTests()
 		cert=itr->second;
 		cert->resetTest();
 	}
-}
-
-bool APL_Certifs::getAllowTestCard()
-{	
-	if(!m_card)
-		return true;
-
-	return m_card->getAllowTestCard();
 }
 
 APL_SmartCard *APL_Certifs::getCard()
@@ -1063,7 +1117,7 @@ CByteArray APL_Certif::getTLV()
 	CByteArray baCert(pucData,ulLen);
 
 	delete[] pucData;
-	
+
 	return baCert;
 }
 
@@ -1119,7 +1173,7 @@ CByteArray APL_Certif::getP15TLV()
 	CByteArray baCert(pucData,ulLen);
 
 	delete[] pucData;
-	
+
 	return baCert;
 }
 
@@ -1229,7 +1283,7 @@ APL_CertifType APL_Certif::getType()
 		}
 		else
 		{
-			switch(m_certP15.ulID)
+			switch(m_certP15.ulID)   //From File EF0C: we are using CertIDs: 45, 46, 51, 52, 50 (Auth, Signature, Signature SubCA, Authentication SubCA, RootCA)
 			{
 			case 69:
 				m_type=APL_CERTIF_TYPE_AUTHENTICATION;
@@ -1238,13 +1292,13 @@ APL_CertifType APL_Certif::getType()
 				m_type=APL_CERTIF_TYPE_SIGNATURE;
 				break;
 			case 81:
-				m_type=APL_CERTIF_TYPE_ROOT_AUTH;
+				m_type=APL_CERTIF_TYPE_ROOT_SIGN;
 				break;
 			case 82:
-				m_type=APL_CERTIF_TYPE_ROOT;
+				m_type=APL_CERTIF_TYPE_ROOT_AUTH;
 				break;
 			case 80:
-				m_type=APL_CERTIF_TYPE_ROOT_SIGN;
+				m_type=APL_CERTIF_TYPE_ROOT;
 				break;
 			}
 		}
@@ -1263,7 +1317,7 @@ const char *APL_Certif::getLabel()
 	if(m_certP15.csLabel.empty())
 		return getOwnerName();
 
-	return m_certP15.csLabel.c_str();	
+	return m_certP15.csLabel.c_str();
 }
 
 unsigned long APL_Certif::getID() const
@@ -1415,33 +1469,7 @@ APL_CertifStatus APL_Certif::getStatus()
 {
 	APL_ValidationLevel crl=APL_VALIDATION_LEVEL_NONE;
 	APL_ValidationLevel ocsp=APL_VALIDATION_LEVEL_MANDATORY;
-	MWLOG(LEV_DEBUG, MOD_APL, L"APL_Certif::getStatus for cert: %s", this->getOwnerName());
-
-
-/*
-
-	APL_Config conf_crl(CConfig::EIDMW_CONFIG_PARAM_CERTVALID_CRL); 
-	switch(conf_crl.getLong())
-	{
-	case 1:
-		crl=APL_VALIDATION_LEVEL_OPTIONAL;
-		break;
-	case 2:
-		crl=APL_VALIDATION_LEVEL_MANDATORY;
-		break;
-	}
-	
-	APL_Config conf_ocsp(CConfig::EIDMW_CONFIG_PARAM_CERTVALID_OCSP);     
-	switch(conf_ocsp.getLong())
-	{
-	case 1:
-		ocsp=APL_VALIDATION_LEVEL_OPTIONAL;
-		break;
-	case 2:
-		ocsp=APL_VALIDATION_LEVEL_MANDATORY;
-		break;
-	}
-*/
+	MWLOG(LEV_DEBUG, MOD_APL, "APL_Certif::getStatus for cert: %s", this->getOwnerName());
 
 	return getStatus(crl, ocsp);
 }
@@ -1451,13 +1479,15 @@ APL_CertifStatus APL_Certif::getStatus(APL_ValidationLevel crl, APL_ValidationLe
 	// CSC_Status statusNone=CSC_STATUS_NONE;
 	// CSC_Status statusCrl=CSC_STATUS_NONE;
 	CSC_Status statusOcsp=CSC_STATUS_NONE;
-	
+
 	statusOcsp=m_statusCache->getCertStatus(getUniqueId(),CSC_VALIDATION_OCSP,m_store);
 	//fprintf(stderr, "DEBUG APL_Certif::getStatus() returned: %d\n", statusOcsp);
 
 	//If no crl neither ocsp and valid => VALID
 	if (statusOcsp==CSC_STATUS_VALID_SIGN)
 		return APL_CERTIF_STATUS_VALID;
+	else if (statusOcsp == CSC_STATUS_SUSPENDED)
+		return APL_CERTIF_STATUS_SUSPENDED;
 	else if (statusOcsp == CSC_STATUS_REVOKED)
 		return APL_CERTIF_STATUS_REVOKED;
 	else
@@ -1499,7 +1529,7 @@ APL_OcspResponse *APL_Certif::getOcspResponse()
 
 APL_CertifStatus APL_Certif::validationCRL()
 {
-	MWLOG(LEV_DEBUG, MOD_APL, L"APL_Certif::validationCRL() for certificate %s", this->getOwnerName());
+	MWLOG(LEV_DEBUG, MOD_APL, "APL_Certif::validationCRL() for certificate %s", this->getOwnerName());
 	APL_Crl *crl=getCRL();
 
 	//If there is no crl (ex. root), validation is ok
@@ -1518,7 +1548,7 @@ APL_CertifStatus APL_Certif::validationOCSP()
 {
 	APL_OcspResponse *ocsp=getOcspResponse();
 
-	//This cert does not contain an OCPS URL
+	//This cert does not contain an OCSP URL
 	if(!ocsp)
 		return APL_CERTIF_STATUS_UNKNOWN;
 
@@ -1557,7 +1587,7 @@ void APL_Certif::initInfo()
 
 	if(!m_info)
 	{
-		CAutoMutex autoMutex(&m_Mutex);		//We lock for unly one instanciation
+		CAutoMutex autoMutex(&m_Mutex);		//We lock for only one instanciation
 		if(!m_info)
 			m_info=new tCertifInfo;
 	}
@@ -1581,213 +1611,7 @@ APL_Certifs *APL_Certif::getCertificates()
 	return m_store;
 }
 
-const char *APL_Certif::x509TimeConversion (ASN1_TIME *atime)
-{
-    struct tm r;
-    int cnt;
-    time_t res;
-	const unsigned int buf_size = 256;
-    char *to_buf = (char *)malloc(buf_size);
-    
-    ASN1_GENERALIZEDTIME* agtime;
-        
-    agtime = ASN1_TIME_to_generalizedtime(atime, NULL);
-        
-    memset(&r, '\0', sizeof(struct tm));
-    cnt = sscanf((char*)agtime->data, "%04d%02d%02d",
-		 &r.tm_year, &r.tm_mon, &r.tm_mday);
-    ASN1_TIME_free(agtime);
-    
-    r.tm_mon--;
-    r.tm_year -= 1900;
-  
-    res = mktime(&r);
-    if ((time_t)-1 != res) {
-	struct tm ltm;
-	localtime_r(&res, &ltm);
-	// Use the ISO 8601 timestamp format
-	strftime(to_buf, buf_size, "%d/%m/%Y", &ltm);
-	return(to_buf);
-    }
-    free (to_buf);
-    return("Date not available");
-}
 
-X509 *APL_Certif::ExternalCert(int certnr)
-{
-	FILE *m_stream;
-	X509 *x509;
-#ifdef WIN32
-	errno_t werr;
-#endif
-
-	APL_Config conf_dir(CConfig::EIDMW_CONFIG_PARAM_GENERAL_CERTS_DIR);
-	std::string	m_cachedirpath = conf_dir.getString();
-
-	CPathUtil::checkDir (m_cachedirpath.c_str());
-	std::string contents = m_cachedirpath;
-
-	switch (certnr)
-	{
-	case 1:
-#ifdef WIN32
-		contents.append("\\eidstore\\certs\\GTEGlobalRoot.der");
-		if ((werr = fopen_s(&m_stream, contents.c_str(), "rb")) != 0)
-			goto err;
-#else
-		if ((m_stream = fopen("/usr/local/share/certs/GTEGlobalRoot.der", "r")) == NULL)
-			goto err;
-#endif
-		break;
-	case 2:
-#ifdef WIN32
-		contents.append("\\eidstore\\certs\\ECRaizEstado_novo_assinado_GTE.der");
-		if ((werr = fopen_s(&m_stream, contents.c_str(), "rb")) != 0)
-			goto err;
-#else
-		if ((m_stream = fopen("/usr/local/share/certs/ECRaizEstado_novo_assinado_GTE.der", "r")) == NULL)
-			goto err;
-#endif
-		break;
-	case 3:
-#ifdef WIN32
-		contents.append("\\eidstore\\certs\\CartaodeCidadao001.der");
-		if ((werr = fopen_s(&m_stream, contents.c_str(), "rb")) != 0)
-			goto err;
-#else
-		if ((m_stream = fopen("/usr/local/share/certs/CartaodeCidadao001.der", "r")) == NULL)
-			goto err;
-#endif
-		break;
-	default:
-		break;
-	}
-
-	//PEM format
-	//X509* x509 = PEM_read_X509(m_stream, NULL, NULL, NULL);
-	//DER format
-	x509 = d2i_X509_fp(m_stream, NULL);
-	fclose(m_stream);
-	certnr = 0;
-
-	return x509;
-
-err:
-	MWLOG(LEV_DEBUG, MOD_APL, L"APL_Certif::ExternalCert: file %s not found ", contents.c_str());
-	return NULL;
-}
-
-const unsigned char *APL_Certif::ExternalCertData(int certnr)
-{
-	X509 *cert;
-	unsigned char *rdata = NULL;
-	int len;
-
-	if ((cert = ExternalCert(certnr)) == NULL)
-		return NULL;
-
-	len = i2d_X509 (cert, &rdata);
-
-	if (len < 0)
-		return NULL;
-
-	return rdata;
-}
-
-int APL_Certif::ExternalCertDataSize(int certnr)
-{
-	X509 *cert;
-	unsigned char *rdata = NULL;
-	int len;
-
-	if ((cert = ExternalCert(certnr)) == NULL)
-		return 0;
-
-	len = i2d_X509 (cert, &rdata);
-
-	if (len < 0)
-		return 0;
-
-	return len;
-}
-
-const char *APL_Certif::ExternalCertSubject(int certnr)
-{
-	//Subject name
-	X509 *cert;
-	const int BUFSIZE = 800;
-
-	if ((cert = ExternalCert(certnr)) == NULL)
-		return NULL;
-
-	char * subject = (char *)malloc(BUFSIZE*sizeof(unsigned char));
-
-	X509_NAME_get_text_by_NID(X509_get_subject_name(cert), NID_commonName, subject, BUFSIZE);
-
-	return subject;
-}
-
-const char *APL_Certif::ExternalCertIssuer(int certnr)
-{
-	// issuer name
-	const int BUFSIZE = 800;
-	char * issuer = (char *)malloc(BUFSIZE*sizeof(unsigned char));
-	X509 *cert;
-
-	if ((cert = ExternalCert(certnr)) == NULL)
-	{
-		free(issuer);
-		return NULL;
-	}
-
-	X509_NAME_get_text_by_NID(X509_get_issuer_name(cert), NID_commonName, issuer, BUFSIZE);
-	
-
-	return issuer;
-}
-
-unsigned long APL_Certif::ExternalCertKeylenght(int certnr)
-{
-	// Keylength
-	X509 *cert;
-	unsigned long keylen;
-
-	if ((cert = ExternalCert(certnr)) == NULL)
-		return 0;
-
-	EVP_PKEY *pKey = X509_get_pubkey(cert);
-	keylen = EVP_PKEY_bits(pKey);
-
-	return keylen;
-}
-
-const char* APL_Certif::ExternalCertNotBefore(int certnr)
-{
-	//notbefore
-	const char* result;
-	X509 *cert;
-
-	if ((cert = ExternalCert(certnr)) == NULL)
-		return NULL;
-
-	result = x509TimeConversion(X509_get_notBefore(cert));
-	
-	return result;
-}
-
-const char* APL_Certif::ExternalCertNotAfter(int certnr)
-{
-	// Not after
-	const char* result;
-	X509 *cert;
-
-	if ((cert = ExternalCert(certnr)) == NULL)
-		return NULL;
-
-	result = x509TimeConversion(X509_get_notAfter(cert));
-
-	return result;
-}
 const char *APL_Certif::getSerialNumber()
 {
 	initInfo();
@@ -1838,7 +1662,7 @@ APL_Crl::APL_Crl(const char *uri)
 	m_cryptoFwk=AppLayer.getCryptoFwk();
 
 	m_uri=uri;
-	
+
 	m_initOk=false;
 
 	m_certif=NULL;
@@ -1853,7 +1677,7 @@ APL_Crl::APL_Crl(const char *uri,APL_Certif *certif)
 	//m_cache=AppLayer.getCrlDownloadCache();
 
 	m_uri=uri;
-	
+
 	m_initOk=false;
 
 	m_certif=certif;
@@ -1898,12 +1722,14 @@ APL_CertifStatus APL_Crl::verifyCert(bool forceDownload)
 	{
 	case APL_CRL_STATUS_ERROR:
 		return APL_CERTIF_STATUS_ERROR;
+	case APL_CRL_STATUS_CONNECT:
+		return APL_CERTIF_STATUS_CONNECT;
 	case APL_CRL_STATUS_UNKNOWN:
 	case APL_CRL_STATUS_VALID:
 	default:
 		break;
 	}
-	
+
 	eStatus=m_cryptoFwk->CRLValidation(m_certif->getData(), baCrl);
 	return ConvertStatus(eStatus,APL_VALIDATION_PROCESS_CRL);
 }
@@ -1920,6 +1746,7 @@ APL_CrlStatus APL_Crl::getData(CByteArray &data, bool forceDownload)
 	{
 		data=EmptyByteArray;
 		MWLOG(LEV_DEBUG, MOD_APL, L"APL_Crl::getData: Returning an empty array");
+		eRetStatus = APL_CRL_STATUS_CONNECT;
 	}
 	else
 		eRetStatus = APL_CRL_STATUS_VALID;
@@ -1951,7 +1778,7 @@ const char *APL_Crl::getIssuerName()
 *****************************************************************************************/
 APL_OcspResponse::APL_OcspResponse(const char *uri,APL_Certif *certif)
 {
-	MWLOG(LEV_DEBUG, MOD_APL, L"OCSPResponse ctor for URI: %s", uri);
+	MWLOG(LEV_DEBUG, MOD_APL, "OCSPResponse ctor for URI: %s", uri);
 	m_cryptoFwk=AppLayer.getCryptoFwk();
 
 	m_uri=uri;
@@ -1962,7 +1789,7 @@ APL_OcspResponse::APL_OcspResponse(const char *uri,APL_Certif *certif)
 	m_response=NULL;
 	m_status=APL_CERTIF_STATUS_UNCHECK;
 
-	APL_Config conf_NormalDelay(CConfig::EIDMW_CONFIG_PARAM_CERTCACHE_VALIDITY); //The validity is the same as for certificate status cache     
+	APL_Config conf_NormalDelay(CConfig::EIDMW_CONFIG_PARAM_CERTCACHE_VALIDITY); //The validity is the same as for certificate status cache
 	m_delay = conf_NormalDelay.getLong();
 }
 
@@ -1991,7 +1818,7 @@ APL_OcspResponse::APL_OcspResponse(const char *uri,APL_HashAlgo hashAlgorithm,co
 	m_certid->issuerKeyHash=new CByteArray(issuerKeyHash);
 	m_certid->serialNumber=new CByteArray(serialNumber);
 
-	APL_Config conf_NormalDelay(CConfig::EIDMW_CONFIG_PARAM_CERTCACHE_VALIDITY); //The validity is the same as for certificate status cache     
+	APL_Config conf_NormalDelay(CConfig::EIDMW_CONFIG_PARAM_CERTCACHE_VALIDITY); //The validity is the same as for certificate status cache
 	m_delay = conf_NormalDelay.getLong();
 }
 
@@ -2031,10 +1858,9 @@ APL_CertifStatus APL_OcspResponse::getResponse(CByteArray *response)
 	//If we already have a response, we check if the status was acceptable and if it's still valid
 	if(m_response)
 	{
-		if( (m_status==APL_CERTIF_STATUS_VALID_OCSP 
-			|| m_status==APL_CERTIF_STATUS_REVOKED 
-			|| m_status==APL_CERTIF_STATUS_TEST 
-			|| m_status==APL_CERTIF_STATUS_DATE)
+		if ((m_status==APL_CERTIF_STATUS_VALID_OCSP
+			|| m_status==APL_CERTIF_STATUS_REVOKED
+			|| m_status==APL_CERTIF_STATUS_SUSPENDED)
 			&& CTimestampUtil::checkTimestamp(m_validity,CSC_VALIDITY_FORMAT))
 		{
 			if(response)
@@ -2057,11 +1883,11 @@ APL_CertifStatus APL_OcspResponse::getResponse(CByteArray *response)
 	if(m_certif)
 	{
 		APL_Certif *issuer=m_certif->getIssuer();
-		
+
 		if(issuer==NULL)
 			issuer=m_certif;
 
-		status=m_cryptoFwk->GetOCSPResponse(m_certif->getData(),issuer->getData(),m_response);
+		status=m_cryptoFwk->GetOCSPResponse(m_certif->getData(), issuer->getData(), m_response);
 	}
 	else
 	{

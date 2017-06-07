@@ -34,10 +34,11 @@ LIBS += -L../lib \
 	    -lcrypto -lssl \
 	    -lxerces-c \
 	    -lfreeimagePTEiD \
-	    -lpteid-poppler \
 	    -lcurl
 
 !macx: LIBS += -Wl,-R,'../lib' -lxml-security-c
+!macx: LIBS += ../lib/libpteid-poppler.a
+!macx: LIBS += -Wl,--exclude-libs,ALL 
 
 macx: LIBS += -lxml-security-c
 macx: LIBS += -Wl,-framework -Wl,CoreFoundation
@@ -57,7 +58,7 @@ isEmpty(EMULATE_CARDLAYER) {
 }
 
 DEPENDPATH += .
-INCLUDEPATH += . ../common ../cardlayer ../eidlib ../dialogs ../FreeImagePTEiD/Source ../xml-security-c-1.7.2
+INCLUDEPATH += . ../common ../cardlayer ../eidlib ../dialogs ../FreeImagePTEiD/Source
 INCLUDEPATH += $${PCSC_INCLUDE_DIR}
 INCLUDEPATH += ../pteid-poppler/
 DEFINES += APPLAYER_EXPORTS
@@ -81,66 +82,52 @@ HEADERS += \
 	eidmw_XML_DefHandler.h \
 	eidmw_XMLParser.h \
 	MiscUtil.h \
+	CardPteid.h	    \
+	CardPteidDef.h   \
+	cryptoFwkPteid.h \
+	APLCardPteid.h   \
 	PhotoPteid.h \
+	SecurityContext.h  \
 	APLPublicKey.h \
-        SigContainer.h \
+    SigContainer.h \
+	ScapSSLConnection.h \
 	XadesSignature.h \
 	TSAClient.h \
 	SODParser.h \ 
 	cJSON.h \
-        EMV-Cap-Helper.h \
-	SigVerifier.h \
  	SSLConnection.h \	 
 
 
 SOURCES += \
-	APLCertif.cpp        \  
+	APLCertif.cpp        \
 	APLCrypto.cpp        \
 	APLDoc.cpp	        \
+	APLCardPteid.cpp     \
 	APLConfig.cpp	\
 	APLReader.cpp        \
 	CardFile.cpp	        \
+	CardPteid.cpp        \
 	CertStatusCache.cpp  \
 	cryptoFramework.cpp  \
+	cryptoFwkPteid.cpp   \
 	APLCard.cpp          \ 
 	XMLParser.cpp   	\
 	MiscUtil.cpp \
 	PhotoPteid.cpp \
 	APLPublicKey.cpp \
 	SigContainer.cpp \
+	ScapSSLConnection.cpp \
 	XadesSignature.cpp \
 	SODParser.cpp \
 	SSLConnection.cpp \
 	TSAClient.cpp \
-	static_pteid_certs.cpp \
-	SigVerifier.cpp \
+	SecurityContext.cpp \
 	sign-pkcs7.cpp \
 	cJSON.c \
 	CRLFetcher.cpp \
 	PDFSignature.cpp \
 	SAM.cpp \
-	OCSP.cpp \
-	EMV-Cap-Helper.cpp \
+	OCSP.cpp
 
 # Disable annoying and mostly useless gcc warning
 QMAKE_CXXFLAGS += -Wno-write-strings
-
-
-##
-## Headers and sources specific to a country
-##
-
-## do not define a conditional block with contains(PKG_NAME,pteid)
-## otherwise the script which prepares the tarball will not
-## be able to parse the project file correctly!
-contains(PKG_NAME,pteid): HEADERS += CardPteid.h	    \
-	  			    CardPteidDef.h   \
-	   			    cryptoFwkPteid.h \
-           			    APLCardPteid.h       
-
-contains(PKG_NAME,pteid): SOURCES +=  CardPteid.cpp     \
-           			     APLCardPteid.cpp  \
-	   			     cryptoFwkPteid.cpp
-
-QMAKE_PRE_LINK=cp --no-dereference ../xml-security-c-1.7.2/xsec/.libs/libxml-security-c.so* ../lib		     
-macx: QMAKE_PRE_LINK=cp -f -R -p ../xml-security-c-1.7.2/xsec/.libs/libxml-security-c.*dylib ../lib

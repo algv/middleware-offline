@@ -51,7 +51,7 @@ PicturePopup::PicturePopup(QWidget *parent)
 
     setFrameStyle( WinPanel | Raised );
     setAlignment( Qt::AlignCenter );
-    setScaledContents(true);
+    setScaledContents(false);
     m_pTimerAppear = new QTimer(this);
     connect(m_pTimerAppear, SIGNAL(timeout()), this, SLOT(OnTimerAppear()));
     m_pTimerDisappear = new QTimer(this);
@@ -103,7 +103,7 @@ void PicturePopup::popUp(  const QString & strCaption
 	unsigned int nDesktopWidth  = 0;
 	unsigned int nScreenWidth   = 0;
 	unsigned int nScreenHeight  = 0;
-	
+
 	QRect rcDesktop;
 	QRect rcScreen;
 	m_strCaption	= strCaption;

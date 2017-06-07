@@ -24,12 +24,7 @@
 
 #include <string>
 #include <map>
-
-
-#include "openssl/evp.h"
-#include "openssl/ocsp.h"
-#include "openssl/ssl.h"
-#include "openssl/bio.h"
+#include <vector>
 
 #include "Export.h"
 #include "P15Objects.h"
@@ -61,8 +56,7 @@ enum APL_CertifStatus
 	APL_CERTIF_STATUS_VALID_CRL,	/**< Valid certificate through CRL process */
 	APL_CERTIF_STATUS_VALID_OCSP,	/**< Valid certificate through OCSP process */
 	APL_CERTIF_STATUS_REVOKED,		/**< Revoked certificate */
-	APL_CERTIF_STATUS_TEST,			/**< Test certificate */
-	APL_CERTIF_STATUS_DATE,			/**< Certificate no more valid */
+	APL_CERTIF_STATUS_SUSPENDED,    /**  Suspended certificate  */
 	APL_CERTIF_STATUS_CONNECT,		/**< Connection problem */
 	APL_CERTIF_STATUS_ISSUER,		/**< An issuer is missing in the chain */
 	APL_CERTIF_STATUS_ERROR,		/**< Error during validation */
@@ -93,12 +87,14 @@ enum APL_ValidationLevel
 
 enum APL_HashAlgo {
 	APL_ALGO_MD5,      // 16-byte hash
-	APL_ALGO_SHA1     // 20-byte hash
+	APL_ALGO_SHA1      // 20-byte hash
 };
 
 class APL_CryptoFwk;
 class APL_CardFile_Certificate;
 class APL_Certif;
+class APL_OcspResponse;
+
 
 /******************************************************************************//**
   * Class that represents a certificates store
@@ -128,9 +124,10 @@ public:
 
 	EIDMW_APL_API virtual bool isAllowed();							/**< The document is allowed*/
 
-	EIDMW_APL_API virtual CByteArray getXML(bool bNoHeader=false);	/**< Build the XML document */
-	EIDMW_APL_API virtual CByteArray getCSV();						/**< Build the CSV document */
-	EIDMW_APL_API virtual CByteArray getTLV();						/**< Build the TLV document */
+
+	EIDMW_APL_API virtual CByteArray getXML(bool bNoHeader=false);	
+	EIDMW_APL_API virtual CByteArray getCSV();						
+	EIDMW_APL_API virtual CByteArray getTLV();						
 
 	/**
 	  * Return the number of P15 certificates on the card
@@ -140,7 +137,7 @@ public:
 	/**
 	  * Return the number of certificates in the store (P15 on the card or not)
 	  */
-	EIDMW_APL_API unsigned long countAll(bool bOnlyVisible);
+	EIDMW_APL_API unsigned long countAll();
 
 	/**
 	  * Return the certificate with the number ulIndexCard from the card
@@ -157,7 +154,7 @@ public:
 	  * Then return the certificate with index ulIndexAll
 	  * ATTENTION ulIndexAll and ulIndexCard are two different index)
 	  */
-	EIDMW_APL_API APL_Certif *getCert(unsigned long ulIndex, bool bOnlyVisible);
+	EIDMW_APL_API APL_Certif *getCert(unsigned long ulIndex);
 	
 	/**
 	  * Add a certificate to the store
@@ -177,62 +174,82 @@ public:
 	/**
 	  * Return the number of certificates by type in the store
 	  */
-	EIDMW_APL_API unsigned long countCert(APL_CertifType type,bool bOnlyVisible=true);
+	EIDMW_APL_API unsigned long countCert(APL_CertifType type);
 
 	/**
 	  * Return the certificate by type in the store
 	  *
 	  * If no certificate is found, we throw an exception
 	  */
-	EIDMW_APL_API APL_Certif *getCert(APL_CertifType type,unsigned long ulIndex=ANY_INDEX, bool bOnlyVisible=true);
+	EIDMW_APL_API APL_Certif *getCert(APL_CertifType type,unsigned long ulIndex=ANY_INDEX);
 
 	/**
 	  * Return the number of root certificates in the store
 	  */
-	EIDMW_APL_API unsigned long countRoot(bool bOnlyVisible=true);
+	EIDMW_APL_API unsigned long countRoot();
 
 	/**
 	  * Return the root certificate in the store
 	  *
 	  * If no root is found, we throw an exception
 	  */
-	EIDMW_APL_API APL_Certif *getRoot(unsigned long ulIndex=ANY_INDEX, bool bOnlyVisible=true);
+	EIDMW_APL_API APL_Certif *getRoot(unsigned long ulIndex=ANY_INDEX);
+
+	/**
+	  *	 Methods related to SOD CA certificates
+	 
+	  */
+
+	EIDMW_APL_API void initSODCAs();
+
+	EIDMW_APL_API void clearSODCAs();
+
+	EIDMW_APL_API void addToSODCAs(const CByteArray &cert);
+
+
+	unsigned long countSODCAs();
+
+	APL_Certif * getSODCA(int index);
 
 	/**
 	  * Return the number of authentication certificates in the store
 	  */
-	EIDMW_APL_API unsigned long countAuthentication(bool bOnlyVisible=true);
+	EIDMW_APL_API unsigned long countAuthentication();
 
 	/**
 	  * Return the authentication certificate in the store
 	  *
 	  * If no authentication certificate is found, we throw an exception
 	  */
-	EIDMW_APL_API APL_Certif *getAuthentication(unsigned long ulIndex=ANY_INDEX, bool bOnlyVisible=true);
+	EIDMW_APL_API APL_Certif *getAuthentication(unsigned long ulIndex=ANY_INDEX);
 
 	/**
 	  * Return the number of signature certificates in the store
 	  */
-	EIDMW_APL_API unsigned long countSignature(bool bOnlyVisible=true);
+	EIDMW_APL_API unsigned long countSignature();
 
 	/**
 	  * Return the signature certificate in the store
 	  *
 	  * If no signature certificate is found, we throw an exception
 	  */
-	EIDMW_APL_API APL_Certif *getSignature(unsigned long ulIndex=ANY_INDEX, bool bOnlyVisible=true);
+	EIDMW_APL_API APL_Certif *getSignature(unsigned long ulIndex=ANY_INDEX);
 
 	/**
 	  * Return the number of CA certificates in the store
 	  */
-	EIDMW_APL_API unsigned long countCA(bool bOnlyVisible=true);
+	EIDMW_APL_API unsigned long countCA();
 
 	/**
-	  * Return the CA certificate in the store
+	  * Return the Signature CA certificate in the store
 	  *
 	  * If no CA certificate is found, we throw an exception
 	  */
-	EIDMW_APL_API APL_Certif *getCA(unsigned long ulIndex=ANY_INDEX, bool bOnlyVisible=true);
+	EIDMW_APL_API APL_Certif *getSignatureSubCA();
+
+	EIDMW_APL_API APL_Certif *getAuthenticationSubCA();
+
+
 
 	/**
 	  * Return the number of children for cert in the store
@@ -266,11 +283,6 @@ public:
 	  * If no issuer is found, NULL is return
 	  */
 	EIDMW_APL_API APL_Certif *findCrlIssuer(const CByteArray &crldata);
-
-	/**
-	  * Return true if test cards are allowed
-	  */
-	EIDMW_APL_API bool getAllowTestCard();
 
 
 	void resetFlags();	/**< Reset flags (issuer, root and test) in the certifactes from the store */
@@ -309,6 +321,8 @@ private:
 	void resetRoots();	/**< Reset root flag in the certifactes from the store */
 	void resetTests();	/**< Reset test flag in the certifactes from the store */
 
+	void initMyCerts();
+
 	/**
 	 * This is a callback function for the scanDir
 	 *
@@ -318,7 +332,7 @@ private:
 	 */
 	static void foundCertificate(const char *SubDir, const char *File, void *param);
 
-	APL_SmartCard *m_card;									/**< The smart card from which some certificate comes */
+	APL_SmartCard *m_card;									/**< The smart card from which some certificates come */
 	APL_CryptoFwk *m_cryptoFwk;								/**< Pointer to the crypto framework */
 
 	/**
@@ -327,8 +341,13 @@ private:
 	  *
 	  * The index is the certificate unique ID
 	  */
+	bool defaultSODCertifs;
+
+	std::vector <APL_Certif *> m_sod_cas;
 	std::map<unsigned long,APL_Certif *> m_certifs;
 	std::vector<unsigned long> m_certifsOrder;
+	std::vector<APL_Certif *> my_certifs;
+
 	std::string m_certExtension;
 	std::string m_certs_dir;
 
@@ -339,6 +358,7 @@ class APL_CertStatusCache;
 class APL_OcspResponse;
 class APL_Crl;
 struct tCertifInfo;
+
 
 /******************************************************************************//**
   * Class that represents one certificate
@@ -497,16 +517,6 @@ public:
 	  */
 	EIDMW_APL_API CByteArray getOCSPResponse();
 
-	EIDMW_APL_API const char *x509TimeConversion (ASN1_TIME *time);
-	EIDMW_APL_API X509* ExternalCert(int cert);
-	EIDMW_APL_API const unsigned char * ExternalCertData(int certnr);
-	EIDMW_APL_API int ExternalCertDataSize(int certnr);
-	EIDMW_APL_API const char *ExternalCertSubject(int cert);
-	EIDMW_APL_API const char *ExternalCertIssuer(int cert);
-	EIDMW_APL_API unsigned long ExternalCertKeylenght(int cert);
-	EIDMW_APL_API const char *ExternalCertNotBefore(int cert);
-	EIDMW_APL_API const char *ExternalCertNotAfter(int cert);
-
 	EIDMW_APL_API const char *getSerialNumber();		/**< Return the serial number */
 	EIDMW_APL_API const char *getOwnerName();			/**< Return the name of the owner */
 	EIDMW_APL_API const char *getIssuerName();			/**< Return the name of the issuer */
@@ -596,7 +606,9 @@ private:
 friend APL_Certif *APL_Certifs::getCertFromCard(unsigned long ulIndex);				/**< This method must access protected constructor */
 friend APL_Certif *APL_Certifs::addCert(APL_CardFile_Certificate *file,APL_CertifType type,bool bOnCard,bool bHidden,unsigned long ulIndex,const CByteArray *cert,const CByteArray *cert_tlv_struct);	/**< This method must access protected constructor */
 friend APL_Certif *APL_Certifs::addCert(const CByteArray &cert,APL_CertifType type,bool bHidden);		/**< This method must access protected constructor */
+friend void APL_Certifs::addToSODCAs(const CByteArray &cert);
 };
+
 
 class APL_CrlDownloadingCache;
 struct tCrlInfo;

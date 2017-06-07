@@ -25,9 +25,12 @@
 #include "CardPteidDef.h"
 #include "eidErrors.h"
 #include "Util.h"
+#include "Log.h"
 #include "MWException.h"
 #include "CardLayer.h"
 #include "MiscUtil.h"
+#include "SSLConnection.h"
+#include "SAM.h"
 #include "StringOps.h"
 #include "APLConfig.h"
 
@@ -40,7 +43,6 @@ namespace eIDMW
 /*****************************************************************************************
 ---------------------------------------- APL_EIDCard -----------------------------------------
 *****************************************************************************************/
-APL_AccessWarningLevel APL_EIDCard::m_lWarningLevel=APL_ACCESSWARNINGLEVEL_TO_ASK;
 
 APL_EIDCard::APL_EIDCard(APL_ReaderContext *reader, APL_CardType cardType):APL_SmartCard(reader)
 {
@@ -56,7 +58,6 @@ APL_EIDCard::APL_EIDCard(APL_ReaderContext *reader, APL_CardType cardType):APL_S
 	m_FileID=NULL;
 	m_FileIDSign=NULL;
 	m_FileAddress=NULL;
-	m_FileAddressSign=NULL;
 	m_FileSod=NULL;
 	m_FilePersoData=NULL;
 	m_FileTokenInfo=NULL;
@@ -132,12 +133,6 @@ APL_EIDCard::~APL_EIDCard()
 		m_FileAddress=NULL;
 	}
 
-	if(m_FileAddressSign)
-	{
-		delete m_FileAddressSign;
-		m_FileAddressSign=NULL;
-	}
-
 	if(m_FileSod)
 	{
 		delete m_FileSod;
@@ -206,523 +201,6 @@ APL_EIDCard::~APL_EIDCard()
 
 }
 
-bool APL_EIDCard::isCardForbidden()
-{
-	if(isTestCard() && !m_allowTestParam)
-		return true;
-
-	return false;
-}
-
-bool APL_EIDCard::initVirtualReader()
-{
-	bool bRet = true;
-
-	m_reader->getSuperParser()->initReadFunction(&readVirtualFileRAW,&readVirtualFileTLV,&readVirtualFileCSV,&readVirtualFileXML);
-
-	//If it is a new version file, we launch the certificates for the validation
-	char *stop;
-	CByteArray baCert;
-	CByteArray baCertP15;
-	CByteArray baCount;
-	m_reader->getSuperParser()->readData(PTEID_FILE_CERTS_COUNT,baCount);
-	unsigned long ulCountCerts=strtoul((char*)baCount.GetBytes(),&stop,10);
-
-	//If it is a old version file, we launch the root for the validation
-	if(ulCountCerts>0)
-	{
-		for(unsigned long i=0;i<ulCountCerts;i++)
-		{
-			m_reader->getSuperParser()->readData(PTEID_FILE_CERTS,baCert,i);
-			m_reader->getSuperParser()->readData(PTEID_FILE_CERTS_P15,baCertP15,i);
-			getCertificates()->addCert(NULL,APL_CERTIF_TYPE_UNKNOWN,false,false,i,&baCert,&baCertP15);
-		}
-	}
-	
-	getCertificates()->resetFlags();
-
-	//PINS
-	CByteArray baPin;
-	m_reader->getSuperParser()->readData(PTEID_FILE_PINS_COUNT,baCount);
-	unsigned long ulCountPins=strtoul((char*)baCount.GetBytes(),&stop,10);
-
-	//If it is a old version file, we launch the root for the validation
-	for(unsigned long i=0;i<ulCountPins;i++)
-	{
-		m_reader->getSuperParser()->readData(PTEID_FILE_PINS_P15,baPin,i);
-		getPins()->addPin(i,&baPin);
-	}
-
-	bool oldAllowTestAsked = m_allowTestAsked;
-	bool oldAllowTestAnswer = m_allowTestAnswer;
-
-	m_allowTestAsked=true;
-	m_allowTestAnswer=true;
-
-	try
-	{
-		if(bRet && getFileTrace()->getStatus(true)!=CARDFILESTATUS_OK)
-			bRet=false;
-		if(bRet && getFileID()->getStatus(true)!=CARDFILESTATUS_OK)
-			bRet=false;
-		if(bRet && getFileIDSign()->getStatus(true)!=CARDFILESTATUS_OK)
-			bRet=false;
-		if(bRet && getFileAddress()->getStatus(true)!=CARDFILESTATUS_OK)
-			bRet=false;
-		if(bRet && getFileAddressSign()->getStatus(true)!=CARDFILESTATUS_OK)
-			bRet=false;
-		if(bRet && getFileSod()->getStatus(true)!=CARDFILESTATUS_OK)
-			bRet=false;
-		if(bRet && getFileTokenInfo()->getStatus(true)!=CARDFILESTATUS_OK)
-			bRet=false;
-		if(bRet && getFileInfo()->getStatus(true)!=CARDFILESTATUS_OK)
-			bRet=false;
-
-		if(bRet && getChallenge().Size()!=20)
-			bRet=false;
-		if(bRet && getChallengeResponse().Size()==0)
-			bRet=false;
-	}
-	catch(CMWException &e)
-	{
-		e.GetError();		//Avoid warning
-		bRet=false;
-	}
-
-	m_allowTestAsked=oldAllowTestAsked;
-	m_allowTestAnswer=oldAllowTestAnswer;
-
-	return bRet;
-}
-
-unsigned long APL_EIDCard::readVirtualFileRAW(APL_SuperParser *parser, const char *fileID, CByteArray &in,unsigned long idx)
-{
-	CByteArray b64;
-	bool bDecode=false;
-
-	if(strcmp(fileID,PTEID_FILE_ID)==0)
-	{
-		in=parser->getRawDataEid()->idData;
-	}
-	else if(strcmp(fileID,PTEID_FILE_ID_SIGN)==0)
-	{
-		in=parser->getRawDataEid()->idSigData;
-	}
-	else if(strcmp(fileID,PTEID_FILE_TRACE)==0)
-	{
-		in=parser->getRawDataEid()->traceData;
-	}
-	else if(strcmp(fileID,PTEID_FILE_ADDRESS)==0)
-	{
-		in=parser->getRawDataEid()->addrData;
-	}
-	else if(strcmp(fileID,PTEID_FILE_ADDRESS_SIGN)==0)
-	{
-		in=parser->getRawDataEid()->addrSigData;
-	}
-	else if(strcmp(fileID,PTEID_FILE_SOD)==0)
-	{
-		in=parser->getRawDataEid()->sodData;
-	}
-	else if(strcmp(fileID,PTEID_FILE_PERSODATA)==0)
-	{
-		in=parser->getRawDataEid()->persodata;
-	}
-	else if(strcmp(fileID,PTEID_FILE_CARDINFO)==0)
-	{
-		in=parser->getRawDataEid()->cardData;
-	}
-	else if(strcmp(fileID,PTEID_FILE_TOKENINFO)==0)
-	{
-		in=parser->getRawDataEid()->tokenInfo;
-	}
-	else if(strcmp(fileID,PTEID_FILE_CHALLENGE)==0)
-	{
-		in=parser->getRawDataEid()->challenge;
-	}
-	else if(strcmp(fileID,PTEID_FILE_CHALLENGE_RESPONSE)==0)
-	{
-		in=parser->getRawDataEid()->response;
-	}
-	else if(strcmp(fileID,PTEID_FILE_CERTS_COUNT)==0)
-	{
-		if(parser->getRawDataEid()->version==1)
-		{
-			in.ClearContents();
-			in+="0";			//Not supported => 0 certificates
-		}
-		else
-		{
-			throw CMWEXCEPTION(EIDMW_ERR_FILE_NOT_FOUND); //Not supported
-		}
-	}
-	else if(strcmp(fileID,PTEID_FILE_CERTS)==0)
-	{
-		throw CMWEXCEPTION(EIDMW_ERR_FILE_NOT_FOUND); //Not supported
-	}
-	else if(strcmp(fileID,PTEID_FILE_CERTS_P15)==0)
-	{
-		throw CMWEXCEPTION(EIDMW_ERR_FILE_NOT_FOUND); //Not supported
-	}
-	else if(strcmp(fileID,PTEID_FILE_PINS_COUNT)==0)
-	{
-		if(parser->getRawDataEid()->version==1)
-		{
-			in.ClearContents();
-			in+="0";			//Not supported => 0 pins
-		}
-		else
-		{
-			throw CMWEXCEPTION(EIDMW_ERR_FILE_NOT_FOUND); //Not supported
-		}
-	}
-	else if(strcmp(fileID,PTEID_FILE_PINS_P15)==0)
-	{
-		throw CMWEXCEPTION(EIDMW_ERR_FILE_NOT_FOUND); //Not supported
-	}
-	else
-	{
-		throw CMWEXCEPTION(EIDMW_ERR_FILE_NOT_FOUND);
-	}
-
-	if(bDecode)
-		m_cryptoFwk->b64Decode(b64,in);
-
-	return in.Size();
-}
-
-unsigned long APL_EIDCard::readVirtualFileTLV(APL_SuperParser *parser, const char *fileID, CByteArray &in,unsigned long idx)
-{
-	CByteArray b64;
-	bool bDecode=false;
-
-	if(strcmp(fileID,PTEID_FILE_ID)==0)
-	{
-		parser->readDataTlv(in,PTEID_TLV_TAG_FILE_ID);
-	}
-	else if(strcmp(fileID,PTEID_FILE_ID_SIGN)==0)
-	{
-		parser->readDataTlv(in,PTEID_TLV_TAG_FILE_IDSIGN);
-	}
-	else if(strcmp(fileID,PTEID_FILE_ADDRESS)==0)
-	{
-		parser->readDataTlv(in,PTEID_TLV_TAG_FILE_ADDR);
-	}
-	else if(strcmp(fileID,PTEID_FILE_ADDRESS_SIGN)==0)
-	{
-		parser->readDataTlv(in,PTEID_TLV_TAG_FILE_ADDRSIGN);
-	}
-	else if(strcmp(fileID,PTEID_FILE_SOD)==0)
-	{
-		parser->readDataTlv(in,PTEID_TLV_TAG_FILE_SOD);
-	}
-	else if(strcmp(fileID,PTEID_FILE_CARDINFO)==0)
-	{
-		parser->readDataTlv(in,PTEID_TLV_TAG_FILE_CARDINFO);
-	}
-	else if(strcmp(fileID,PTEID_FILE_TOKENINFO)==0)
-	{
-		parser->readDataTlv(in,PTEID_TLV_TAG_FILE_TOKENINFO);
-	}
-	else if(strcmp(fileID,PTEID_FILE_CHALLENGE)==0)
-	{
-		parser->readDataTlv(in,PTEID_TLV_TAG_FILE_CHALLENGE);
-	}
-	else if(strcmp(fileID,PTEID_FILE_CHALLENGE_RESPONSE)==0)
-	{
-		parser->readDataTlv(in,PTEID_TLV_TAG_FILE_CHALLENGE_RESPONSE);
-	}
-	else if(strcmp(fileID,PTEID_FILE_CERTS_COUNT)==0)
-	{
-		parser->readDataTlv(in,PTEID_TLV_TAG_FILE_CERTS,0);
-		unsigned long ulCount=0;
-		try
-		{
-			ulCount=in.GetLong(0);
-		}
-		catch(CMWException &e)
-		{
-				if(e.GetError()!=(long)EIDMW_ERR_PARAM_RANGE)
-				throw e;
-		}
-		char buffer[10];
-		sprintf_s(buffer,sizeof(buffer),"%ld",ulCount);
-		in.ClearContents();
-		in+=buffer;
-	}
-	else if(strcmp(fileID,PTEID_FILE_CERTS)==0)
-	{
-		CByteArray ba;
-
-		parser->readDataTlv(ba,PTEID_TLV_TAG_FILE_CERTS,(unsigned char)(idx+1));
-
-		CTLVBuffer certTlv=CTLVBuffer();
-		certTlv.ParseFileTLV(ba.GetBytes(),ba.Size());
-
-		CByteArray cert;
-
-		CTLV *field=certTlv.GetTagData(0x00);
-		if(field!=NULL)
-			cert.Append(field->GetData(),field->GetLength());
-		else
-			cert=ba;
-
-		in=cert;
-	}
-	else if(strcmp(fileID,PTEID_FILE_CERTS_P15)==0)
-	{
-		CByteArray ba;
-
-		parser->readDataTlv(ba,PTEID_TLV_TAG_FILE_CERTS,(unsigned char)(idx+1));
-
-		CTLVBuffer certTlv=CTLVBuffer();
-		certTlv.ParseFileTLV(ba.GetBytes(),ba.Size());
-
-		CByteArray cert;
-
-		CTLV *field=certTlv.GetTagData(0x01);
-		if(field!=NULL)
-			cert.Append(field->GetData(),field->GetLength());
-		else
-			cert=ba;
-
-		in=cert;
-	}
-	else if(strcmp(fileID,PTEID_FILE_PINS_COUNT)==0)
-	{
-		parser->readDataTlv(in,PTEID_TLV_TAG_FILE_PINS,0);
-		unsigned long ulCount=0;
-		try
-		{
-			ulCount=in.GetLong(0);
-		}
-		catch(CMWException &e)
-		{
-				if(e.GetError()!=(long)EIDMW_ERR_PARAM_RANGE)
-				throw e;
-		}
-		char buffer[10];
-		sprintf_s(buffer,sizeof(buffer),"%ld",ulCount);
-		in.ClearContents();
-		in+=buffer;
-	}
-	else if(strcmp(fileID,PTEID_FILE_PINS_P15)==0)
-	{
-		CByteArray ba;
-
-		parser->readDataTlv(ba,PTEID_TLV_TAG_FILE_PINS,(unsigned char)(idx+1));
-
-		CTLVBuffer pinTlv=CTLVBuffer();
-		pinTlv.ParseFileTLV(ba.GetBytes(),ba.Size());
-
-		CByteArray pin;
-
-		CTLV *field=pinTlv.GetTagData(0x00);
-		if(field!=NULL)
-			pin.Append(field->GetData(),field->GetLength());
-		else
-			pin=ba;
-
-		in=pin;
-	}
-	else
-	{
-		throw CMWEXCEPTION(EIDMW_ERR_FILE_NOT_FOUND);
-	}
-
-	if(bDecode)
-		m_cryptoFwk->b64Decode(b64,in);
-
-	return in.Size();
-}
-
-unsigned long APL_EIDCard::readVirtualFileCSV(APL_SuperParser *parser, const char *fileID, CByteArray &in,unsigned long idx)
-{
-	CByteArray b64;
-	bool bDecode=false;
-
-	if(strcmp(fileID,PTEID_FILE_ID)==0)
-	{
-		parser->readDataCsv(b64,PTEID_CSV_TAG_FILE_ID);
-		bDecode=true;
-	}
-	else if(strcmp(fileID,PTEID_FILE_ID_SIGN)==0)
-	{
-		parser->readDataCsv(b64,PTEID_CSV_TAG_FILE_IDSIGN);
-		bDecode=true;
-	}
-	else if(strcmp(fileID,PTEID_FILE_ADDRESS)==0)
-	{
-		parser->readDataCsv(b64,PTEID_CSV_TAG_FILE_ADDR);
-		bDecode=true;
-	}
-	else if(strcmp(fileID,PTEID_FILE_ADDRESS_SIGN)==0)
-	{
-		parser->readDataCsv(b64,PTEID_CSV_TAG_FILE_ADDRSIGN);
-		bDecode=true;
-	}
-	else if(strcmp(fileID,PTEID_FILE_SOD)==0)
-	{
-		parser->readDataCsv(b64,PTEID_CSV_TAG_FILE_PHOTO);
-		bDecode=true;
-	}
-	else if(strcmp(fileID,PTEID_FILE_CARDINFO)==0)
-	{
-		parser->readDataCsv(b64,PTEID_CSV_TAG_FILE_CARDINFO);
-		bDecode=true;
-	}
-	else if(strcmp(fileID,PTEID_FILE_TOKENINFO)==0)
-	{
-		parser->readDataCsv(b64,PTEID_CSV_TAG_FILE_TOKENINFO);
-		bDecode=true;
-	}
-	else if(strcmp(fileID,PTEID_FILE_CHALLENGE)==0)
-	{
-		parser->readDataCsv(b64,PTEID_CSV_TAG_FILE_CHALLENGE);
-		bDecode=true;
-	}
-	else if(strcmp(fileID,PTEID_FILE_CHALLENGE_RESPONSE)==0)
-	{
-		parser->readDataCsv(b64,PTEID_CSV_TAG_FILE_CHALLENGE_RESPONSE);
-		bDecode=true;
-	}
-	else if(strcmp(fileID,PTEID_FILE_CERTS_COUNT)==0)
-	{
-		parser->readDataCsv(in,PTEID_CSV_TAG_FILE_CERTS_COUNT);
-	}
-	else if(strcmp(fileID,PTEID_FILE_CERTS)==0)
-	{
-		parser->readDataCsv(b64,PTEID_CSV_TAG_FILE_CERTS_COUNT,PTEID_CSV_TAG_FILE_CERTS_FIRST,PTEID_CSV_TAG_FILE_CERTS_STEP,idx);
-		bDecode=true;
-	}
-	else if(strcmp(fileID,PTEID_FILE_CERTS_P15)==0)
-	{
-		parser->readDataCsv(b64,PTEID_CSV_TAG_FILE_CERTS_COUNT,PTEID_CSV_TAG_FILE_CERTS_P15_FIRST,PTEID_CSV_TAG_FILE_CERTS_STEP,idx);
-		bDecode=true;
-	}
-	else if(strcmp(fileID,PTEID_FILE_PINS_COUNT)==0)
-	{
-		char *stop;
-		CByteArray baTmp;
-		parser->readDataCsv(baTmp,PTEID_CSV_TAG_FILE_CERTS_COUNT);
-		unsigned long ulCount=strtoul((char*)baTmp.GetBytes(),&stop,10);
-		unsigned long ulPos= PTEID_CSV_TAG_FILE_CERTS_COUNT + 1 + ulCount * PTEID_CSV_TAG_FILE_CERTS_STEP;
-		parser->readDataCsv(in,ulPos);
-	}
-	else if(strcmp(fileID,PTEID_FILE_PINS_P15)==0)
-	{
-		char *stop;
-		CByteArray baTmp;
-		parser->readDataCsv(baTmp,PTEID_CSV_TAG_FILE_CERTS_COUNT);
-		unsigned long ulCount=strtoul((char*)baTmp.GetBytes(),&stop,10);
-		unsigned long ulPos= PTEID_CSV_TAG_FILE_CERTS_COUNT + 1 + ulCount * PTEID_CSV_TAG_FILE_CERTS_STEP;
-
-		parser->readDataCsv(b64,ulPos,ulPos+PTEID_CSV_TAG_FILE_PINS_STEP,PTEID_CSV_TAG_FILE_PINS_STEP,idx);
-		bDecode=true;
-	}
-	else
-	{
-		throw CMWEXCEPTION(EIDMW_ERR_FILE_NOT_FOUND);
-	}
-
-	if(bDecode)
-		m_cryptoFwk->b64Decode(b64,in);
-
-	return in.Size();
-}
-
-unsigned long APL_EIDCard::readVirtualFileXML(APL_SuperParser *parser, const char *fileID, CByteArray &in,unsigned long idx)
-{
-	CByteArray b64;
-	bool bDecode=false;
-
-	if(strcmp(fileID,PTEID_FILE_ID)==0)
-	{
-		parser->readDataXml(b64,PTEID_XML_PATH_FILE_ID);
-		bDecode=true;
-	}
-	else if(strcmp(fileID,PTEID_FILE_ID_SIGN)==0)
-	{
-		parser->readDataXml(b64,PTEID_XML_PATH_FILE_IDSIGN);
-		bDecode=true;
-	}
-	else if(strcmp(fileID,PTEID_FILE_ADDRESS)==0)
-	{
-		parser->readDataXml(b64,PTEID_XML_PATH_FILE_ADDR);
-		bDecode=true;
-	}
-	else if(strcmp(fileID,PTEID_FILE_ADDRESS_SIGN)==0)
-	{
-		parser->readDataXml(b64,PTEID_XML_PATH_FILE_ADDRSIGN);
-		bDecode=true;
-	}
-	else if(strcmp(fileID,PTEID_FILE_SOD)==0)
-	{
-		parser->readDataXml(b64,PTEID_XML_PATH_FILE_PHOTO);
-		bDecode=true;
-	}
-	else if(strcmp(fileID,PTEID_FILE_CARDINFO)==0)
-	{
-		parser->readDataXml(b64,PTEID_XML_PATH_FILE_CARDINFO);
-		bDecode=true;
-	}
-	else if(strcmp(fileID,PTEID_FILE_TOKENINFO)==0)
-	{
-		parser->readDataXml(b64,PTEID_XML_PATH_FILE_TOKENINFO);
-		bDecode=true;
-	}
-	else if(strcmp(fileID,PTEID_FILE_CHALLENGE)==0)
-	{
-		parser->readDataXml(b64,PTEID_XML_PATH_FILE_CHALLENGE);
-		bDecode=true;
-	}
-	else if(strcmp(fileID,PTEID_FILE_CHALLENGE_RESPONSE)==0)
-	{
-		parser->readDataXml(b64,PTEID_XML_PATH_FILE_CHALLENGE_RESPONSE);
-		bDecode=true;
-	}
-	else if(strcmp(fileID,PTEID_FILE_CERTS_COUNT)==0)
-	{
-		unsigned long count=parser->countDataXml(PTEID_XML_PATH_FILE_CERTS);
-		in.ClearContents();
-		char buffer[5];
-		sprintf_s(buffer,sizeof(buffer),"%ld",count);
-		in.Append((unsigned char*)buffer,sizeof(buffer)-1);
-	}
-	else if(strcmp(fileID,PTEID_FILE_CERTS)==0)
-	{
-		parser->readDataXml(b64,PTEID_XML_PATH_FILE_CERTS,idx);
-		bDecode=true;
-	}
-	else if(strcmp(fileID,PTEID_FILE_CERTS_P15)==0)
-	{
-		parser->readDataXml(b64,PTEID_XML_PATH_FILE_CERTS_P15,idx);
-		bDecode=true;
-	}
-	else if(strcmp(fileID,PTEID_FILE_PINS_COUNT)==0)
-	{
-		unsigned long count=parser->countDataXml(PTEID_XML_PATH_FILE_PINS_P15);
-		in.ClearContents();
-		char buffer[5];
-		sprintf_s(buffer,sizeof(buffer),"%ld",count);
-		in.Append((unsigned char*)buffer,sizeof(buffer)-1);
-	}
-	else if(strcmp(fileID,PTEID_FILE_PINS_P15)==0)
-	{
-		parser->readDataXml(b64,PTEID_XML_PATH_FILE_PINS_P15,idx);
-		bDecode=true;
-	}
-	else
-	{
-		throw CMWEXCEPTION(EIDMW_ERR_FILE_NOT_FOUND);
-	}
-
-	if(bDecode)
-		m_cryptoFwk->b64Decode(b64,in);
-
-	return in.Size();
-}
-
 APL_EidFile_Trace *APL_EIDCard::getFileTrace()
 {
 	if(!m_FileTrace)
@@ -751,20 +229,6 @@ APL_EidFile_ID *APL_EIDCard::getFileID()
 	return m_FileID;
 }
 
-APL_EidFile_IDSign *APL_EIDCard::getFileIDSign()
-{
-	if(!m_FileIDSign)
-	{
-		CAutoMutex autoMutex(&m_Mutex);		//We lock for only one instanciation
-		if(!m_FileIDSign)
-		{
-			m_FileIDSign=new APL_EidFile_IDSign(this);
-		}
-	}
-
-	return m_FileIDSign;
-}
-
 APL_EidFile_Address *APL_EIDCard::getFileAddress()
 {
 	if(!m_FileAddress)
@@ -779,18 +243,156 @@ APL_EidFile_Address *APL_EIDCard::getFileAddress()
 	return m_FileAddress;
 }
 
-APL_EidFile_AddressSign *APL_EIDCard::getFileAddressSign()
+
+/*
+	Implements the address change protocol as implemented by the Portuguese State hosted website
+	It conditionally executes some card interactions and sends different parameters to the server
+	depending on the version of the smart card applet, IAS 0.7 or IAS 1.01.
+	Technical specification: the confidential document "Change Address Technical Solution" by Zetes version 5.3
+*/
+void APL_EIDCard::ChangeAddress(char *secret_code, char *process, t_callback_addr callback, void* callback_data)
 {
-	if(!m_FileAddressSign)
+	char * kicc = NULL;
+	SAM sam_helper(this);
+	StartWriteResponse * resp3 = NULL;
+	char *serialNumber = NULL;
+	char *resp_internal_auth = NULL, *resp_mse = NULL;
+
+	DHParams dh_params;
+
+	if (this->getType() == APL_CARDTYPE_PTEID_IAS07)
+		sam_helper.getDHParams(&dh_params, true);
+	else
 	{
-		CAutoMutex autoMutex(&m_Mutex);		//We lock for only one instanciation
-		if(!m_FileAddressSign)
+	    throw CMWEXCEPTION(EIDMW_SAM_UNSUPPORTED_CARD);
+	}
+
+	SSLConnection conn;
+	conn.InitSAMConnection();
+
+	callback(callback_data, 10);
+
+	DHParamsResponse *p1 = conn.do_SAM_1stpost(&dh_params, secret_code, process, serialNumber);
+
+	callback(callback_data, 25);
+
+	if (p1->cv_ifd_aut == NULL)
+	{
+		delete p1;
+		throw CMWEXCEPTION(EIDMW_SAM_PROTOCOL_ERROR);
+	}
+
+	if (p1->kifd != NULL)
+		sam_helper.sendKIFD(p1->kifd);
+
+	kicc = sam_helper.getKICC();
+
+	if ( !sam_helper.verifyCert_CV_IFD(p1->cv_ifd_aut))
+	{
+		delete p1;
+		free(kicc);
+
+		throw CMWEXCEPTION(EIDMW_SAM_PROTOCOL_ERROR);
+	}
+
+	char * CHR = sam_helper.getPK_IFD_AUT(p1->cv_ifd_aut);
+
+	char *challenge = sam_helper.generateChallenge(CHR);
+
+	callback(callback_data, 30);
+
+	SignedChallengeResponse * resp_2ndpost = conn.do_SAM_2ndpost(challenge, kicc);
+
+	callback(callback_data, 40);
+
+	if (resp_2ndpost != NULL && resp_2ndpost->signed_challenge != NULL)
+	{
+		bool ret_signed_ch = sam_helper.verifySignedChallenge(resp_2ndpost->signed_challenge);
+
+		if (!ret_signed_ch)
 		{
-			m_FileAddressSign=new APL_EidFile_AddressSign(this);
+            delete resp_2ndpost;
+            free(challenge);
+            free(CHR);
+			MWLOG(LEV_ERROR, MOD_APL, L"EXTERNAL AUTHENTICATE command failed! Aborting Address Change!");
+			throw CMWEXCEPTION(EIDMW_SAM_PROTOCOL_ERROR);
+		}
+
+		resp_mse = sam_helper.sendPrebuiltAPDU(resp_2ndpost->set_se_command);
+
+		resp_internal_auth = sam_helper.sendPrebuiltAPDU(resp_2ndpost->internal_auth);
+
+		StartWriteResponse * resp3 = conn.do_SAM_3rdpost(resp_mse, resp_internal_auth);
+
+		callback(callback_data, 60);
+
+		if (resp3 == NULL)
+		{
+			goto err;
+		}
+		else
+		{
+			MWLOG(LEV_DEBUG, MOD_APL, L"ChangeAddress: writing new address...");
+			std::vector<char *> address_response = sam_helper.sendSequenceOfPrebuiltAPDUs(resp3->apdu_write_address);
+
+			MWLOG(LEV_DEBUG, MOD_APL, L"ChangeAddress: writing new SOD...");
+			std::vector<char *> sod_response = sam_helper.sendSequenceOfPrebuiltAPDUs(resp3->apdu_write_sod);
+
+			StartWriteResponse start_write_resp = {address_response, sod_response};
+
+			callback(callback_data, 90);
+
+			// Report the results to the server for verification purposes,
+			// We only consider the Address Change successful if the server returns its "ACK"
+			if (!conn.do_SAM_4thpost(start_write_resp)){
+                delete resp3;
+                free(resp_mse);
+                free(resp_internal_auth);
+				throw CMWEXCEPTION(EIDMW_SAM_PROTOCOL_ERROR);
+			}
+
+			callback(callback_data, 100);
+			invalidateAddressSOD();
+
+			delete resp3;
+			delete resp_2ndpost;
+			free(challenge);
+			free(CHR);
+			free(resp_mse);
+			free(resp_internal_auth);
+			return;
 		}
 	}
 
-	return m_FileAddressSign;
+err:
+	delete resp3;
+	delete resp_2ndpost;
+    delete p1;
+    free(kicc);
+	free(challenge);
+	free(CHR);
+	free(resp_mse);
+	free(resp_internal_auth);
+
+	throw CMWEXCEPTION(EIDMW_SAM_PROTOCOL_ERROR);
+}
+
+
+/* Discard the current address and SOD file objects after a successful
+   Address Change process
+*/
+void APL_EIDCard::invalidateAddressSOD()
+{
+	if(m_FileSod)
+	{
+		delete m_FileSod;
+		m_FileSod = NULL;
+	}
+	if (m_FileAddress)
+	{
+		delete m_FileAddress;
+		m_FileAddress = NULL;
+	}
 }
 
 APL_EidFile_Sod *APL_EIDCard::getFileSod()
@@ -837,45 +439,14 @@ APL_CardType APL_EIDCard::getType() const
 	return m_cardType;
 }
 
-bool APL_EIDCard::isTestCard()
-{
-	APL_Certif *root = NULL;
-
-	bool bOut = false;
-
-	if(root)
-		bOut=root->isTest();
-
-	return bOut;
-}
-
 unsigned long APL_EIDCard::readFile(const char *csPath, CByteArray &oData, unsigned long  ulOffset, unsigned long  ulMaxLength)
 {
-	if(!m_reader->isVirtualReader())
-	{
-		bool bWarning=false;
-		for(long i=0;_pteid_files_to_warn[i]!=NULL;i++)
-		{
-			if(strcmp(csPath,_pteid_files_to_warn[i])==0)
-			{
-				bWarning=true;
-				break;
-			}
-		}
-
-		if(bWarning)
-		{
-			askWarningLevel();
-		}
-	}
 
 	return APL_SmartCard::readFile(csPath,oData,ulOffset,ulMaxLength);
 }
 
 unsigned long APL_EIDCard::certificateCount()
 {
-	if(m_reader->isVirtualReader()) //Virtual Reader
-		return 0;
 
 	try
 	{
@@ -1050,58 +621,22 @@ APL_DocVersionInfo& APL_EIDCard::getDocInfo()
 	return *m_docinfo;
 }
 
-const CByteArray &APL_EIDCard::getCardInfoSignature()
-{
-	if(!m_cardinfosign)
-	{
-		if(m_reader->isVirtualReader())
-		{
-			return EmptyByteArray;
-		}
-		else
-		{
-			CAutoMutex autoMutex(&m_Mutex);		//We lock for only one instanciation
-			if(!m_cardinfosign)
-			{
-				CByteArray param;
-				CByteArray result;
-
-				BEGIN_CAL_OPERATION(m_reader)
-				result = m_reader->getCalReader()->Ctrl(CTRL_PTEID_GETSIGNEDCARDDATA,param);
-				END_CAL_OPERATION(m_reader)
-
-				m_cardinfosign=new CByteArray(result.GetBytes(28,128));
-			}
-		}
-	}
-
-	return *m_cardinfosign;
-
-}
 const CByteArray& APL_EIDCard::getRawData(APL_RawDataType type)
 {
 	switch(type)
 	{
 	case APL_RAWDATA_ID:
 		return getRawData_Id();
-	case APL_RAWDATA_ID_SIG:
-		return getRawData_IdSig();
 	case APL_RAWDATA_TRACE:
 		return getRawData_Trace();
 	case APL_RAWDATA_ADDR:
 		return getRawData_Addr();
-	case APL_RAWDATA_ADDR_SIG:
-		return getRawData_AddrSig();
 	case APL_RAWDATA_SOD:
 		return getRawData_Sod();
 	case APL_RAWDATA_CARD_INFO:
 		return getRawData_CardInfo();
 	case APL_RAWDATA_TOKEN_INFO:
 		return getRawData_TokenInfo();
-	case APL_RAWDATA_CHALLENGE:
-		return getRawData_Challenge();
-	case APL_RAWDATA_RESPONSE:
-		return getRawData_Response();
 	case APL_RAWDATA_PERSO_DATA:
 		return getRawData_PersoData();
 	default:
@@ -1119,19 +654,9 @@ const CByteArray& APL_EIDCard::getRawData_Id()
 	return getFileID()->getData();
 }
 
-const CByteArray& APL_EIDCard::getRawData_IdSig()
-{
-	return getFileIDSign()->getData();
-}
-
 const CByteArray& APL_EIDCard::getRawData_Addr()
 {
 	return getFileAddress()->getData();
-}
-
-const CByteArray& APL_EIDCard::getRawData_AddrSig()
-{
-	return getFileAddressSign()->getData();
 }
 
 const CByteArray& APL_EIDCard::getRawData_Sod()
@@ -1154,59 +679,21 @@ const CByteArray& APL_EIDCard::getRawData_PersoData()
 	return getFilePersoData()->getData();
 }
 
-const CByteArray& APL_EIDCard::getRawData_Challenge()
-{
-	return getChallenge();
-}
-
-const CByteArray& APL_EIDCard::getRawData_Response()
-{
-	return getChallengeResponse();
-}
-
-void APL_EIDCard::askWarningLevel()
-{
-	// Fix this: This modification hides the accept window.
-	// Application will access to the card always without user interaction
-	setWarningLevel(APL_ACCESSWARNINGLEVEL_ACCEPTED);
-}
-
-void APL_EIDCard::setWarningLevel(APL_AccessWarningLevel lWarningLevel)
-{
-	//APL_ACCESSWARNINGLEVEL_BEING_ASKED is an internal status that could not be set from outside
-	if(lWarningLevel!=APL_ACCESSWARNINGLEVEL_REFUSED 
-		&& lWarningLevel!=APL_ACCESSWARNINGLEVEL_TO_ASK
-		&& lWarningLevel!=APL_ACCESSWARNINGLEVEL_ACCEPTED)
-		throw CMWEXCEPTION(EIDMW_ERR_CHECK);
-
-	m_lWarningLevel=lWarningLevel;
-}
-
-APL_AccessWarningLevel APL_EIDCard::getWarningLevel()
-{
-	return m_lWarningLevel;
-}
-
-bool APL_EIDCard::isApplicationAllowed()
-{
-	try
-	{
-		askWarningLevel();
-	}
-	catch(CMWException &e)
-	{
-		e=e;
-	}
-
-	return (m_lWarningLevel==1);
-}
 
 const char *APL_EIDCard::getTokenSerialNumber(){
 	if (!m_tokenSerial){
 
-		BEGIN_CAL_OPERATION(m_reader)
-		m_tokenSerial = new string (m_reader->getCalReader()->GetSerialNr());
-		END_CAL_OPERATION(m_reader)
+		//BEGIN_CAL_OPERATION(m_reader)
+        m_reader->CalLock();
+        try{
+            m_tokenSerial = new string (m_reader->getCalReader()->GetSerialNr());
+        } catch(...){
+            m_reader->CalUnlock();
+            delete m_tokenSerial;
+            throw;
+        }
+        m_reader->CalUnlock();
+		//END_CAL_OPERATION(m_reader)
 	}
 	return m_tokenSerial->c_str();
 }
@@ -1214,9 +701,17 @@ const char *APL_EIDCard::getTokenSerialNumber(){
 const char *APL_EIDCard::getTokenLabel(){
 	if (!m_tokenLabel){
 
-		BEGIN_CAL_OPERATION(m_reader)
-					m_tokenLabel = new string (m_reader->getCalReader()->GetCardLabel());
-		END_CAL_OPERATION(m_reader)
+		//BEGIN_CAL_OPERATION(m_reader)
+        m_reader->CalLock();
+        try{
+            m_tokenLabel = new string (m_reader->getCalReader()->GetCardLabel());
+        } catch(...){
+            m_reader->CalUnlock();
+            delete m_tokenLabel;
+            throw;
+        }
+        m_reader->CalUnlock();
+		//END_CAL_OPERATION(m_reader)
 	}
 	return m_tokenLabel->c_str();
 }
@@ -1258,11 +753,11 @@ bool APL_EIDCard::isActive()
 	return getFileTrace()->isActive();
 }
 
-bool APL_EIDCard::Activate(const char *pinCode, CByteArray &BCDDate){
+bool APL_EIDCard::Activate(const char *pinCode, CByteArray &BCDDate, bool blockActivationPIN){
 	bool out = false;
 
 	BEGIN_CAL_OPERATION(m_reader)
-	out = m_reader->getCalReader()->Activate(pinCode,BCDDate);
+	out = m_reader->getCalReader()->Activate(pinCode,BCDDate, blockActivationPIN);
 	END_CAL_OPERATION(m_reader)
 
 	return out;
@@ -1276,12 +771,10 @@ void APL_EIDCard::doSODCheck(bool check){
 	if (m_FileID)
 		m_FileID->doSODCheck(check);
 
-	if (check){
-		if (!m_FileSod){
-			m_FileSod = getFileSod();
-			m_FileSod->doSODCheck(check);
-		}
-	}
+    if (!m_FileSod){
+        m_FileSod = getFileSod();
+        m_FileSod->doSODCheck(check);
+    }
 }
 
 
@@ -1296,25 +789,6 @@ APL_CCXML_Doc::APL_CCXML_Doc(APL_EIDCard *card, APL_XmlUserRequestedInfo&  xmlUs
 
 APL_CCXML_Doc::~APL_CCXML_Doc()
 {
-}
-
-bool APL_CCXML_Doc::isAllowed()
-{
-	try
-	{
-		if(m_card->getFileID()->getStatus(true)==CARDFILESTATUS_OK
-			//&& m_card->getFileAddress()->getStatus(true)==CARDFILESTATUS_OK
-			&& m_card->getFileSod()->getStatus(true)==CARDFILESTATUS_OK)
-			return true;
-	}
-	catch(CMWException& e)
-	{
-		if (e.GetError() == EIDMW_ERR_NOT_ALLOW_BY_USER)
-			return false;
-		else
-			throw;
-	}
-	return false;
 }
 
 CByteArray APL_CCXML_Doc::getXML(bool bNoHeader)
@@ -1477,23 +951,6 @@ APL_DocEId::~APL_DocEId()
 {
 }
 
-bool APL_DocEId::isAllowed()
-{
-	try
-	{
-		if(m_card->getFileID()->getStatus(true)==CARDFILESTATUS_OK
-			&& m_card->getFileAddress()->getStatus(true)==CARDFILESTATUS_OK)
-			return true;
-	}
-	catch(CMWException& e)
-	{
-		if (e.GetError() == EIDMW_ERR_NOT_ALLOW_BY_USER)
-			return false;
-		else
-			throw;
-	}
-	return false;
-}
 
 CByteArray APL_DocEId::getXML(bool bNoHeader, APL_XmlUserRequestedInfo &xmlUInfo){
 
@@ -1679,7 +1136,7 @@ CByteArray APL_DocEId::getCSV()
 version;type;name;surname;gender;date_of_birth;location_of_birth;nobility;nationality;
 	national_nr;special_organization;member_of_family;special_status;logical_nr;chip_nr;
 	date_begin;date_end;issuing_municipality;version;street;zip;municipality;country;
-	file_id;file_id_sign;file_address;file_address_sign;
+	file_id;file_address;
 */
 
 	CByteArray csv;
@@ -1696,22 +1153,12 @@ version;type;name;surname;gender;date_of_birth;location_of_birth;nobility;nation
 	csv+=CSV_SEPARATOR;
 	csv+=getDateOfBirth();
 	csv+=CSV_SEPARATOR;
-	csv+=getLocationOfBirth();
 	csv+=CSV_SEPARATOR;
 	csv+=getNationality();
 	csv+=CSV_SEPARATOR;
 	csv+=getCivilianIdNumber();
 	csv+=CSV_SEPARATOR;
-	csv+=getDuplicata();
-	csv+=CSV_SEPARATOR;
-	csv+=getSpecialOrganization();
-	csv+=CSV_SEPARATOR;
-	csv+=getMemberOfFamily();
-	csv+=CSV_SEPARATOR;
-	csv+=getSpecialStatus();
-	csv+=CSV_SEPARATOR;
-	csv+=getLogicalNumber();
-	csv+=CSV_SEPARATOR;
+
 	csv+=getDocumentPAN();
 	csv+=CSV_SEPARATOR;
 	csv+=getValidityBeginDate();
@@ -1719,7 +1166,6 @@ version;type;name;surname;gender;date_of_birth;location_of_birth;nobility;nation
 	csv+=getValidityEndDate();
 	csv+=CSV_SEPARATOR;
 
-	// MARTINHO: fica aqui para n ficar esquecido também, provavelmente nem o CSV vai ser utilizado.
 	csv+=getMRZ1();
 	csv+=CSV_SEPARATOR;
 	csv+=getMRZ2();
@@ -1732,9 +1178,6 @@ version;type;name;surname;gender;date_of_birth;location_of_birth;nobility;nation
 	if(m_cryptoFwk->b64Encode(m_card->getFileID()->getData(),baFileB64,false))
 		csv+=baFileB64;
 	csv+=CSV_SEPARATOR;
-	if(m_cryptoFwk->b64Encode(m_card->getFileIDSign()->getData(),baFileB64,false))
-		csv+=baFileB64;
-	csv+=CSV_SEPARATOR;
 
 	return csv;
 }
@@ -1744,7 +1187,6 @@ CByteArray APL_DocEId::getTLV()
 	CTLVBuffer tlv;
 
 	tlv.SetTagData(PTEID_TLV_TAG_FILE_ID,m_card->getFileID()->getData().GetBytes(),m_card->getFileID()->getData().Size());
-	tlv.SetTagData(PTEID_TLV_TAG_FILE_IDSIGN,m_card->getFileIDSign()->getData().GetBytes(),m_card->getFileIDSign()->getData().Size());
 
 	unsigned long ulLen=tlv.GetLengthNeeded();
 	unsigned char *pucData= new unsigned char[ulLen];
@@ -1796,34 +1238,9 @@ const char *APL_DocEId::getDateOfBirth()
 	return m_card->getFileID()->getDateOfBirth();
 }
 
-const char *APL_DocEId::getLocationOfBirth()
-{
-	return m_card->getFileID()->getLocationOfBirth();
-}
-
 const char *APL_DocEId::getNationality()
 {
 	return m_card->getFileID()->getNationality();
-}
-
-const char *APL_DocEId::getDuplicata()
-{
-	return m_card->getFileID()->getDuplicata();
-}
-
-const char *APL_DocEId::getSpecialOrganization()
-{
-	return m_card->getFileID()->getSpecialOrganization();
-}
-
-const char *APL_DocEId::getMemberOfFamily()
-{
-	return m_card->getFileID()->getMemberOfFamily();
-}
-
-const char *APL_DocEId::getLogicalNumber()
-{
-	return m_card->getFileID()->getLogicalNumber();
 }
 
 const char *APL_DocEId::getDocumentPAN()
@@ -1841,15 +1258,9 @@ const char *APL_DocEId::getValidityEndDate()
 	return m_card->getFileID()->getValidityEndDate();
 }
 
-const char *APL_DocEId::getSpecialStatus()
-{
-	return m_card->getFileID()->getSpecialStatus();
-}
-
 const char *APL_DocEId::getHeight()
 {
 	return m_card->getFileID()->getHeight();
-
 }
 
 const char *APL_DocEId::getDocumentNumber()
@@ -1948,22 +1359,6 @@ APL_PersonalNotesEId::~APL_PersonalNotesEId()
 {
 }
 
-bool APL_PersonalNotesEId::isAllowed()
-{
-	try
-	{
-		if(m_card->getFilePersoData()->getStatus(true)==CARDFILESTATUS_OK)
-			return true;
-	}
-	catch(CMWException& e)
-	{
-		if (e.GetError() == EIDMW_ERR_NOT_ALLOW_BY_USER)
-			return false;
-		else
-			throw;
-	}
-	return false;
-}
 
 CByteArray APL_PersonalNotesEId::getXML(bool bNoHeader, APL_XmlUserRequestedInfo &xmlUInfo){
 	CByteArray ca;
@@ -2026,22 +1421,6 @@ APL_AddrEId::~APL_AddrEId()
 {
 }
 
-bool APL_AddrEId::isAllowed()
-{
-	try
-	{
-		if(m_card->getFileAddress()->getStatus(true)==CARDFILESTATUS_OK)
-			return true;
-	}
-	catch(CMWException& e)
-	{
-		if (e.GetError() == EIDMW_ERR_NOT_ALLOW_BY_USER)
-			return false;
-		else
-			throw;
-	}
-	return false;
-}
 
 CByteArray APL_AddrEId::getXML(bool bNoHeader, APL_XmlUserRequestedInfo &xmlUInfo){
 	CByteArray ca;
@@ -2175,7 +1554,6 @@ CByteArray APL_AddrEId::getTLV()
 	CTLVBuffer tlv;
 
 	tlv.SetTagData(PTEID_TLV_TAG_FILE_ADDR,m_card->getFileAddress()->getData().GetBytes(),m_card->getFileAddress()->getData().Size());
-	tlv.SetTagData(PTEID_TLV_TAG_FILE_ADDRSIGN,m_card->getFileAddressSign()->getData().GetBytes(),m_card->getFileAddressSign()->getData().Size());
 
 	unsigned long ulLen=tlv.GetLengthNeeded();
 	unsigned char *pucData= new unsigned char[ulLen];
@@ -2331,30 +1709,12 @@ const char *APL_AddrEId::getForeignPostalCode()
 ---------------------------------------- APL_SodEid -----------------------------------------
 *****************************************************************************************/
 APL_SodEid::APL_SodEid(APL_EIDCard *card)
-{	
+{
 	m_card=card;
 }
 
 APL_SodEid::~APL_SodEid()
 {
-}
-
-bool APL_SodEid::isAllowed()
-{
-	try
-	{
-		if(m_card->getFileSod()->getStatus(true)==CARDFILESTATUS_OK
-			&& m_card->getFileID()->getStatus(true)==CARDFILESTATUS_OK)
-			return true;
-	}
-	catch(CMWException& e)
-	{
-		if (e.GetError() == EIDMW_ERR_NOT_ALLOW_BY_USER)
-			return false;
-		else
-			throw;
-	}
-	return false;
 }
 
 CByteArray APL_SodEid::getXML(bool bNoHeader)
@@ -2430,7 +1790,6 @@ const CByteArray& APL_SodEid::getData()
 	const CByteArray &cb = m_card->getFileSod()->getData();
 
 	m_card->getFileSod()->getAddressHash();
-	APL_Config conf_dir(CConfig::EIDMW_CONFIG_PARAM_GENERAL_CERTS_DIR);
 
 	return cb;
 }
@@ -2445,11 +1804,6 @@ APL_DocVersionInfo::APL_DocVersionInfo(APL_EIDCard *card)
 
 APL_DocVersionInfo::~APL_DocVersionInfo()
 {
-}
-
-bool APL_DocVersionInfo::isAllowed()
-{
-	return true;
 }
 
 CByteArray APL_DocVersionInfo::getXML(bool bNoHeader)
@@ -2475,7 +1829,7 @@ CByteArray APL_DocVersionInfo::getXML(bool bNoHeader)
 			<file_datainfo encoding="base64">
 			</file_datainfo>
 			<file_tokeninfo encoding="base64">
-			</file_tokeninfo>			
+			</file_tokeninfo>
 		</files>
 	</scard>
 */
@@ -2694,10 +2048,5 @@ const char *APL_DocVersionInfo::getElectricalPersonalisation()
 const char *APL_DocVersionInfo::getElectricalPersonalisationInterface()
 {
 	return m_card->getFileTokenInfo()->getElectricalPersonalisationInterface();
-}
-
-const CByteArray &APL_DocVersionInfo::getSignature()
-{
-	return m_card->getCardInfoSignature();
 }
 }

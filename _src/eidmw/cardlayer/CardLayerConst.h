@@ -45,8 +45,7 @@ typedef enum
 {
     PIN_OP_VERIFY,
     PIN_OP_CHANGE,
-    PIN_OP_RESET,
-    PIN_OP_LOGOFF,
+    PIN_OP_RESET
 } tPinOperation;
 
 const unsigned long SIGN_ALGO_RSA_RAW = 0x01;
@@ -96,10 +95,6 @@ const unsigned long PIN_STATUS_UNKNOWN = 0xFFFFFFFE; // used in CReader::PinStat
 /* used in CReader::Ctrl() */
 
 const long CTRL_PTEID = 1000;
-
-/** Returns the unsigned card data (= same as CReader::GetInfo(), in case of a BE eID card).
- *  No input data is needed, 28 bytes are returned. */
-const long CTRL_PTEID_GETCARDDATA = CTRL_PTEID;
 
 /** Returns the signed card data (28 + 128 bytes). No input data is needed.
  *  Not for V1 cards! */

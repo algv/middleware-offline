@@ -258,9 +258,6 @@
 /** The reader set has been changed */
 #define EIDMW_ERR_READERSET_CHANGED		0xe1d00b08
 
-/** User did not allow to read the card */
-#define EIDMW_ERR_NOT_ALLOW_BY_USER		0xe1d00b09
-
 /** This Certificate has no CDP */
 #define EIDMW_ERR_CERT_NOCRL			0xe1d00b0A
 
@@ -292,17 +289,23 @@
 
 #define EIDMW_SAM_CONNECTION_ERROR    0xe1d00d05
 #define EIDMW_SAM_PROTOCOL_ERROR      0xe1d00d06
-#define EIDMW_SAM_UNKNOWN_ERROR      0xe1d00d07
+#define EIDMW_SAM_UNKNOWN_ERROR       0xe1d00d07
+#define EIDMW_SAM_UNSUPPORTED_CARD      0xe1d00d10
 #define EIDMW_SSL_PROTOCOL_ERROR      0xe1d00d08
 
+//Errors related to CVC authentication and Secure Messaging
+#define EIDMW_ERR_CVC_GENERIC_ERROR        0xe1d00f01
+#define EIDMW_ERR_CVC_PERMISSION_DENIED   0xe1d00f02
+#define EIDMW_ERR_CVC_PATH_NOT_FOUND      0xe1d00f03
 
-#define EIDMW_TIMESTAMP_ERROR 0xe1d00e01
+
+#define EIDMW_TIMESTAMP_ERROR       0xe1d00e01
 
 
 // Errors in system calls
 
 /** a system call returned an error */
-#define EIDMW_ERR_SYSTEM                      0xe1d00d01
+#define EIDMW_ERR_SYSTEM                      0xe1d00f01
 
 /** a signal function returned an error */
-#define EIDMW_ERR_SIGNAL                     0xe1d00d02
+#define EIDMW_ERR_SIGNAL                     0xe1d00f02

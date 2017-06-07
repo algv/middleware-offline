@@ -39,7 +39,7 @@ class dlgWndAskPINs : public dlgWndBase
 	Q_OBJECT
 
 public:
-	dlgWndAskPINs( DlgPinInfo pinInfo1, DlgPinInfo pinInfo2, QString & Header, QString & PINName, bool UseKeypad, QWidget *parent = 0 );
+	dlgWndAskPINs( DlgPinInfo pinInfo1, DlgPinInfo pinInfo2, QString & Header, QString & PINName, bool UseKeypad, QWidget *parent = 0, Type_WndGeometry *pParentWndGeometry = 0 );
 	~dlgWndAskPINs();
 
 	std::wstring getPIN1(){ return QString(ui.txtOldPIN->text()).toStdWString(); };
@@ -68,16 +68,6 @@ private slots:
 	void FinalCheck();
 	void NextField();
 
-	void on_tbtNUM_0_clicked();
-	void on_tbtNUM_1_clicked();
-	void on_tbtNUM_2_clicked();
-	void on_tbtNUM_3_clicked();
-	void on_tbtNUM_4_clicked();
-	void on_tbtNUM_5_clicked();
-	void on_tbtNUM_6_clicked();
-	void on_tbtNUM_7_clicked();
-	void on_tbtNUM_8_clicked();
-	void on_tbtNUM_9_clicked();
 	void on_tbtClear_clicked();
 };
 

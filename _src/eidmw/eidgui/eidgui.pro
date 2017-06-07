@@ -12,6 +12,12 @@ VERSION = $${EIDGUI_MAJ}.$${EIDGUI_MIN}.$${EIDGUI_REV}
 macx: ICON = appicon.icns
 
 QT += network
+QT += widgets
+
+## For QPrinter class
+QT += printsupport
+QT += concurrent
+
 
 message("Compile $$TARGET")
 
@@ -38,11 +44,8 @@ CONFIG += config qt thread create_prl link_prl console
 
 ##LIBS += -L$$[QT_INSTALL_PLUGINS]/imageformats -ljasper
 
-###
-### Accept cp1252 encoded source files
-### 
-###
-#QMAKE_CXXFLAGS+=-finput-charset=cp1252
+#We need to override this because SingleApplication needs some C++11 feature
+QMAKE_CXXFLAGS += '-std=c++11'
 
 ###
 ### make sure the RPATH is set to where the Qt libs will be installed
@@ -85,11 +88,14 @@ PRE_TARGETDEPS += $${translation_en.target} \
 ## --------------------------------------------------------------------------------------------------------
 
 DEPENDPATH += . ../dialogs 
-INCLUDEPATH += . ../dialogs ../eidlib ../_Builds ../common
+INCLUDEPATH += . ../dialogs ../eidlib ../_Builds ../common ../
+
+unix:!macx: INCLUDEPATH += /usr/include/poppler/qt5
 
 LIBS += -L../lib  \
     -l$${EIDLIB} \
-	-l$${COMMONLIB}
+	-l$${COMMONLIB} \
+	-lpoppler-qt5
 
 unix:!macx: LIBS += -Wl,-rpath-link,../lib
 
@@ -115,10 +121,10 @@ HEADERS += CardInformation.h \
 					 Settings.h \
 					 genpur.h \
 					 picturepopup.h \
-					 qtsingleapplication.h \
 					 dlgprint.h \
-					 dlgverifysignature.h \
 					 mylistview.h \
+					 singleapplication.h \	
+					 singleapplication_p.h \
 					 dlgsignature.h \
 					 PDFSignWindow.h \
 					 ChangeAddressDialog.h \
@@ -128,25 +134,22 @@ HEADERS += CardInformation.h \
 FORMS += dlgAbout.ui dlgOptions.ui mainwnd.ui picturepopup.ui dlgPrint.ui dlgSignature.ui dlgVerifySignature.ui PDFSignWindow.ui ChangeAddressDialog.ui
 
 RESOURCES = eidgui.qrc 
+DEFINES += QAPPLICATION_CLASS=QApplication
 
 SOURCES += CardInformation.cpp \
-           dlgAbout.cpp \
-           dlgOptions.cpp \
-           httpwindow.cpp \
-           AutoUpdates.cpp \
-           ChangeAddressDialog.cpp \
-           main.cpp \
-           mainwnd.cpp \
-		   dlgprint.cpp \
-		   dlgverifysignature.cpp \
-		   dlgsignature.cpp \
-			picturepopup.cpp \
-			qtsingleapplication.cpp \
-					 PDFSignWindow.cpp \
-					 mylistview.cpp \
-					 genpur.cpp
-unix:!macx: SOURCES += qtsingleapplication_x11.cpp
-macx: SOURCES += qtsingleapplication_mac.cpp	
-
+	   dlgAbout.cpp \
+	   dlgOptions.cpp \
+	   httpwindow.cpp \
+	   AutoUpdates.cpp \
+	   ChangeAddressDialog.cpp \
+	   main.cpp \
+	   mainwnd.cpp \
+	   dlgprint.cpp \
+	   dlgsignature.cpp \
+	   singleapplication.cpp \
+	   picturepopup.cpp \
+	   PDFSignWindow.cpp \
+	   mylistview.cpp \
+	   genpur.cpp
 
 

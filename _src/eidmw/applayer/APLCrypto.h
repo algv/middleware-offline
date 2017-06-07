@@ -150,8 +150,6 @@ public:
 	EIDMW_APL_API PinUsage getUsageCode();		/**< Return Usage code from the CAL */
 	EIDMW_APL_API unsigned long getFlags();		/**< Return P15 Flags */
 	EIDMW_APL_API const char *getLabel();		/**< Return P15 Label */
-
-	EIDMW_APL_API const CByteArray &getSignature();		/**< Return the pin signature */
 	
 	/**
 	  * Call the CAL for verifying the pin
@@ -161,7 +159,7 @@ public:
 	  *
 	  * @return true if success and false if failed
 	  */
-	EIDMW_APL_API bool verifyPin(const char *csPin,unsigned long &ulRemaining, bool bShowDlg=true);
+	EIDMW_APL_API bool verifyPin(const char *csPin,unsigned long &ulRemaining, bool bShowDlg=true, void *wndGeometry = 0 );
 
 	/**
 	  * Call the CAL for changing the pin
@@ -175,8 +173,8 @@ public:
 	  *
 	  * @return true if success and false if failed
 	  */
-	EIDMW_APL_API bool changePin(const char *csPin1,const char *csPin2,unsigned long &ulRemaining, const char *PinName,bool bShowDlg=true);
-	EIDMW_APL_API bool unlockPin(const char *pszPuk, const char *pszNewPin, unsigned long &triesLeft);
+ 	EIDMW_APL_API bool changePin(const char *csPin1,const char *csPin2,unsigned long &ulRemaining, const char *PinName,bool bShowDlg=true, void *wndGeometry = 0 );
+	EIDMW_APL_API bool unlockPin(const char *pszPuk, const char *pszNewPin, unsigned long &triesLeft, unsigned long flags);
 
 protected:
 	/**

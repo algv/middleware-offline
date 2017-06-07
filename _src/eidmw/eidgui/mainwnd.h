@@ -2,6 +2,7 @@
 
  * eID Middleware Project.
  * Copyright (C) 2008-2009 FedICT.
+ * Copyright (C) 2012-2016 Caixa Mágica Software
  *
  * This is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version
@@ -22,8 +23,14 @@
 #define MAINWND_H
 
 #include <map>
+
 #include <QtGui>
+#include <QPrinter>
+#include <QMessageBox>
 #include <QFutureWatcher>
+#include <QProgressDialog>
+#include <QSystemTrayIcon>
+
 #ifdef WIN32
 #include <windows.h>
 #include <Wincrypt.h>
@@ -42,6 +49,10 @@ typedef const void *PCX509CERT;
 #include "eidlibException.h"
 #include "picturepopup.h"
 
+#if !defined(WIN32)
+#include "dialogs.h"
+#endif /* !defined(WIN32) */
+
 using namespace eIDMW;
 
 
@@ -59,8 +70,7 @@ public:
 
 	PinInfo() {};
 	PinInfo(unsigned long id, const char *pin_name, long tLeft):
-	  pin_name(QString::fromUtf8(pin_name)), pin_id(QString::number(id)), triesLeft(tLeft)
-	  { };
+	  pin_name(QString::fromUtf8(pin_name)), pin_id(QString::number(id)), triesLeft(tLeft) {}; /*llemos*/
 };
 
 //***********************************************
@@ -112,7 +122,7 @@ public:
 //***********************************************
 // QuitEvent
 // This class is used as event to notify that the
-// application has to close t down because the 
+// application has to close t down because the
 // application session ends (logoff or shutdown)
 //***********************************************
 class QuitEvent : public QEvent
@@ -253,14 +263,16 @@ signals:
 	void addressProgressChanged(int value);
 	void addressChangeFinished(long return_code);
 
+public slots:
+	void messageRespond();
 
 private slots:
 	void on_actionAbout_triggered( void );
-	void on_actionClear_triggered( void );
 	void on_actionPrint_eID_triggered( void );
 	void actionSignature_eID_triggered( void );
 	void actionPDFSignature_triggered( void );
 	void actionVerifySignature_eID_triggered( void );
+	void actionSCAPSignature_triggered( void );
 	void on_actionPrinter_Settings_triggered( void );
 	void on_actionPINRequest_triggered( void );
 	void on_actionPINChange_triggered( void );
@@ -275,7 +287,7 @@ private slots:
 	void restoreWindow( void );
 	void setAddressProgress(int value);
 	void showChangeAddressDialog(long code);
-	void messageRespond( const QString& message);
+
 	void showJavaLaunchError(QProcess::ProcessError error);
 
 	void showCertStatusSideinfo(PTEID_CertifStatus certStatus);
@@ -283,7 +295,7 @@ private slots:
 	void getCertStatusText(PTEID_CertifStatus certStatus, QString& strCertStatus);
 	//PTEID_CertifStatus checkCertStatus(PTEID_Certificate *cert);
 
-	// eventFilter to Catch actions from "personalized toolbar"
+	// eventFilter to Catch events from "personalized toolbar"
 	bool eventFilter(QObject *,QEvent *);
 
 	// SystemTray
@@ -307,7 +319,7 @@ private slots:
 	void on_btnSelectTab_Certificates_clicked ( void );
 	void on_btnSelectTab_PinCodes_clicked ( void );
 	void on_btnSelectTab_Notes_clicked ( void );
-	
+
 //TOOLBAR MENUS
 	void on_btn_menu_card_clicked( void );
 	void on_btn_menu_tools_clicked( void );
@@ -315,11 +327,13 @@ private slots:
 	void on_btn_menu_language_clicked( void );
 	void on_btn_menu_help_clicked( void );
 
+	void on_btnIdentityExtra_linkToCert_clicked( void );
+
 //SHORTCUT BUTTONS
 	void on_btnShortcut_UnivSign_clicked( void );
 	void on_btnShortcut_PdfSign_clicked( void );
 	void on_btnShortcut_VerifSign_clicked( void );
-	//void on_btnShortcut_SCAP_clicked( void );
+	void on_btnShortcut_SCAPSign_clicked( void );
 
 //SUBMENUS Toolbar
 	void hide_submenus( void );
@@ -327,11 +341,15 @@ private slots:
 	void quit_application();
 	void show_window_parameters();
 	void show_window_about();
-	
+
 
 	void updateReaderList( void );
 	void customEvent( QEvent * event );
 	void changeEvent( QEvent *event );
+/*	void hideJavaAppButtons();
+	void hideUniversalSigButton();*/
+	void clearErrorSOD() { error_sod = false; }
+	void setErrorSOD() { error_sod = true; }
 
 protected:
 	// Window Events
@@ -349,11 +367,7 @@ protected:
 	QAction*			m_pMaximizeAction;
 	QAction*			m_pRestoreAction;
 
-	QPixmap				m_imgBackground_Front;
-	QPixmap				m_imgBackground_Back;
 	QPixmap				m_imgPicture;
-	QImage				imgPicture;
-	QImage				imgPicturescaled;
 	QPixmap				m_imgSex;
 	QSystemTrayIcon*	m_pTrayIcon;
 	QMenu*				m_pTrayIconMenu;
@@ -372,7 +386,9 @@ protected:
 
 private:
 #define TRANSLATION_FILE_PREFIX	"eidmw_"
+	QMutex	m_mutex_ReadCard; //!< mutex to avoid more than 1 simultaneous readings
 
+	void getCardForReading(PTEID_EIDCard * &new_card, bool clearData=false);
 	void loadCardData( void );
 	void loadCardDataAddress ();
 	bool loadCardDataPersoData ();
@@ -388,13 +404,16 @@ private:
 
 	void refreshTabIdentity( void );
 	void refreshTabIdentityExtra( void );
-	void refreshTabAddress( void );
+	bool refreshTabAddress( void );
 	void clearAddressData( void );
+	void refreshTabPinCodes( void );                /*llemos*/
 	void refreshTabPersoData( void );
 	void refreshTabCertificates( void );
 	void refreshTabCardPin( void );
+    void setTabCardPin( QTreeWidgetItem *item );    /*llemos*/
+    void enableTabPersoData( bool isEnabled );
 
-	QString translateCardValidation(QString &card_validation);
+	QString translateText(QString &qStr);
 	//void refreshTabInfo( void );
 
 	//TESTING
@@ -413,6 +432,7 @@ private:
 	void LoadDataMC(PTEID_MemoryCard& Card);
 	void on_actionUpdates_triggered( void );
 
+	void ProgressExec();
 	void InitLanguageMenu( void );
 	void setLanguage( void );
 	void setLanguage( GenPur::UI_LANGUAGE language );
@@ -424,7 +444,7 @@ private:
 	void writeSettings( void );
 	void readSettings( void );
 	GenPur::UI_LANGUAGE LoadTranslationFile( GenPur::UI_LANGUAGE NewLanguage );
-	void ShowPTEIDError( unsigned long ErrCode, QString const& msg="" );
+	void ShowPTEIDError(QString const& msg="" );
 	void enableFileMenu( void );
 	void enableFileSave( bool bEnabled );
 	void enablePrintMenu( void );
@@ -434,7 +454,6 @@ private:
 	void fillCertificateList( void );
 	void stopAllEventCallbacks( void );
 	void setEventCallbacks( void );
-	bool askAllowTestCard( void );
 
 	static bool StoreUserCerts (PTEID_EIDCard& Card, PCCERT_CONTEXT pCertContext, unsigned char KeyUsageBits, PTEID_Certificate& cert, const char* readerName);
 	static bool StoreAuthorityCerts(PCCERT_CONTEXT pCertContext, unsigned char KeyUsageBits, const char* readerName);
@@ -456,18 +475,24 @@ private:
 	void doPicturePopup( PTEID_Card& card );
 	void setCorrespondingTrayIcon( PopupEvent* callbackEvent );
 	void clearGuiContent( void );
-	QString getSpecialOrganizationText( QString const& code);
-	QString getDuplicataText( void );
-	QString getFamilyMemberText( void );
 	void createTrayMenu();
-	QString getFinalLinkTarget(QString baseName);	
+	QString getFinalLinkTarget(QString baseName);
 	void cleanupCallbackData();
+	void showInsertCardMsg();
 
 	void connectTreeCertItems(void);
 	void syncTreeItemWithSideinfo(QTreeCertItem *item);
 	void fillCertTree( PTEID_Certificate *cert, short level, QTreeCertItem* item );
 	QTreeCertItem* buildTree(PTEID_Certificate &cert, bool &bEx);
+	void SetValidCertificate();
+	void getReaderIndexes( unsigned long *p_ReaderStartIdx, unsigned long *p_ReaderEndIdx, bool bRefresh = false );
+#if !defined(WIN32)
+	void setWndGeometry( const QRect &wndGeometry );
+#endif /* !defined(WIN32) */
 
+#if !defined(WIN32)
+    Type_WndGeometry        m_WndGeometry;
+#endif /* !defined(WIN32) */
 	eZOOMSTATUS				m_Zoom;
 	QPrinter*				m_pPrinter;				//!< the 'Selected' Printer
 	Ui_MainWnd				m_ui;
@@ -482,6 +507,7 @@ private:
 	QString					m_CurrReaderName;		//!< the current reader we're using
 	PTEID_ReaderContext*		 m_virtReaderContext;
 	bool					m_UseKeyPad;
+	bool                    error_sod;
 	GUISettings&			m_Settings;				//!< settings of the app
 	QTimer*					m_timerReaderList;
 	QMutex					m_mutex;				//!< mutex to be used when multiple cards are inserted simultaneously
@@ -489,7 +515,9 @@ private:
 
 	bool					m_ShowBalloon;			//!< To avoid the message eID still running when the gui start minimize
 	QMessageBox*			m_msgBox;
-	
+	bool                    isLinkToCertClicked;
+	bool 					m_addressFieldNeedsReset;  //Do we need to reset some label positions after loading a foreign address?
+
 public:
 	static tCertPerReader			m_certContexts;			//!< certificate contexts of each reader
 

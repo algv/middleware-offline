@@ -44,30 +44,6 @@ enum PTEID_CardType
 	PTEID_CARDTYPE_IAS101
 };
 
-enum PTEID_DocumentType
-{
-	PTEID_DOCTYPE_ID=0,			/**< ID document : usefull to get value by field */
-	PTEID_DOCTYPE_ADDRESS,		/**< Address document : usefull to get value by field */
-	PTEID_DOCTYPE_SOD,			/**< sod document (if available) */
-	PTEID_DOCTYPE_INFO,			/**< info on the card (if available) */
-	PTEID_DOCTYPE_PINS,			/**< pins containert (if available) */
-	PTEID_DOCTYPE_CERTIFICATES	/**< certificates containert (if available) */
-};
-
-enum PTEID_RawDataType
-{
-	PTEID_RAWDATA_ID=0,
-	PTEID_RAWDATA_ID_SIG,
-	PTEID_RAWDATA_TRACE,
-	PTEID_RAWDATA_ADDR,
-	PTEID_RAWDATA_ADDR_SIG,
-	PTEID_RAWDATA_SOD,
-	PTEID_RAWDATA_CARD_INFO,
-	PTEID_RAWDATA_TOKEN_INFO,
-	PTEID_RAWDATA_CHALLENGE,
-	PTEID_RAWDATA_RESPONSE,
-	PTEID_RAWDATA_PERSO_DATA
-};
 
 enum PTEID_PinUsage
 {
@@ -77,24 +53,11 @@ enum PTEID_PinUsage
 	PTEID_PIN_USG_ADDRESS,
 };
 
-enum PTEID_ValidationProcess
-{
-	PTEID_VALIDATION_PROCESS_NONE=0
-};
-
-enum PTEID_ValidationLevel
-{
-	PTEID_VALIDATION_LEVEL_NONE=0,
-	PTEID_VALIDATION_LEVEL_OPTIONAL,
-	PTEID_VALIDATION_LEVEL_MANDATORY
-};
-
 enum PTEID_CertifStatus
 {
 	PTEID_CERTIF_STATUS_UNKNOWN=0,		/**< Validity unknown */
 	PTEID_CERTIF_STATUS_REVOKED,		/**< Revoked certificate */
-	PTEID_CERTIF_STATUS_TEST,		/**< Test certificate */
-	PTEID_CERTIF_STATUS_DATE,		/**< Certificate no more valid */
+	PTEID_CERTIF_STATUS_SUSPENDED,
 	PTEID_CERTIF_STATUS_CONNECT,		/**< Connection problem */
 	PTEID_CERTIF_STATUS_ISSUER,		/**< An issuer is missing in the chain */
 	PTEID_CERTIF_STATUS_ERROR,		/**< Error during validation */
@@ -127,11 +90,14 @@ enum PTEID_FileType
 enum PTEID_Param
 {
 	//GENERAL
-	PTEID_PARAM_GENERAL_INSTALLDIR,		//string, directory of the basic eid software; �c:/Program Files/pteid/�
-	PTEID_PARAM_GENERAL_INSTALL_PRO_DIR,		//string, directory of the pro eid software; �c:/Program Files/pteid/�
-	PTEID_PARAM_GENERAL_INSTALL_SDK_DIR,		//string, directory of the sdk eid software; �c:/Program Files/pteid/�
+	PTEID_PARAM_GENERAL_INSTALLDIR,		//string, directory of the basic eid software;
 	PTEID_PARAM_GENERAL_CACHEDIR,		//string, cache directory for card-file;
-	PTEID_PARAM_GENERAL_LANGUAGE,		//string, user language: fr, nl, en, de, �
+	PTEID_PARAM_GENERAL_PTEID_CACHEDIR,
+	PTEID_PARAM_GENERAL_LANGUAGE,		//string, user language: en, pt
+	PTEID_PARAM_GENERAL_SAM_SERVER,
+	PTEID_PARAM_GENERAL_SCAP_HOST,
+	PTEID_PARAM_GENERAL_SCAP_PORT,
+	PTEID_PARAM_GENERAL_SHOW_JAVA_APPS,
 
 	//LOGGING
 	PTEID_PARAM_LOGGING_DIRNAME,			//string, location of the log-file; $home/pteid/	Full path with volume name.
@@ -150,15 +116,16 @@ enum PTEID_Param
 	//PROXY
 	PTEID_PARAM_PROXY_HOST,				//string;
 	PTEID_PARAM_PROXY_PORT,				//number
+	PTEID_PARAM_PROXY_USERNAME,			//string;
+	PTEID_PARAM_PROXY_PWD,				//string;
 	PTEID_PARAM_PROXY_PACFILE,			//string
 
 	//SECURITY
-	PTEID_PARAM_SECURITY_SINGLESIGNON,	//number; 0=no, 1=yes; If yes, the PIN is requested by the driver and asked only once with multiple applications.
 
 	//GUITOOL
 	PTEID_PARAM_GUITOOL_STARTWIN,		//number; 0=no(default), 1=yes
 	PTEID_PARAM_GUITOOL_STARTMINI,		//number; 0=no(default), 1=yes
-	PTEID_PARAM_GUITOOL_SHOWPIC,			//number; 0=no(default), 1=yes
+	PTEID_PARAM_GUITOOL_SHOWPIC,		//number; 0=no(default), 1=yes
 	PTEID_PARAM_GUITOOL_SHOWTBAR,		//number; 0=no, 1=yes
 	PTEID_PARAM_GUITOOL_VIRTUALKBD,		//number; 0=no, 1=yes
 	PTEID_PARAM_GUITOOL_AUTOCARDREAD,	//number; 0=no, 1=yes(default)

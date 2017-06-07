@@ -37,7 +37,7 @@
 #define STR_LANGUAGE			"language"
 #define STR_STARTMINIMIZED		"start_minimized"
 #define STR_USEVIRTUALKEYPAD	"use_virtual_keypad"
-#define STR_SHOWTOOLBAR			"show_toolbar"
+
 #define STR_SHOWPICTURE			"show_picture"
 #define STR_AUTOCARDREADING		"automatic_cardreading"
 #define STR_AUTOSTARTUP			"start_with_windows"
@@ -168,8 +168,6 @@ public:
 	GUISettings( void )
 		: m_GuiLanguage("en")
 		, m_bStartMinimized(false)
-		, m_bUseVirtualKeyPad(false)
-		, m_bShowToolbar(false)
 		, m_bShowPicture(false)
 		, m_bShowNotification(false)
 		, m_bAutoCardReading(false)
@@ -178,6 +176,7 @@ public:
 		, m_bRemoveCert(false)
 		, m_strExePath("")
 		, m_SelectedReader(-1)
+		, m_test_mode(false)
 
 	{
 		//----------------------------------------------------------
@@ -207,28 +206,6 @@ public:
 			if ( 0 != StartMinimized )
 			{
 				setStartMinimized(true);
-			}
-		}
-		//----------------------------------------------------------
-		// check m_bUseVirtualKeyPad
-		//----------------------------------------------------------
-		{
-			eIDMW::PTEID_Config config(eIDMW::PTEID_PARAM_GUITOOL_VIRTUALKBD);
-			long UseVirtualKeyPad = config.getLong();
-			if ( 0 != UseVirtualKeyPad )
-			{
-				setUseVirtualKeyPad(true);
-			}
-		}
-		//----------------------------------------------------------
-		// check ShowToolBar
-		//----------------------------------------------------------
-		{
-			eIDMW::PTEID_Config config(eIDMW::PTEID_PARAM_GUITOOL_SHOWTBAR);
-			long ShowToolbar = config.getLong();
-			if ( 0 != ShowToolbar )
-			{
-				setShowToolbar(true);
 			}
 		}
 		//----------------------------------------------------------
@@ -276,13 +253,15 @@ public:
 			}
 		}
 		//----------------------------------------------------------
-		// check card reader to use
+		// check card reader to use 
+		// We shouldn't load the selected reader from settings initially
 		//----------------------------------------------------------
-		{
+	/*	{
+
 			eIDMW::PTEID_Config config(eIDMW::PTEID_PARAM_GUITOOL_CARDREADNUMB);
 			long CardReader = config.getLong();
 			setSelectedReader(CardReader);
-		}
+		} */
 		//----------------------------------------------------------
 		// check RegCert
 		//----------------------------------------------------------
@@ -312,6 +291,48 @@ public:
 			eIDMW::PTEID_Config config(eIDMW::PTEID_PARAM_GUITOOL_FILESAVE);
 			QString fileSave = config.getString();
 			m_DefSavePath = fileSave;
+		}
+
+		//---------------------------------------------------------
+		// Check proxy settings
+		//---------------------------------------------------------
+		{
+			eIDMW::PTEID_Config config(eIDMW::PTEID_PARAM_PROXY_HOST);
+			QString proxy_host = config.getString();
+			m_proxy_host = proxy_host;
+
+		}
+
+		{
+			eIDMW::PTEID_Config config(eIDMW::PTEID_PARAM_PROXY_PORT);
+			long proxy_port = config.getLong();
+			m_proxy_port = proxy_port;
+
+		}
+
+		{
+			eIDMW::PTEID_Config config(eIDMW::PTEID_PARAM_PROXY_USERNAME);
+			QString proxy_user = config.getString();
+			m_proxy_username = proxy_user;
+
+		}
+
+		{
+			eIDMW::PTEID_Config config(eIDMW::PTEID_PARAM_PROXY_PWD);
+			QString pwd = config.getString();
+			m_proxy_pwd = pwd;
+
+		}
+
+		{
+			eIDMW::PTEID_Config config(eIDMW::PTEID_PARAM_GENERAL_SHOW_JAVA_APPS);
+			m_showJavaApps = config.getLong() == 1;
+
+		}
+
+		{
+			eIDMW::PTEID_Config config(eIDMW::PTEID_PARAM_GENERAL_PTEID_CACHEDIR);
+			QString m_pteid_cachedir = config.getString();
 		}
 	}
 	//------------------------------------------------------
@@ -352,26 +373,7 @@ public:
 		eIDMW::PTEID_Config config(eIDMW::PTEID_PARAM_GUITOOL_STARTMINI);
 		config.setLong(m_bStartMinimized);
 	}
-	bool getUseVirtualKeyPad( void )
-	{
-		return m_bUseVirtualKeyPad;
-	}
-	void setUseVirtualKeyPad( bool bUseVirtualKeyPad )
-	{
-		m_bUseVirtualKeyPad = bUseVirtualKeyPad;
-		eIDMW::PTEID_Config config(eIDMW::PTEID_PARAM_GUITOOL_VIRTUALKBD);
-		config.setLong(m_bUseVirtualKeyPad);
-	}
-	bool getShowToolbar( void )
-	{
-		return m_bShowToolbar;
-	}
-	void setShowToolbar( bool bShowToolbar )
-	{
-		m_bShowToolbar = bShowToolbar;
-		eIDMW::PTEID_Config config(eIDMW::PTEID_PARAM_GUITOOL_SHOWTBAR);
-		config.setLong(m_bShowToolbar);
-	}
+
 	bool getShowPicture( void )
 	{
 		return m_bShowPicture;
@@ -413,22 +415,14 @@ public:
 		config.setLong(m_bAutoStartup);
 
 #ifdef WIN32
-		QSettings sLM("HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Windows\\CurrentVersion\\Run", QSettings::NativeFormat);
-		bool bLMExist = sLM.value("pteid").toString()!="";
-			
+		QSettings s("HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Run", QSettings::NativeFormat);
 #endif
 
 		if (m_bAutoStartup)
 		{
-			
-			QString filePath = QDir::toNativeSeparators(QCoreApplication::applicationFilePath());
 #ifdef WIN32
-			QSettings s("HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Run", QSettings::NativeFormat);
-			if(bLMExist)
-				s.remove("pteid"); //if the HKEY_LOCAL_MACHINE exist, we never need the HKEY_CURRENT_USER
-			else
-				s.setValue("pteid" , filePath );
-			
+			QString filePath = QDir::toNativeSeparators(QCoreApplication::applicationFilePath());
+			s.setValue("pteid", filePath);
 #endif
 #ifdef __APPLE__
 //            QProcess::execute("sudo defaults write com.apple.loginwindow LoginHook" + m_strExePath);
@@ -437,7 +431,6 @@ public:
 		else
 		{
 #ifdef WIN32
-			QSettings s("HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Run", QSettings::NativeFormat);
 			s.remove("pteid");
 #endif
 #ifdef __APPLE__
@@ -458,16 +451,24 @@ public:
 		}
 		return m_bRegCert;
 	}
+
+	bool areJavaAppsEnabled()
+	{
+		return m_showJavaApps;
+	}
+
 	void setRegCert( bool bRegCert )
 	{
 		m_bRegCert = bRegCert;
 		eIDMW::PTEID_Config config(eIDMW::PTEID_PARAM_GUITOOL_REGCERTIF);
 		config.setLong(m_bRegCert);
 	}
+
 	bool getRemoveCertSetting( void )
 	{
 		return m_bRemoveCert;
 	}
+
 	bool getRemoveCert( void )
 	{
 		if (!m_bAutoCardReading)
@@ -486,6 +487,7 @@ public:
 	{
 		m_strExePath = strExePath;
 	}
+
 	QString const& getExePath( void )
 	{
 		return m_strExePath;
@@ -515,29 +517,111 @@ public:
 		eIDMW::PTEID_Config config(eIDMW::PTEID_PARAM_GUITOOL_FILESAVE);
 		config.setString(m_DefSavePath.toLatin1());
 	}
+
 	QString const& getDefSavePath( void )
 	{
 		return m_DefSavePath;
 	}
 
+	void setProxyHost(QString const& proxy_host)
+	{
+		m_proxy_host = proxy_host;
+
+		eIDMW::PTEID_Config config(eIDMW::PTEID_PARAM_PROXY_HOST);
+		config.setString(proxy_host.toUtf8());
+	}
+
+	QString getProxyHost()
+	{
+		return m_proxy_host;
+	}
+
+	void setProxyUsername(QString const& proxy_user)
+	{
+		m_proxy_username = proxy_user;
+
+		eIDMW::PTEID_Config config(eIDMW::PTEID_PARAM_PROXY_USERNAME);
+		config.setString(proxy_user.toUtf8());
+	}
+
+	void setProxyPwd(QString const& proxy_pwd)
+	{
+		m_proxy_pwd = proxy_pwd;
+
+		eIDMW::PTEID_Config config(eIDMW::PTEID_PARAM_PROXY_PWD);
+		config.setString(proxy_pwd.toUtf8());
+	}
+
+	QString getProxyUsername()
+	{
+		return m_proxy_username;
+	}
+
+	QString getProxyPwd()
+	{
+		return m_proxy_pwd;
+	}
+
+	long getProxyPort()
+	{
+		return m_proxy_port;
+	}
+
+	void setProxyPort(int proxy_port)
+	{
+		m_proxy_port = proxy_port;
+
+		eIDMW::PTEID_Config config(eIDMW::PTEID_PARAM_PROXY_PORT);
+		config.setLong(proxy_port);
+	}
+
+	QString getPteidCachedir(){
+        return m_pteid_cachedir;
+	}
+
+	void setPteidCachedir(QString const& pteid_cachedir)
+	{
+		eIDMW::PTEID_Config config(eIDMW::PTEID_PARAM_GENERAL_PTEID_CACHEDIR);
+		config.setString(pteid_cachedir.toUtf8());
+
+		m_pteid_cachedir = pteid_cachedir;
+	}
+
+	/* Test Mode */
+    bool getTestMode()	{
+        return m_test_mode;
+    }
+
+    void setTestMode( bool test_mode )	{
+        m_test_mode = test_mode;
+    }
+
 
 private:
+	//Proxy Settings
+	QString m_proxy_host;
+	long m_proxy_port;
+	QString m_proxy_username;
+	QString m_proxy_pwd;
+	QString m_pteid_cachedir;
+	bool m_test_mode;
+
+
 	QString	m_GuiLanguage;			//!< the GUI language
 	bool	m_bStartMinimized;		//!< startup minimized (T/F)
-	bool	m_bUseVirtualKeyPad;	//!< Use a virtual keypad (T/F)
-	bool	m_bShowToolbar;			//!< Show the toolbar (T/F)
 	bool	m_bShowPicture;			//!< show the picture (T/F)
 	bool	m_bShowNotification;	//!< show the notification (T/F)
 	bool	m_bAutoCardReading;		//!< read the inserted card at startup (T/F)
 	bool	m_bAutoStartup;			//!< start the app when windows starts (T/F)
 	bool	m_bRegCert;				//!< register certificates on insert (T/F)
 	bool	m_bRemoveCert;			//!< remove certificates on close (T/F)
+	bool 	m_showJavaApps;     // wether we should show the SCAP/DSS buttons...
 	QString m_strExePath;			//!< path to the executable
 	unsigned long		m_SelectedReader;		//!< selected reader (-1=none)
 
 	QString	m_GUIVersion;			//!! Full version of the GUI
 	QString	m_DefSavePath;			//!< default save path for eid,xml,tlv files
-	
+
 };
 
 #endif // SETTINGS_H

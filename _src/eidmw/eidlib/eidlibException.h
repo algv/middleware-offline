@@ -268,30 +268,6 @@ public:
 };
 
 /******************************************************************************//**
-  * Exception class Not allow by user (error code = EIDMW_ERR_NOT_ALLOW_BY_USER)
-  *
-  *	Throw when the data could not be read from the card because the user do not allow
-  *********************************************************************************/
-class PTEID_ExNotAllowByUser: public PTEID_Exception
-{
-public:
-	PTEIDSDK_API PTEID_ExNotAllowByUser();				/**< Constructor */
-	PTEIDSDK_API virtual ~PTEID_ExNotAllowByUser();		/**< Destructor */
-};
-
-/******************************************************************************//**
-  * Exception class User must answer (error code = EIDMW_ERR_USER_MUST_ANSWER)
-  *
-  *	Throw when the user did not answer yet to allow or disallow reading the data from the card
-  *********************************************************************************/
-class PTEID_ExUserMustAnswer: public PTEID_Exception
-{
-public:
-	PTEIDSDK_API PTEID_ExUserMustAnswer();				/**< Constructor */
-	PTEIDSDK_API virtual ~PTEID_ExUserMustAnswer();		/**< Destructor */
-};
-
-/******************************************************************************//**
  * Exception class SOD error error codes:
  *
  *  	EIDMW_SOD_UNEXPECTED_VALUE

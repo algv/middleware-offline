@@ -1,7 +1,13 @@
 
 //cURL for Timestamping
 #include <curl/curl.h>
+#include <cstdlib>
+#include <string>
 #include "APLConfig.h"
+#include "MiscUtil.h"
+
+#include "APLReader.h"
+//#include "cryptoFwkPteid.h"
 #include "Util.h"
 #include "Log.h"
 #include "TsaClient.h"
@@ -81,6 +87,8 @@ namespace eIDMW
 
 		CURL *curl;
 		CURLcode res;
+		std::string pac_proxy_host;
+		std::string pac_proxy_port;
 		char error_buf[CURL_ERROR_SIZE];
 		unsigned char *ts_request = timestamp_asn1_request;
 		size_t post_size = sizeof(timestamp_asn1_request);
@@ -93,7 +101,26 @@ namespace eIDMW
 		APL_Config tsa_url(CConfig::EIDMW_CONFIG_PARAM_XSIGN_TSAURL);
 		const char * TSA_URL = tsa_url.getString();
 
-		if (data_len == SHA256_LEN)
+#ifdef WIN32
+		//Get system proxy configuration
+		APL_Config conf_pac(CConfig::EIDMW_CONFIG_PARAM_PROXY_PACFILE);
+		const char * proxy_pac = conf_pac.getString();
+		if (proxy_pac != NULL && strlen(proxy_pac) > 0)
+		{
+			MWLOG(LEV_DEBUG, MOD_APL, "timestamp_data using Proxy PAC");
+			GetProxyFromPac(proxy_pac, TSA_URL, &pac_proxy_host, &pac_proxy_port);
+			MWLOG(LEV_DEBUG, MOD_APL, "timestamp_data using Proxy host: %s port: %s", pac_proxy_host.c_str(), pac_proxy_port.c_str());
+		}
+#endif
+				
+		//Get Proxy configuration
+		APL_Config config_proxy_host(CConfig::EIDMW_CONFIG_PARAM_PROXY_HOST);
+		APL_Config config_proxy_port(CConfig::EIDMW_CONFIG_PARAM_PROXY_PORT);
+		APL_Config proxy_user(CConfig::EIDMW_CONFIG_PARAM_PROXY_USERNAME);
+		APL_Config proxy_pwd(CConfig::EIDMW_CONFIG_PARAM_PROXY_PWD);
+
+
+	    if (data_len == SHA256_LEN)
 		{
 			generate_asn1_request_struct(input, true);
 			ts_request = timestamp_asn1_sha256;
@@ -112,14 +139,14 @@ namespace eIDMW
 #endif
 		curl = curl_easy_init();
 
-		if (curl) 
+		if (curl)
 		{
 
 			struct curl_slist *headers= NULL;
 
 			headers = curl_slist_append(headers, "Content-Type: application/timestamp-request");
 			headers = curl_slist_append(headers, "Content-Transfer-Encoding: binary");
-			headers = curl_slist_append(headers, "User-Agent: PTeID Middleware v2");
+			headers = curl_slist_append(headers, PTEID_USER_AGENT);
 
 			curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
@@ -129,12 +156,34 @@ namespace eIDMW
 
 			curl_easy_setopt(curl, CURLOPT_TIMEOUT, 15L);
 
+			if (pac_proxy_host.size() > 0 && pac_proxy_port.size() > 0)
+			{
+				curl_easy_setopt(curl, CURLOPT_PROXY, pac_proxy_host.c_str());
+				curl_easy_setopt(curl, CURLOPT_PROXYPORT, atol(pac_proxy_port.c_str()));
+				curl_easy_setopt(curl, CURLOPT_PROXYTYPE, CURLPROXY_HTTP);
+			}
+			if (config_proxy_host.getString() != NULL && strlen(config_proxy_host.getString()) > 0)
+			{
+				//Set Proxy options for request
+				curl_easy_setopt(curl, CURLOPT_PROXY, config_proxy_host.getString());
+				curl_easy_setopt(curl, CURLOPT_PROXYPORT, config_proxy_port.getLong());
+				
+				const char * proxy_user_value = proxy_user.getString();
+
+				if (proxy_user_value != NULL && strlen(proxy_user_value) > 0)
+				{
+					curl_easy_setopt(curl, CURLOPT_PROXYUSERNAME, proxy_user_value);
+					curl_easy_setopt(curl, CURLOPT_PROXYPASSWORD, proxy_pwd.getString());
+				}
+
+				curl_easy_setopt(curl, CURLOPT_PROXYTYPE, CURLPROXY_HTTP);
+			}
+
 			/* Now specify the POST data */ 
 			curl_easy_setopt(curl, CURLOPT_POSTFIELDS, ts_request);
 
 			curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, error_buf);
 
-			//curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp_out);
 			curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &TSAClient::curl_write_data);
 
 			/* Perform the request, res will get the return code */ 

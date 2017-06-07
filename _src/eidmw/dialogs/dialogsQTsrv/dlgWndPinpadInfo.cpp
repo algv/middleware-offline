@@ -20,10 +20,11 @@
 
 #include "dlgWndPinpadInfo.h"
 #include "../langUtil.h"
+#include <QDesktopWidget>
 
 dlgWndPinpadInfo::dlgWndPinpadInfo( unsigned long ulHandle,
-		DlgPinOperation operation, const QString & Reader,  
-		const QString &PINName, const QString & Message, QWidget *parent )
+		DlgPinOperation operation, const QString & Reader,
+		const QString &PINName, const QString & Message, QWidget *parent, Type_WndGeometry *pParentWndGeometry )
 
 	: QWidget(parent)
 {
@@ -37,36 +38,47 @@ dlgWndPinpadInfo::dlgWndPinpadInfo( unsigned long ulHandle,
 
 	QString Title="";
 
-	//if( DApplic == DLG_APP_BELPIC )
-	//{
-		this->setWindowIcon( QIcon( ":/Resources/ICO_CARD_EID_PLAIN_16x16.png" ) );
-	//	Title+=QString::fromWCharArray(GETSTRING_DLG(Belpic));
-	//	Title+=": ";
-	//}
+	this->setWindowIcon( QIcon(":/Resources/ICO_CARD_EID_PLAIN_16x16.png") );
 
     if (operation == DLG_PIN_OP_CHANGE)
         Title+= QString::fromWCharArray(GETSTRING_DLG(ChangeYourPin));
     else if (operation == DLG_PIN_OP_VERIFY)
-	Title+=QString::fromWCharArray(GETSTRING_DLG(PleaseEnterYourPin));
+		Title+=QString::fromWCharArray(GETSTRING_DLG(VerifyingPinCode));
+	else if (operation == DLG_PIN_OP_UNBLOCK_CHANGE)
+		Title += QString::fromWCharArray(GETSTRING_DLG(UnblockPinHeader));
     else
         Title+=QString::fromWCharArray(GETSTRING_DLG(PinpadInfo));
 
-	if(!Reader.isEmpty())
-	{
-		Title+=" - ";
-		Title+=Reader;
-	}
-
 	parent->setWindowTitle( Title );
 
+    Type_WndGeometry WndGeometry;
+    if ( getWndCenterPos( pParentWndGeometry
+                        , QApplication::desktop()->width(), QApplication::desktop()->height()
+                        , this->width(), this->height()
+                        , &WndGeometry ) ){
+        parent->move( WndGeometry.x, WndGeometry.y );
+    }/* if ( getWndCenterPos( pParentWndGeometry, ... ) ) */
+
 	QString tmpHeader;
-	tmpHeader = PINName;
+	
+	tmpHeader += PINName;
 
     ui.label_2->setText( tmpHeader );
     ui.label_2->setAccessibleName( tmpHeader );
     ui.label->wordWrap();
-    ui.label->setText(QString::fromWCharArray(GETSTRING_DLG(PleaseEnterYourPinOnThePinpadReader)));
-    ui.label->setAccessibleName(QString::fromWCharArray(GETSTRING_DLG(PleaseEnterYourPinOnThePinpadReader)));
+
+    QString label;
+    if (operation == DLG_PIN_OP_UNBLOCK_CHANGE)
+    {
+    	label = QString::fromWCharArray(GETSTRING_DLG(UnlockDialogHeader));
+    }
+    else
+    {
+    	label = QString::fromWCharArray(GETSTRING_DLG(PleaseEnterYourPinOnThePinpadReader));
+    }
+
+    ui.label->setText(label);
+    ui.label->setAccessibleName(label);
 	m_ulHandle = ulHandle;
 }
 

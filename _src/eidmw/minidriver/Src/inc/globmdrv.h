@@ -97,7 +97,10 @@ typedef struct _VENDOR_SPECIFIC
 
 /************************************************************************************************************************/
 /* Global State, here be dragons... */
-BYTE Is_Gemsafe; /* Gemsafe = 1, IAS = 2   */
+BYTE Is_Gemsafe;
+WORD g_keySize;
+const SCARD_IO_REQUEST *g_pioSendPci;
+/* Gemsafe = 1, IAS = 2   */
 
 
 

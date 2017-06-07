@@ -53,6 +53,7 @@ APL_CardFile::APL_CardFile(APL_Card *card,const char *csPath,const CByteArray *f
 	m_cryptoFwk=AppLayer.getCryptoFwk();
 	m_mappedFields = false;
 	m_isVerified = false;
+	m_SODCheck = true; // by default
 	m_card=card;
 
 	/* File Caching at Applayer Level
@@ -141,29 +142,15 @@ APL_CardFile::APL_CardFile(APL_Card *card,const char *csPath,const CByteArray *f
 
 	m_status=CARDFILESTATUS_UNREAD;
 
-	m_testCardAllowed=false;
 }
 
 APL_CardFile::~APL_CardFile()
 {
 }
 
-tCardFileStatus APL_CardFile::getStatus(bool bForceRead,const bool *pbNewAllowTest) 
+tCardFileStatus APL_CardFile::getStatus(bool bForceRead) 
 { 
-	/*if(pbNewAllowTest && m_testCardAllowed!=*pbNewAllowTest)
-	{
-		m_status=CARDFILESTATUS_UNREAD;
-		m_testCardAllowed=*pbNewAllowTest;
-	}
-
-	if(pbNewAllowBadDate && m_badDateAllowed!=*pbNewAllowBadDate)
-	{
-		m_status=CARDFILESTATUS_UNREAD;
-		m_badDateAllowed=*pbNewAllowBadDate;
-	}*/
-
-	//if(bForceRead && m_status==CARDFILESTATUS_UNREAD)
-		LoadData(bForceRead);
+	LoadData(bForceRead);
 
 	return m_status; 
 }
@@ -172,9 +159,6 @@ tCardFileStatus APL_CardFile::getStatus(bool bForceRead,const bool *pbNewAllowTe
 tCardFileStatus APL_CardFile::LoadData(bool bForceReload)
 {
 	CAutoMutex autoMutex(&m_Mutex);		//We lock for only one instantiation
-
-	std::wstring strPath = utilStringWiden(m_path);
-	const wchar_t *wsPath= strPath.c_str();
 
 	if(m_card!=NULL && (m_status==CARDFILESTATUS_UNREAD || bForceReload))
 	{
@@ -190,26 +174,26 @@ tCardFileStatus APL_CardFile::LoadData(bool bForceReload)
 			unsigned long err = e.GetError();
 			if (err == EIDMW_ERR_FILE_NOT_FOUND)
 			{
-				MWLOG(LEV_INFO, MOD_APL, L"LoadData: File %ls not found", wsPath);
+				MWLOG(LEV_INFO, MOD_APL, "LoadData: File %s not found", m_path.c_str());
 				m_status=CARDFILESTATUS_ERROR_NOFILE;
 				return m_status;
 			}
 
 			if (err == EIDMW_ERR_CARD_COMM)
 			{
-				MWLOG(LEV_WARN, MOD_APL, L"LoadData: Could not read file : %ls - Error : 0x%x", wsPath,e.GetError());
+				MWLOG(LEV_WARN, MOD_APL, "LoadData: Could not read file : %s - Error : 0x%x", m_path.c_str(),e.GetError());
 				m_status=CARDFILESTATUS_ERROR_NOFILE;
 				return m_status;
 			}
 
 			if (err == EIDMW_ERR_NOT_ACTIVATED)
 			{
-				MWLOG(LEV_WARN, MOD_APL, L"LoadData: Could not read file : %ls - Error : 0x%x", wsPath,e.GetError());
+				MWLOG(LEV_WARN, MOD_APL, "LoadData: Could not read file : %s - Error : 0x%x", m_path.c_str(),e.GetError());
 				m_status=CARDFILESTATUS_ERROR_NOFILE;
 				return m_status;
 			}
 
-			MWLOG(LEV_ERROR, MOD_APL, L"LoadData: Could not read file : %ls - Error : 0x%x", wsPath,e.GetError());
+			MWLOG(LEV_ERROR, MOD_APL, "LoadData: Could not read file : %s - Error : 0x%x", m_path.c_str(),e.GetError());
 			throw e;
 		}
 	}
@@ -229,7 +213,7 @@ tCardFileStatus APL_CardFile::LoadData(bool bForceReload)
 			m_data.ClearContents();
 	}
 
-	//MWLOG(LEV_INFO, MOD_APL, L"LoadData: File : %ls - status : 0x%x", wsPath,m_status);
+	//MWLOG(LEV_INFO, MOD_APL, "LoadData: File : %s - status : 0x%x", m_path.c_str(), m_status);
 
 	return m_status;
 }
@@ -301,7 +285,7 @@ void APL_CardFile_Info::ReadFile()
 {
 	//Fill the m_data with the pseudo info file
 	APL_SmartCard *card=dynamic_cast<APL_SmartCard *>(m_card);
-	card->getInfo(m_data);
+	//card->getInfo(m_data);
 }
 
 tCardFileStatus APL_CardFile_Info::VerifyFile()
@@ -368,7 +352,6 @@ bool APL_CardFile_Info::MapFields()
 	//SerialNumber
 	baBuffer=m_data.GetBytes(0,16);
 	sTemp=baBuffer.ToString(false);
-	//m_SerialNumber=sTemp;
 
 	sprintf_s(buffer,sizeof(buffer),"%02X", m_data.GetByte(16));
 	m_ComponentCode = buffer;
@@ -413,14 +396,6 @@ bool APL_CardFile_Info::MapFields()
 	m_AppletLifeCicle = buffer;
 
 	return true;
-}
-
-const char *APL_CardFile_Info::getSerialNumber()
-{
-	if(ShowData())
-		//return m_SerialNumber.c_str();
-
-	return "";
 }
 
 const char *APL_CardFile_Info::getComponentCode()

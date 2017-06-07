@@ -17,6 +17,7 @@
  * http://www.gnu.org/licenses/.
  *
  * Author: Luis Medinas <luis.medinas@caixamagica.pt>
+ * Author: Andre Guerreiro <andre.guerreiro@caixamagica.pt>
  **************************************************************************** */
 
 #include <iostream>
@@ -24,6 +25,9 @@
 
 #include <QtGui>
 #include <QtNetwork>
+#include <QDialogButtonBox>
+#include <QVBoxLayout>
+#include <QHBoxLayout>
 
 #include "httpwindow.h"
 #include "eidlib.h"
@@ -38,7 +42,7 @@
 #endif
 
 std::string urli;
-//std::string dtitle ("Cartão de Cidadão");
+
 std::string getdistro;
 QString fileName;
 
@@ -60,7 +64,7 @@ HttpWindow::HttpWindow(std::string uri, std::string distro, QWidget *parent)
     buttonBox->addButton(cancelButton, QDialogButtonBox::ActionRole);
     buttonBox->addButton(downloadButton, QDialogButtonBox::RejectRole);
 
-    QTextEdit *textEditor = new QTextEdit();
+    textEditor = new QTextEdit();
     textEditor->setText(GetReleaseNotes());
     textEditor->setReadOnly(true);
 
@@ -69,10 +73,11 @@ HttpWindow::HttpWindow(std::string uri, std::string distro, QWidget *parent)
     connect(progressDialog, SIGNAL(canceled()), this, SLOT(cancelDownload()));
     connect(cancelButton, SIGNAL(clicked()), this, SLOT(close()));
     connect(downloadButton, SIGNAL(clicked()), this, SLOT(downloadFile()));
+    progressDialog->reset();
 
-    QHBoxLayout *topLayout = new QHBoxLayout;
+    topLayout = new QHBoxLayout();
+    mainLayout = new QVBoxLayout();
 
-    QVBoxLayout *mainLayout = new QVBoxLayout;
     mainLayout->addLayout(topLayout);
     mainLayout->addWidget(statusLabel);
     mainLayout->addWidget(textEditor);
@@ -81,13 +86,15 @@ HttpWindow::HttpWindow(std::string uri, std::string distro, QWidget *parent)
 	const QIcon app_icon = QIcon(":/images/Images/Icons/ICO_CARD_EID_PLAIN_16x16.png");
 	setWindowIcon(app_icon);
     setWindowTitle(tr("Auto-Update"));
-
-    //statusLabel = new QLabel(tr("There are updates available press Install do perform the updates."));
-
+	
 }
 
 HttpWindow::~HttpWindow()
 {
+    
+    delete textEditor;
+    delete topLayout;
+    delete mainLayout;
 }
 
 QString HttpWindow::GetReleaseNotes()
@@ -98,8 +105,6 @@ QString HttpWindow::GetReleaseNotes()
 
     QString rnpath = QDir::tempPath();
     rnpath.append("/version.txt");
-
-
 
     QString s = QDir::toNativeSeparators(rnpath);
 
@@ -122,7 +127,10 @@ QString HttpWindow::GetReleaseNotes()
 
 void HttpWindow::startRequest(QUrl url)
 {
+    int network_timeout = 10000;
 	reply = qnam.get(QNetworkRequest(url));
+    QTimer::singleShot(network_timeout, this, SLOT(cancelDownload()));
+
 	connect(reply, SIGNAL(finished()),
 			this, SLOT(httpFinished()));
 	connect(reply, SIGNAL(readyRead()),
@@ -191,6 +199,7 @@ void HttpWindow::httpFinished()
         }
         reply->deleteLater();
         progressDialog->hide();
+        this->close();
         return;
     }
 
@@ -267,8 +276,8 @@ void HttpWindow::RunPackage(std::string pkg, std::string distro)
 #ifdef WIN32
 	STARTUPINFO si;
     PROCESS_INFORMATION pi;
-	ZeroMemory(&si,sizeof(si)); 
-	si.cb = sizeof(si); 
+	ZeroMemory(&si,sizeof(si));
+	si.cb = sizeof(si);
 
 	std::string winpath;
     winpath.append("C:\\Windows\\system32\\msiexec.exe /i");
@@ -277,12 +286,13 @@ void HttpWindow::RunPackage(std::string pkg, std::string distro)
     winpath.append(s.toStdString());
     winpath.append(" /L*v ");
     winpath.append(QDir::tempPath().toStdString());
-    winpath.append("\PTeID-MSI.log");
+    winpath.append("\\Pteid-MSI.log");
 	CreateProcess(NULL, LPTSTR(winpath.c_str()), NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi);
 	exit(0);
 
 #elif __APPLE__
-
+    // This doesn't actually start the package installation it just mounts the dmg
+    // and then the user has to install the .pkg and copy the pteidgui.app
 	execl("/usr/bin/hdiutil", "hdiutil", "attach", pkgpath.c_str(), NULL);
 
 #else
@@ -291,7 +301,7 @@ void HttpWindow::RunPackage(std::string pkg, std::string distro)
     std::transform(distro.begin(), distro.end(), distro.begin(), ::tolower);
 
 	std::cout << "pkgpath " << pkgpath << " distro " << distro << std::endl;
-    
+
 	if (distro == "debian" || distro == "ubuntu" || distro == "caixamagica")
 	{
 	  	execl ("/usr/bin/software-center", "software-center", pkgpath.c_str(), NULL);

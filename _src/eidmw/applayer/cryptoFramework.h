@@ -24,7 +24,9 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 #include "Mutex.h"
+
 
 // Mutex.h includes windows.h and that conflicts with the openssl defines
 #if defined(__WINCRYPT_H__)
@@ -35,6 +37,7 @@
 #undef OCSP_REQUEST
 #undef OCSP_RESPONSE
 #endif
+#include "APLCard.h"
 
 #include "openssl/evp.h"
 #include "openssl/ocsp.h"
@@ -44,16 +47,18 @@
 namespace eIDMW
 {
 
+	class APL_Certif;
+
 enum FWK_CertifStatus
 {
 	FWK_CERTIF_STATUS_UNCHECK,		/**< Validity uncheck yet */
 	FWK_CERTIF_STATUS_VALID,		/**< Valid certificate */
 	FWK_CERTIF_STATUS_REVOKED,		/**< Revoked certificate */
-	FWK_CERTIF_STATUS_TEST,			/**< Test certificate */
-	FWK_CERTIF_STATUS_DATE,			/**< Certificate no more valid */
 	FWK_CERTIF_STATUS_CONNECT,		/**< Connection problem */
 	FWK_CERTIF_STATUS_ERROR,		/**< Error during validation */
-	FWK_CERTIF_STATUS_UNKNOWN		/**< Certificate unknown by responder */
+	FWK_CERTIF_STATUS_UNKNOWN,		/**< Certificate unknown by responder */
+	FWK_CERTIF_STATUS_SUSPENDED     /* Certificate on hold */
+
 };
 
 struct tCertifInfo
@@ -95,9 +100,8 @@ class CrlMemoryCache;
   * Abstract class for cryptographic features 
   *
   * The goal of this class is to provide facilities to openSSL usage
-  * This is only for internal use, no export is forseen. 
+  * This is only for internal use, no export is foreseen. 
   *
-  * This class must be derived for each set of cryptographic features (ex Pteid)
   *********************************************************************************/
 class APL_CryptoFwk
 {
@@ -287,6 +291,12 @@ public:
 	  */
 	void resetProxy();
 
+
+	void setActiveCard(APL_SmartCard *card) 
+	{
+		m_card = card;
+	}
+
 protected:
 	/**
 	  * Constructor - used within "instance"
@@ -402,6 +412,8 @@ protected:
 	  * - Then verify the signature
 	  */
 	bool isCrlIssuer(X509_CRL *pX509_Crl,X509 *pX509_issuer);
+
+	APL_SmartCard *m_card;
 
 	std::string m_proxy_host;	/**< proxy host */
 	std::string m_proxy_port;	/**< proxy port */

@@ -66,7 +66,7 @@ public:
     tCardStatus Status(bool bReconnect = false);
 
 	/**
-	 * Connect to the card; it's sae to call this function multiple times.
+	 * Connect to the card; it's safe to call this function multiple times.
 	 * Returns true if successfully connected, false otherwise (in which case
 	 * no card or an unresponsive card is present).
 	 * NOTE: this method must be called successfully before calling
@@ -85,10 +85,6 @@ public:
     bool IsPinpadReader();
 
     tCardType GetCardType();
-    /* Return card-specific info.
-     * E.g. for the BeID card, this will return the result
-	 * of the "Get Card Data" command (unsigned) */
-    CByteArray GetInfo();
 
     std::string GetSerialNr();
     std::string GetCardLabel();
@@ -125,13 +121,13 @@ public:
      * this card uses to verify the CVC key; */
     CByteArray RootCAPubKey();
 
-    bool Activate(const char *pinCode, CByteArray &BCDDate);
+    bool Activate(const char *pinCode, CByteArray &BCDDate, bool blockActivationPIN);
 
-    bool unlockPIN(const tPin &pin, const tPin *puk, const char *pszPuk, const char *pszNewPin, unsigned long &triesLeft);
+    bool unlockPIN(const tPin &pin, const tPin *puk, const char *pszPuk, const char *pszNewPin, unsigned long &triesLeft, unsigned long unblockFlags);
 
     bool PinCmd(tPinOperation operation, const tPin & Pin,
         const std::string & csPin1, const std::string & csPin2,
-        unsigned long & ulRemaining, bool bShowDlg=true);
+        unsigned long & ulRemaining, bool bShowDlg=true, void *wndGeometry = 0, unsigned long unblockFlags = 0);
 
 	/** Returns the OR-ing of all supported crypto algorithms */
 	unsigned long GetSupportedAlgorithms();
@@ -139,23 +135,10 @@ public:
 	/* Sign data. If necessary, a PIN will be asked */
     CByteArray Sign(const tPrivKey & key, unsigned long algo,
         const CByteArray & oData);
-	/* Sign data. No call to oHash.GetHash() should be done;
-	 * this way it is possible to support 'partial signing'
-	 * in which the last part of the data to be signed (this
-	 * is kept in the oHash object) is sent to the card to
-	 * finish the hashing. */
-    CByteArray Sign(const tPrivKey & key, unsigned long algo,
-        CHash & oHash);
-
-	CByteArray Decrypt(const tPrivKey & key, unsigned long algo,
-        const CByteArray & oData);
 
     CByteArray GetRandom(unsigned long ulLen);
 
     CByteArray SendAPDU(const CByteArray & oCmdAPDU);
-    /* Send card-specific command, e.g. for a secure channel
-	 * or the GetCardData command on a BE eID card */
-    CByteArray Ctrl(long ctrl, const CByteArray & oCmdData);
 
     //--- P15 functions
     unsigned long PinCount();

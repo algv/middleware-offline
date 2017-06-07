@@ -23,8 +23,12 @@
 
 #include "ui_dlgPrint.h"
 #include <QDialog>
+#include <QProgressDialog>
+#include <QPrinter>
 #include "genpur.h"
 #include "CardInformation.h"
+
+enum Operation { PRINT, PDF };
 
 class dlgPrint : public QDialog
 {
@@ -50,19 +54,18 @@ private:
     Ui_dlgPrint ui;
     CardInformation const& m_CI_Data;
     QString					m_CurrReaderName;		//!< the current reader we're using
-    QImage img;
-    QImage *background;
-    QList<QImage> imageList;
-    QByteArray image;
     QFutureWatcher<void> FutureWatcher;
     QProgressDialog *pdialog;
+    int sections_to_print;
     double pos_x, pos_y;
 
     bool addressPINRequest_triggered(CardInformation& CI_Data);
-    void ShowErrorMsgBox();	 
-    void ShowSuccessMsgBox();	 
+    void ShowErrorMsgBox(Operation op);
+    
+    QString getTranslated(const QString &str);
+    void ShowSuccessMsgBox();
     const char * persodata_triggered();
-    bool drawpdf(CardInformation& CI_Data, const char *filepath);
+    bool drawpdf(CardInformation& CI_Data, QPrinter &printer, QString filepath);
 };
 
 #endif

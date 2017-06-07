@@ -24,7 +24,10 @@
 
 #include <QDialog>
 #include <QtGui>
+#include <QVBoxLayout>
+#include <QHBoxLayout>
 #include <QNetworkAccessManager>
+#include <QNetworkProxy>
 #include <QUrl>
 #include <iostream>
 #include <QString>
@@ -49,8 +52,7 @@ public:
 	std::string CheckUpdates();
 	bool VerifyUpdates(std::string filedata);
 	bool FileExists(const char *filename);
-	//The Perl script can be run only one time to generate the file
-	std::string VerifyOS(std::string param, bool runscript);
+	std::string VerifyOS(std::string param);
 	void ChooseVersion(std::string distro, std::string arch);
 	void DownloadDialog();
 
@@ -71,9 +73,14 @@ private:
     	QProgressDialog *progressDialog;
 
 	QUrl url;
+	QNetworkProxy proxy;
 	QNetworkAccessManager qnam;
 	QNetworkReply *reply;
+	QHBoxLayout *topLayout;
+	QVBoxLayout *mainLayout;
+	
 	QFile *file;
+	QString m_pac_url;
 	int httpGetId;
 	bool httpRequestAborted;
 	std::string filedata;

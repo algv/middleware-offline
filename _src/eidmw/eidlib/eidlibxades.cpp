@@ -7,70 +7,25 @@
 #include "eidErrors.h"
 
 #include "APLCard.h"
-#include "SigVerifier.h"
 #include "ByteArray.h"
 
 namespace eIDMW
 {
-	PTEID_SigVerifier::PTEID_SigVerifier(const char * container_path)
-	{
-
-		m_impl = new SignatureVerifier(container_path);
-
-	}
-	PTEID_SigVerifier::~PTEID_SigVerifier()
-	{
-		delete m_impl;
-	}
-
-/** Validates an XML-DSIG or XAdES signature
- *
- *  This method is intended to validate XADES signatures produced with PTEID_EIDCard::SignXades() method
- *  even though any conforming signature should work
- *
- */
-int PTEID_SigVerifier::Verify()
-{
-
-	return m_impl->Verify();
-}
-
-char *PTEID_SigVerifier::GetSigner()
-{
-
-	return m_impl->GetSigner();
-
-}
-
-char *PTEID_SigVerifier::GetTimestampString()
-{
 
 
-	return m_impl->GetTimestampString();
 
-}
-
-
-long long PTEID_SigVerifier::GetUnixTimestamp()
-{
-
-
-	return m_impl->GetUnixTimestamp();
-
-}
-
-
-PTEID_ByteArray PTEID_EIDCard::SignXades(const char * const* paths, unsigned int n_paths, const char *output_path)
+PTEID_ByteArray PTEID_EIDCard::SignXades(const char *output_path, const char * const* paths, unsigned int n_paths)
 {
 
 	PTEID_ByteArray out;
-	
+
 	BEGIN_TRY_CATCH
 
 	APL_Card *pcard = static_cast<APL_Card *>(m_impl);
 
 	CByteArray &ca = pcard->SignXades((const char **)paths, n_paths, output_path);
 	out.Append(ca.GetBytes(), ca.Size());
+	delete (&ca);
 
 	END_TRY_CATCH
 
@@ -78,7 +33,7 @@ PTEID_ByteArray PTEID_EIDCard::SignXades(const char * const* paths, unsigned int
 }
 
 
-void PTEID_EIDCard::SignXadesIndividual(const char *const * path, unsigned int n_paths, const char *output_path)
+void PTEID_EIDCard::SignXadesIndividual(const char *output_path, const char *const * path, unsigned int n_paths)
 {
 
 	BEGIN_TRY_CATCH
@@ -91,7 +46,7 @@ void PTEID_EIDCard::SignXadesIndividual(const char *const * path, unsigned int n
 
 }
 
-void PTEID_EIDCard::SignXadesTIndividual(const char *const * path, unsigned int n_paths, const char *output_path)
+void PTEID_EIDCard::SignXadesTIndividual(const char *output_path, const char *const * path, unsigned int n_paths)
 {
 
 	BEGIN_TRY_CATCH
@@ -104,24 +59,25 @@ void PTEID_EIDCard::SignXadesTIndividual(const char *const * path, unsigned int 
 
 }
 
-PTEID_ByteArray PTEID_EIDCard::SignXadesT(const char *const * path, unsigned int n_paths, const char *output_path)
+PTEID_ByteArray PTEID_EIDCard::SignXadesT(const char *output_path, const char *const * path, unsigned int n_paths)
 {
 
 	PTEID_ByteArray out;
-	
+
 	BEGIN_TRY_CATCH
 
 	APL_Card *pcard = static_cast<APL_Card *>(m_impl);
 
 	CByteArray &ca = pcard->SignXadesT((const char **)path, n_paths, output_path);
 	out.Append(ca.GetBytes(), ca.Size());
+	delete (&ca);
 
 	END_TRY_CATCH
 
 	return out;
 }
 
-void PTEID_EIDCard::SignXadesAIndividual(const char *const * path, unsigned int n_paths, const char *output_path)
+void PTEID_EIDCard::SignXadesAIndividual(const char *output_path, const char *const * path, unsigned int n_paths)
 {
 	BEGIN_TRY_CATCH
 
@@ -133,17 +89,18 @@ void PTEID_EIDCard::SignXadesAIndividual(const char *const * path, unsigned int 
 
 }
 
-PTEID_ByteArray PTEID_EIDCard::SignXadesA(const char *const * path, unsigned int n_paths, const char *output_path)
+PTEID_ByteArray PTEID_EIDCard::SignXadesA(const char *output_path, const char *const * path, unsigned int n_paths)
 {
 
 	PTEID_ByteArray out;
-	
+
 	BEGIN_TRY_CATCH
 
 	APL_Card *pcard = static_cast<APL_Card *>(m_impl);
 
 	CByteArray &ca = pcard->SignXadesA((const char **)path, n_paths, output_path);
 	out.Append(ca.GetBytes(), ca.Size());
+	delete (&ca);
 
 	END_TRY_CATCH
 

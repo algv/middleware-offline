@@ -49,27 +49,6 @@ public:
 #define CARD_VALIDFROM		"card_validfrom"
 #define CARD_VALIDUNTIL		"card_validuntil"
 
-/*
-enum eCARD_SUBTYPE
-{
-	  NON_EUROPEAN_A = 11
-	, NON_EUROPEAN_B		// 12
-	, NON_EUROPEAN_C		// 13
-	, NON_EUROPEAN_D		// 14
-	, EUROPEAN_E			// 15
-	, EUROPEAN_E_PLUS		// 16
-	, EUROPEAN_F			// 17
-	, EUROPEAN_F_PLUS		// 18
-	, EUROPEAN_UNKNOWN		// 19
-};
-*/
-/*
-enum eCARD_BASETYPE
-{
-	  BASETYPE_BELGIUM = 1
-};
-*/
-
 	//----------------------------------------------
 	// ctor
 	//----------------------------------------------
@@ -84,27 +63,18 @@ enum eCARD_BASETYPE
 	}
 
 	//----------------------------------------------
-	// Retrieve the card specific data 
+	// Retrieve the card specific data
 	//----------------------------------------------
 	bool RetrieveData(PTEID_EIDCard& Card)
 	{
 		bool bRetVal = false;
-		try
-		{
-			PTEID_EId& pteid_eid	= Card.getID();
+		PTEID_EId& pteid_eid	= Card.getID();
 
-			m_Fields[CARD_TYPE]			=  pteid_eid.getDocumentType();
-			m_Fields[CHIP_NUMBER]		=  pteid_eid.getDocumentPAN();
-			m_Fields[CARD_NUMBER]		=  pteid_eid.getLogicalNumber();
-			//m_Fields[CARD_PLACEOFISSUE]	=  pteid_eid.getIssuingMunicipality());
-			m_Fields[CARD_VALIDFROM]	=  pteid_eid.getValidityBeginDate();
-			m_Fields[CARD_VALIDUNTIL]	=  pteid_eid.getValidityEndDate();
-		}
-		catch (PTEID_ExNotAllowByUser& e)
-		{
-			e = e;
-			// ok fine, we don't read the personal information if not allowed
-		}
+		m_Fields[CARD_TYPE]			=  pteid_eid.getDocumentType();
+		m_Fields[CHIP_NUMBER]		=  pteid_eid.getDocumentPAN();
+		//m_Fields[CARD_PLACEOFISSUE]	=  pteid_eid.getIssuingMunicipality());
+		m_Fields[CARD_VALIDFROM]	=  pteid_eid.getValidityBeginDate();
+		m_Fields[CARD_VALIDUNTIL]	=  pteid_eid.getValidityEndDate();
 
 // 		qDebug() << "CardInfo::RetrieveData()";
 // 		for (tFieldMap::iterator it=m_Fields.begin(); it!=m_Fields.end(); it++)
@@ -169,6 +139,13 @@ public:
 #define ADDRESS_ZIP3			"address_zip3"
 #define ADDRESS_POSTALLOCALITY	"address_postallocality"
 
+#define FOREIGN_COUNTRY "foreign_country"
+#define FOREIGN_ADDRESS "foreign_address"
+#define FOREIGN_CITY "foreign_city"
+#define FOREIGN_REGION "foreign_region"
+#define FOREIGN_LOCALITY "foreign_locality"
+#define FOREIGN_POSTALCODE "foreign_postalcode"
+
 	PTEID_Card*              m_pCard;
 	//----------------------------------------------
 	// ctor
@@ -200,26 +177,40 @@ public:
 		bool		bRetVal = false;
 		//TODO marker set
 		PTEID_Address&	pteid_eid = Card.getAddr();
-		
-		/*m_Fields[ADDRESS_STREET]			=  pteid_eid.getStreet());
-		m_Fields[ADDRESS_ZIPCODE]			=  pteid_eid.getZipCode());
-		m_Fields[ADDRESS_COUNTRY]			=  pteid_eid.getCountry());*/
-		m_Fields[ADDRESS_DISTRICT]			=  pteid_eid.getDistrict();
-		m_Fields[ADDRESS_MUNICIPALITY] 		=  pteid_eid.getMunicipality();
-		m_Fields[ADDRESS_CIVILPARISH]  		=  pteid_eid.getCivilParish();
-		m_Fields[ADDRESS_ABBRSTREETTYPE]  	=  pteid_eid.getAbbrStreetType();
-		m_Fields[ADDRESS_STREETTYPE]  		=  pteid_eid.getStreetType();
-		m_Fields[ADDRESS_STREETNAME]   		=  pteid_eid.getStreetName();
-		m_Fields[ADDRESS_ABBRBUILDINGTYPE] 	=  pteid_eid.getAbbrBuildingType();
-		m_Fields[ADDRESS_BUILDINGTYPE] 		=  pteid_eid.getBuildingType();
-		m_Fields[ADDRESS_DOORNO] 			=  pteid_eid.getDoorNo();
-		m_Fields[ADDRESS_FLOOR] 			=  pteid_eid.getFloor();
-		m_Fields[ADDRESS_SIDE] 				=  pteid_eid.getSide();
-		m_Fields[ADDRESS_PLACE] 			=  pteid_eid.getPlace();
-		m_Fields[ADDRESS_LOCALITY] 			=  pteid_eid.getLocality();
-		m_Fields[ADDRESS_ZIP4] 				=  pteid_eid.getZip4();
-		m_Fields[ADDRESS_ZIP3] 				=  pteid_eid.getZip3();
-		m_Fields[ADDRESS_POSTALLOCALITY]	=  pteid_eid.getPostalLocality();
+
+		if (!pteid_eid.isNationalAddress())
+		{
+			m_foreign = true;
+
+			m_Fields[FOREIGN_COUNTRY] = pteid_eid.getForeignCountry();
+			m_Fields[FOREIGN_ADDRESS] = pteid_eid.getForeignAddress();
+			m_Fields[FOREIGN_CITY] = pteid_eid.getForeignCity();
+			m_Fields[FOREIGN_REGION] = pteid_eid.getForeignRegion();
+			m_Fields[FOREIGN_LOCALITY] = pteid_eid.getForeignLocality();
+			m_Fields[FOREIGN_POSTALCODE] = pteid_eid.getForeignPostalCode();
+		}
+		else
+		{
+			m_foreign = false;
+
+			m_Fields[ADDRESS_DISTRICT]			=  pteid_eid.getDistrict();
+			m_Fields[ADDRESS_MUNICIPALITY] 		=  pteid_eid.getMunicipality();
+			m_Fields[ADDRESS_CIVILPARISH]  		=  pteid_eid.getCivilParish();
+			m_Fields[ADDRESS_ABBRSTREETTYPE]  	=  pteid_eid.getAbbrStreetType();
+			m_Fields[ADDRESS_STREETTYPE]  		=  pteid_eid.getStreetType();
+			m_Fields[ADDRESS_STREETNAME]   		=  pteid_eid.getStreetName();
+			m_Fields[ADDRESS_ABBRBUILDINGTYPE] 	=  pteid_eid.getAbbrBuildingType();
+			m_Fields[ADDRESS_BUILDINGTYPE] 		=  pteid_eid.getBuildingType();
+			m_Fields[ADDRESS_DOORNO] 			=  pteid_eid.getDoorNo();
+			m_Fields[ADDRESS_FLOOR] 			=  pteid_eid.getFloor();
+			m_Fields[ADDRESS_SIDE] 				=  pteid_eid.getSide();
+			m_Fields[ADDRESS_PLACE] 			=  pteid_eid.getPlace();
+			m_Fields[ADDRESS_LOCALITY] 			=  pteid_eid.getLocality();
+			m_Fields[ADDRESS_ZIP4] 				=  pteid_eid.getZip4();
+			m_Fields[ADDRESS_ZIP3] 				=  pteid_eid.getZip3();
+			m_Fields[ADDRESS_POSTALLOCALITY]	=  pteid_eid.getPostalLocality();
+
+		}
 
 // 		qDebug() << "AddressInfo::RetrieveData()";
 // 		for (tFieldMap::iterator it=m_Fields.begin(); it!=m_Fields.end(); it++)
@@ -239,191 +230,15 @@ public:
 		return m_Fields;
 	}
 
+	bool isForeign() { return m_foreign; };
+
 	bool isDataLoaded() {return (m_pCard!=NULL);}
 
 private:
 	tFieldMap m_Fields;
+	bool m_foreign;
 };
 
-//**************************************************
-// Person relatives information
-// This class contains all the persons relatives specific data
-//**************************************************
-/*
-class RelativesInfo
-{
-public:
-//#define 
-	//----------------------------------------------
-	// ctor
-	//----------------------------------------------
-	RelativesInfo( void )
-	{
-	}
-
-	//----------------------------------------------
-	// dtor
-	//----------------------------------------------
-	virtual ~RelativesInfo( void )
-	{
-	}
-
-	//----------------------------------------------
-	// Reset to default values
-	//----------------------------------------------
-	void Reset( void )
-	{
-		m_Fields.clear();
-	}
-
-	//----------------------------------------------
-	// retrieve data from EID card
-	//----------------------------------------------
-	bool RetrieveData( PTEID_EIDCard& Card )
-	{
-		Card.getType();
-		bool bRetVal = false;
-
-		bRetVal = true;
-		return bRetVal;
-	}
-
-	//----------------------------------------------
-	// get reference to all fields
-	//----------------------------------------------
-	tFieldMap& getFields( void )
-	{
-		return m_Fields;
-	}
-
-private:
-	tFieldMap m_Fields;
-};
-*/
-
-//**************************************************
-// Person extra information
-// This class contains all persons additional data
-//**************************************************
-class PersonExtraInfo
-{
-public:
-#define SOCIALSECURITYNUMBER "socialsecuritynumber"
-#define SPECIALSTATUS		 "special status"
-
-	//----------------------------------------------
-	// ctor
-	//----------------------------------------------
-	PersonExtraInfo( void )
-	{
-	}
-
-	//----------------------------------------------
-	// dtor
-	//----------------------------------------------
-	virtual ~PersonExtraInfo( void )
-	{
-	}
-
-	//----------------------------------------------
-	// Reset to default values
-	//----------------------------------------------
-	void Reset( void )
-	{
-		m_Fields.clear();
-	}
-
-	//----------------------------------------------
-	// Retrieve data from EID card
-	//----------------------------------------------
-	bool RetrieveData( PTEID_EIDCard& Card )
-	{
-		bool	  bRetVal  = false;
-		PTEID_EId& pteid_eid = Card.getID();
-
-		m_Fields[SPECIALSTATUS] = pteid_eid.getSpecialStatus();
-
-// 		qDebug() << "PersonExtraInfo::RetrieveData()";
-// 		for (tFieldMap::iterator it=m_Fields.begin(); it!=m_Fields.end(); it++)
-// 		{
-// 			qDebug() << "[" << it.key() << "] = " << "Value: " << it.value();
-// 		}
-
-		return bRetVal;
-	}
-
-	//----------------------------------------------
-	// get reference to all fields
-	//----------------------------------------------
-	tFieldMap& getFields( void )
-	{
-		return m_Fields;
-	}
-private:
-/*
-	QString m_SocialSecurityNumber;
-*/
-	tFieldMap m_Fields;
-};
-
-//**************************************************
-// Miscellaneous information
-// This class contains all card miscellaneous data
-//**************************************************
-class MiscInfo
-{
-public:
-#define DUPLICATA			"duplicata"
-#define SPECIALORGANIZATION "special organization"
-//#define MEMBEROFFAMILY		"member of family"
-	//----------------------------------------------
-	// ctor
-	//----------------------------------------------
-	MiscInfo( void )
-	{
-	}
-
-	//----------------------------------------------
-	// dtor
-	//----------------------------------------------
-	virtual ~MiscInfo( void )
-	{
-	}
-
-	//----------------------------------------------
-	// Reset to default values
-	//----------------------------------------------
-	void Reset( void )
-	{
-		m_Fields.clear();
-	}
-
-	//----------------------------------------------
-	// Retrieve data from EID card
-	//----------------------------------------------
-	bool RetrieveData( PTEID_EIDCard& Card )
-	{
-		bool	  bRetVal  = false;
-		PTEID_EId& pteid_eid = Card.getID();
-
-		m_Fields[DUPLICATA]			  = pteid_eid.getDuplicata();
-		m_Fields[SPECIALORGANIZATION] = pteid_eid.getSpecialOrganization();
-		//m_Fields[MEMBEROFFAMILY]	  = pteid_eid.getMemberOfFamily();
-
-		bRetVal = true;
-		return bRetVal;
-	}
-
-	//----------------------------------------------
-	// get reference to all fields
-	//----------------------------------------------
-	tFieldMap& getFields( void )
-	{
-		return m_Fields;
-	}
-private:
-	tFieldMap m_Fields;
-};
 
 //**************************************************
 // Person biometric information
@@ -464,6 +279,8 @@ public:
 		PTEID_ByteArray & p = pteid_eid.getPhotoObj().getphoto();
 		m_pPictureData = QByteArray((const char *)p.GetBytes(),p.Size());
 		bRetVal = true;
+
+		//delete(&p);//LL
 		return bRetVal;
 	}
 
@@ -555,6 +372,7 @@ public:
 #define MRZ2				"MRZ2"
 #define MRZ3				"MRZ3"
 #define ACCIDENTALINDICATIONS "ACCIDENTALINDICATIONS"
+#define LINK_TO_CERT        "LINK_TO_CERT"
 
 
 #define INITIALS		"initials"
@@ -581,10 +399,19 @@ public:
 		m_Fields.clear();
 		//m_AddressInfo.Reset();
         //m_RelativesInfo.Reset();
-		m_PersonExtraInfo.Reset();
 		m_BiometricInfo.Reset();
 		m_PersoDataInfo.Reset();
 	}
+
+	bool isExpiredDate( const char *in_strDate ){
+        if ( in_strDate == NULL ) return false;
+
+        QDate qDate = QDate::fromString( in_strDate, "dd MM yyyy" );
+        QDate curDate = QDate::currentDate();
+
+        if ( curDate > qDate ) return true;
+        return false;
+    }/* isExpiredDate() */
 
 	//----------------------------------------------
 	// retrieve data from EID card
@@ -593,7 +420,9 @@ public:
 	{
 		bool bRetVal = false;
 		unsigned int fatherlen, motherlen;
-		//m_imgPicture=QPixmap("IDFace.jpg");
+
+		//Enable SOD checking
+		Card.doSODCheck(true);
 
 		PTEID_EId& pteid_eid = Card.getID();
 
@@ -631,18 +460,31 @@ public:
 
 		m_Fields[MOTHER] = mother;
 
-		//m_Fields[PARENTS]					= m_Fields[FATHER] + " * " + m_Fields[MOTHER];
-
 		m_Fields[LOCALOFREQUEST]			= pteid_eid.getLocalofRequest();
-		m_Fields[VALIDATION]				= pteid_eid.getValidation();
+
+		if ( !Card.isActive() ){
+           m_Fields[VALIDATION]	= "The Citizen Card is not active";
+            m_Fields[LINK_TO_CERT] = "";
+		} else{
+            bool bIsExpired = isExpiredDate( pteid_eid.getValidityEndDate() );
+            if ( bIsExpired ){
+                m_Fields[VALIDATION] = "The Citizen Card is expired";
+                m_Fields[LINK_TO_CERT] = "";
+            } else{
+                m_Fields[VALIDATION] = "The Citizen Card has been activated";
+                m_Fields[LINK_TO_CERT] = "To verify that the card is not suspended or revoked,you should validate the certificates on the Certificates tab";
+            }/* !if ( bIsExpired ) */
+		}/* if ( !Card.isActive() ) */
+
 		m_Fields[MRZ1]						= pteid_eid.getMRZ1();
 		m_Fields[MRZ2]						= pteid_eid.getMRZ2();
 		m_Fields[MRZ3]						= pteid_eid.getMRZ3();
 		m_Fields[ACCIDENTALINDICATIONS]		= pteid_eid.getAccidentalIndications();
 
-        //m_RelativesInfo.RetrieveData(Card);
-		m_PersonExtraInfo.RetrieveData(Card);
 		m_BiometricInfo.RetrieveData(Card);
+
+		delete[] father;//LL
+		delete[] mother;//LL
 
 		return bRetVal;
 	}
@@ -698,7 +540,6 @@ public:
 public:
 	//AddressInfo		m_AddressInfo;		//!< address info
 	//RelativesInfo	m_RelativesInfo;		//!< person relatives info
-	PersonExtraInfo	m_PersonExtraInfo;		//!< person extra info
 	BiometricInfo	m_BiometricInfo;		//!< person biometric data
 	PersoDataInfo   m_PersoDataInfo;		//!< personal data info
 
@@ -739,38 +580,6 @@ public:
 		return m_pCertificates;
 	}
 
-    /*QList<PTEID_Certificate *>& getMainCertificates()
-    {
-        if (m_MainCertifs.empty())
-        {
-            m_MainCertifs.append(&m_pCertificates->getAuthentication());
-            m_MainCertifs.append(&m_pCertificates->getSignature());
-        }
-
-        return m_MainCertifs;
-    }*/
-
-/*
-    // Just load the two essential certificates (sign & auth) and
-    // avoid the overhead of loading every cert we now.
-    bool RetrieveDataSimpleCertificates( PTEID_EIDCard& card )
-    {
-        m_pSignatureCert = &card.getSignature();
-        m_pAuthenticationCert = &card.getAuthentication();
-
-        return true;
-    }
-
-    PTEID_Certificate* getSignatureCert ( void )
-    {
-        return m_pSignatureCert;
-    }
-
-    PTEID_Certificate* getAuthenticationCert ( void )
-    {
-        return m_pAuthenticationCert;
-    }
-*/
 private:
 	PTEID_Certificates* m_pCertificates;
 	//QList<PTEID_Certificate *> m_MainCertifs;
@@ -846,24 +655,10 @@ private:
 	bool RetrieveData( PTEID_EIDCard& Card )
 	{
 		bool bRetVal = false;
-		try
-		{
-			bRetVal |= m_CardInfo.RetrieveData(Card);
-			bRetVal |= m_PersonInfo.RetrieveData(Card);
-			bRetVal |= m_MiscInfo.RetrieveData(Card);
-			bRetVal |= m_CertifInfo.RetrieveData(Card);
+		bRetVal |= m_CardInfo.RetrieveData(Card);
+		bRetVal |= m_PersonInfo.RetrieveData(Card);
+		bRetVal |= m_CertifInfo.RetrieveData(Card);
 
-			//TODO just a marker
-			//bRetVal |= m_AddressInfo.RetrieveData(Card);
-		}
-		catch (PTEID_ExNotAllowByUser& e)
-		{
-			e = e;
-			// ok fine, we don't read the personal information if not allowed
-		}
-
-		//bRetVal |= m_PinsInfo.RetrieveData(pCard);
-		//bRetVal |= m_CertifInfo.RetrieveData(Card);
 		m_pCard = &Card;
 
 		return bRetVal;
@@ -872,18 +667,9 @@ private:
 	bool RetrieveDataAddress (PTEID_EIDCard& Card)
 	{
 		bool bRetVal = false;
-		try
-		{
-			bRetVal |= m_AddressInfo.RetrieveDataAddress(Card);
-		}
-		catch (PTEID_ExNotAllowByUser& e)
-		{
-			e = e;
-			// ok fine, we don't read the personal information if not allowed
-		}
-
-		//bRetVal |= m_PinsInfo.RetrieveData(pCard);
-		//bRetVal |= m_CertifInfo.RetrieveData(Card);
+		
+		bRetVal |= m_AddressInfo.RetrieveDataAddress(Card);		
+		
 		m_pCard = &Card;
 
 		return bRetVal;
@@ -892,15 +678,9 @@ private:
 	bool RetrieveDataPersoData (PTEID_EIDCard& Card)
 	{
 		bool bRetVal = false;
-		try
-		{
-			bRetVal |= m_PersoDataInfo.RetrieveData (Card);
-		}
-		catch (PTEID_ExNotAllowByUser& e)
-		{
-			e = e;
-			// ok fine, we don't read the personal information if not allowed
-		}
+		
+		bRetVal |= m_PersoDataInfo.RetrieveData (Card);
+
 
 		//bRetVal |= m_PinsInfo.RetrieveData(pCard);
 		//bRetVal |= m_CertifInfo.RetrieveDataCertificates(Card);
@@ -912,17 +692,9 @@ private:
 	bool RetrieveDataCertificates (PTEID_EIDCard& Card)
 	{
 		bool bRetVal = false;
-		try
-		{
-			bRetVal |= m_CertifInfo.RetrieveData (Card);
-		}
-		catch (PTEID_ExNotAllowByUser& e)
-		{
-			e = e;
-			// ok fine, we don't read the personal information if not allowed
-		}
+		
+		bRetVal |= m_CertifInfo.RetrieveData (Card);
 
-		//bRetVal |= m_PinsInfo.RetrieveData(pCard);
 		bRetVal |= m_CertifInfo.RetrieveData(Card);
 		m_pCard = &Card;
 
@@ -932,7 +704,6 @@ private:
 public:
 	CardInfo		m_CardInfo;				//!< card specific data
 	PersonInfo		m_PersonInfo;			//!< person info
-	MiscInfo		m_MiscInfo;				//!< miscellaneous info
 	AddressInfo		m_AddressInfo;			//!< Address info
 	PersoDataInfo	m_PersoDataInfo;		//!< info on the PersoData
 

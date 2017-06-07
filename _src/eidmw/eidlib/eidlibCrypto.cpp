@@ -401,11 +401,6 @@ PTEID_Certificates::PTEID_Certificates(const SDK_Context *context,APL_Certifs *i
 {
 }
 
-PTEID_Certificates::PTEID_Certificates():PTEID_Crypto(NULL,new APL_Certifs())
-{
-	m_delimpl=true;
-}
-
 PTEID_Certificates::~PTEID_Certificates()
 {
 }
@@ -431,7 +426,7 @@ unsigned long PTEID_Certificates::countAll()
 	BEGIN_TRY_CATCH
 
 	APL_Certifs *pimpl=static_cast<APL_Certifs *>(m_impl);
-	out = pimpl->countAll(true);
+	out = pimpl->countAll();
 	
 	END_TRY_CATCH
 
@@ -469,6 +464,31 @@ PTEID_Certificate &PTEID_Certificates::getCertFromCard(unsigned long ulIndex)
 	return *out;
 }
 
+void PTEID_Certificates::addToSODCAs(PTEID_ByteArray &cert)
+{
+	BEGIN_TRY_CATCH
+
+	APL_Certifs *pimpl=static_cast<APL_Certifs *>(m_impl);
+
+	CByteArray cert_ba(cert.GetBytes(), cert.Size());
+	pimpl->addToSODCAs(cert_ba);
+	
+	END_TRY_CATCH
+}
+
+void PTEID_Certificates::resetSODCAs()
+{
+
+	BEGIN_TRY_CATCH
+
+	APL_Certifs *pimpl=static_cast<APL_Certifs *>(m_impl);
+	pimpl->clearSODCAs();
+	pimpl->initSODCAs();
+	
+	END_TRY_CATCH
+
+}
+
 PTEID_Certificate &PTEID_Certificates::getCert(unsigned long ulIndex)
 {
 	PTEID_Certificate *out = NULL;
@@ -477,7 +497,7 @@ PTEID_Certificate &PTEID_Certificates::getCert(unsigned long ulIndex)
 
 	APL_Certifs *pimpl=static_cast<APL_Certifs *>(m_impl);
 
-	APL_Certif *pAplCert=pimpl->getCert(ulIndex,true);
+	APL_Certif *pAplCert=pimpl->getCert(ulIndex);
 
 	out = dynamic_cast<PTEID_Certificate *>(getObject(pAplCert));
 	
@@ -501,103 +521,6 @@ PTEID_Certificate &PTEID_Certificates::getCert(unsigned long ulIndex)
 	return *out;
 }
 
-const char *PTEID_Certificates::getExternalCertData(int cert)
-{
-	const unsigned char *out;
-	const char *nout;
-	BEGIN_TRY_CATCH
-
-	APL_Certif *pimpl=static_cast<APL_Certif *>(m_impl);
-	out = pimpl->ExternalCertData(cert);
-
-	nout = (const char *)out;
-	END_TRY_CATCH
-
-	return nout;
-}
-
-int PTEID_Certificates::getExternalCertDataSize(int cert)
-{
-	int out;
-	BEGIN_TRY_CATCH
-
-	APL_Certif *pimpl=static_cast<APL_Certif *>(m_impl);
-	out = pimpl->ExternalCertDataSize(cert);
-
-	END_TRY_CATCH
-
-	return out;
-}
-
-const char *PTEID_Certificates::getExternalCertSubject(int cert)
-{
-	const char *out = NULL;
-
-	BEGIN_TRY_CATCH
-
-	APL_Certif *pimpl=static_cast<APL_Certif *>(m_impl);
-	out = pimpl->ExternalCertSubject(cert);
-
-	END_TRY_CATCH
-
-	return out;
-}
-
-const char *PTEID_Certificates::getExternalCertIssuer(int cert)
-{
-	const char *out = NULL;
-
-	BEGIN_TRY_CATCH
-
-	APL_Certif *pimpl=static_cast<APL_Certif *>(m_impl);
-	out = pimpl->ExternalCertIssuer(cert);
-
-	END_TRY_CATCH
-
-	return out;
-}
-
-const char *PTEID_Certificates::getExternalCertNotBefore(int cert)
-{
-	const char *out = NULL;
-
-	BEGIN_TRY_CATCH
-
-	APL_Certif *pimpl=static_cast<APL_Certif *>(m_impl);
-	out = pimpl->ExternalCertNotBefore(cert);
-
-	END_TRY_CATCH
-
-	return out;
-}
-
-const char *PTEID_Certificates::getExternalCertNotAfter(int cert)
-{
-	const char *out = NULL;
-
-	BEGIN_TRY_CATCH
-
-	APL_Certif *pimpl=static_cast<APL_Certif *>(m_impl);
-	out = pimpl->ExternalCertNotAfter(cert);
-
-	END_TRY_CATCH
-
-	return out;
-}
-
-unsigned long PTEID_Certificates::getExternalCertKeylenght(int cert)
-{
-	unsigned long out;
-
-	BEGIN_TRY_CATCH
-
-	APL_Certif *pimpl=static_cast<APL_Certif *>(m_impl);
-	out = pimpl->ExternalCertKeylenght(cert);
-
-	END_TRY_CATCH
-
-	return out;
-}
 
 PTEID_Certificate &PTEID_Certificates::getCert(PTEID_CertifType type)
 {
@@ -609,7 +532,7 @@ PTEID_Certificate &PTEID_Certificates::getCert(PTEID_CertifType type)
 
 	unsigned long idxObject;
 	APL_CertifType aplType;
-	bool bOnlyVisible=true;
+	
  	switch(type)
 	{
 		case PTEID_CERTIF_TYPE_ROOT:
@@ -645,7 +568,7 @@ PTEID_Certificate &PTEID_Certificates::getCert(PTEID_CertifType type)
 		//proot=dynamic_cast<PTEID_Certificate *>(getObject(idxObject));
 		//if(!proot)
 		//{
-			out = new PTEID_Certificate(m_context,pimpl->getCert(aplType,ANY_INDEX,bOnlyVisible));
+			out = new PTEID_Certificate(m_context,pimpl->getCert(aplType, ANY_INDEX));
 			if(out)
 				m_objects[idxObject]=out;
 			else
@@ -787,14 +710,14 @@ unsigned long PTEID_Pin::getPinRef()
 	return out;
 }
 
-bool PTEID_Pin::unlockPin(const char *pszPuk, const char *pszNewPin, unsigned long &triesLeft)
+bool PTEID_Pin::unlockPin(const char *pszPuk, const char *pszNewPin, unsigned long &triesLeft, unsigned long flags)
 {
 	bool out = false;
 
 	BEGIN_TRY_CATCH
 
 	APL_Pin *pimpl=static_cast<APL_Pin *>(m_impl);
-	out = pimpl->unlockPin(pszPuk, pszNewPin, triesLeft);
+	out = pimpl->unlockPin(pszPuk, pszNewPin, triesLeft, flags);
 
 	END_TRY_CATCH
 
@@ -877,6 +800,20 @@ const char *PTEID_Pin::getLabel()
 	return out;
 }
 
+const char *PTEID_Pin::getLabelById( unsigned long id )
+{
+	const char *out;
+    static const char* pinLabels[] = { "Unknown", "Authentication PIN", "Signature PIN", "Address PIN" };
+
+    if ( ( id >= 1 ) && ( id <= 3 ) ){
+        out = pinLabels[id];
+    } else{
+        out = pinLabels[0];
+    }
+
+	return out;
+}
+
 bool PTEID_Pin::verifyPin()
 {
 	bool out = false;
@@ -893,21 +830,21 @@ bool PTEID_Pin::verifyPin()
 	return out;
 }
 
-bool PTEID_Pin::verifyPin(const char *csPin,unsigned long &ulRemaining,bool bShowDlg)
+bool PTEID_Pin::verifyPin(const char *csPin,unsigned long &ulRemaining,bool bShowDlg, void *wndGeometry )
 {
 	bool out = false;
 
 	BEGIN_TRY_CATCH
 
 	APL_Pin *pimpl=static_cast<APL_Pin *>(m_impl);
-	out = pimpl->verifyPin(csPin,ulRemaining,bShowDlg);
+	out = pimpl->verifyPin(csPin,ulRemaining,bShowDlg, wndGeometry );
 	
 	END_TRY_CATCH
 
 	return out;
 }
 
-bool PTEID_Pin::changePin(const char *csPin1,const char *csPin2,unsigned long &ulRemaining, const char *PinName,bool bShowDlg)
+bool PTEID_Pin::changePin(const char *csPin1,const char *csPin2,unsigned long &ulRemaining, const char *PinName,bool bShowDlg, void *wndGeometry)
 {
 
 	bool out = false;
@@ -915,7 +852,7 @@ bool PTEID_Pin::changePin(const char *csPin1,const char *csPin2,unsigned long &u
 	BEGIN_TRY_CATCH
 
 	APL_Pin *pimpl=static_cast<APL_Pin *>(m_impl);
-	out = pimpl->changePin(csPin1,csPin2,ulRemaining, PinName, bShowDlg);
+	out = pimpl->changePin(csPin1,csPin2,ulRemaining, PinName, bShowDlg, wndGeometry );
 	
 	END_TRY_CATCH
 
@@ -936,36 +873,6 @@ bool PTEID_Pin::changePin()
 	END_TRY_CATCH
 
 	return out;
-}
-
-const PTEID_ByteArray &PTEID_Pin::getSignature()
-{
-	PTEID_ByteArray *out = NULL;
-
-	BEGIN_TRY_CATCH
-
-	APL_Pin *pimpl=static_cast<APL_Pin *>(m_impl);
-
-	out = dynamic_cast<PTEID_ByteArray *>(getObject(INCLUDE_OBJECT_PINSIGN));
-
-	if(!out)
-	{
-		//CAutoMutex autoMutex(m_mutex);
-
-		//pbytearray=dynamic_cast<PTEID_ByteArray *>(getObject(INCLUDE_OBJECT_PINSIGN));
-		//if(!pbytearray)
-		//{
-			out = new PTEID_ByteArray(m_context,pimpl->getSignature());
-			if(out)
-				m_objects[INCLUDE_OBJECT_PINSIGN]=out;
-			else
-				throw PTEID_ExUnknown();
-		//}
-	}
-	
-	END_TRY_CATCH
-
-	return *out;
 }
 /*****************************************************************************************
 ---------------------------------------- PTEID_Pins -------------------------------------------

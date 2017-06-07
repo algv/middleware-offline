@@ -28,7 +28,7 @@
 
 namespace eIDMW
 {
-	
+
 
 	GenericPinpad::GenericPinpad(CContext *poContext, SCARDHANDLE hCard,
 			const std::string & csReader): m_poContext(poContext), m_csReader(csReader), m_hCard(hCard)
@@ -50,7 +50,7 @@ namespace eIDMW
 		// READER FIX:
 		// The SPR532 reader wants this value to be as for BCD
 		const char *csReader = m_csReader.c_str();
-		if ( (m_usReaderFirmVers != 0x0000) && (m_usReaderFirmVers < 0x0506) && 
+		if ( (m_usReaderFirmVers != 0x0000) && (m_usReaderFirmVers < 0x0506) &&
 			(strstr(csReader, "SPRx32 USB") != NULL) )
 		{
 			return 0x00 | 0x00 | 0x00 | 0x01;
@@ -63,17 +63,19 @@ namespace eIDMW
 bool GenericPinpad::IsGemsafe(CByteArray &atr)
 {
 
-	char * GemsafeATRs[] = 
+	char * GemsafeATRs[] =
 	{
 	    "\x3B\x7D\x95\x00\x00\x80\x31\x80\x65\xb0\x83\x11\x00\xc8\x83\x00\x90\x00",
 	    "\x3B\x7D\x95\x00\x00\x80\x31\x80\x65\xb0\x83\x11\x00\xa9\x83\x00\x90\x00",
 	    "\x3B\x7D\x95\x00\x00\x80\x31\x80\x65\xb0\x83\x11\x00\xc8\x83\x00",
 	    "\x3B\x7D\x95\x00\x00\x80\x31\x80\x65\xB0\x83\x11\xC0\xA9\x83\x00\x90\x00",
-	    "\x3B\x7D\x95\x00\x00\x80\x31\x80\x65\xb0\x83\x11\x00\xa9\x83\x00" 
+	    "\x3B\xFF\x96\x00\x00\x81\x31\x80\x43\x80\x31\x80\x65\xB0\x85\x03\x00\xEF\x12\x0F\xFF\x82\x90\x00\x67",
+	    "\x3B\x7D\x95\x00\x00\x80\x31\x80\x65\xb0\x83\x11\x00\xa9\x83\x00"
 
 	};
 	int i = 0;
-	while (i < 4)
+	int number_of_entries = sizeof(GemsafeATRs) / sizeof(char *);
+	while (i != number_of_entries)
 	{
 	if (memcmp(GemsafeATRs[i], atr.GetBytes(), atr.Size()) == 0)
 		return true;
@@ -95,7 +97,9 @@ unsigned char GenericPinpad::ToPinBlockString(const tPin & pin)
 	case PIN_ENC_BCD:
 		return (unsigned char ) pin.ulStoredLen;
 	case PIN_ENC_GP:
-		return 0x40 | (unsigned char ) (pin.ulStoredLen - 1);
+		unsigned char ulStoredLen = (unsigned char)(pin.ulStoredLen - 1);
+		ulStoredLen |= 0x40;
+		return ulStoredLen;
 	}
 	return (unsigned char ) pin.ulStoredLen;
 }
@@ -131,15 +135,14 @@ unsigned char GenericPinpad::GetMaxPinLen(const tPin & pin)
 
 CByteArray GenericPinpad::PinCmd(tPinOperation operation,
 	const tPin & pin, unsigned char ucPinType,
-    const CByteArray & oAPDU, unsigned long & ulRemaining,
-    bool bShowDlg)
+    const CByteArray & oAPDU, unsigned long & ulRemaining, void *wndGeometry)
 {
 
 	CByteArray oResp;
 	if (operation == PIN_OP_VERIFY)
-		oResp = PinCmd1(operation, pin, ucPinType, oAPDU, ulRemaining,bShowDlg);
+		oResp = PinCmd1(operation, pin, ucPinType, oAPDU, ulRemaining, wndGeometry );
 	else
-		oResp = PinCmd2(operation, pin, ucPinType, oAPDU, ulRemaining,bShowDlg);
+		oResp = PinCmd2(operation, pin, ucPinType, oAPDU, ulRemaining, wndGeometry );
 
 	if (oResp.Size() != 2)
 	{
@@ -169,7 +172,7 @@ CByteArray GenericPinpad::PinCmd(tPinOperation operation,
 CByteArray GenericPinpad::PinCmd1(tPinOperation operation,
 	const tPin & pin, unsigned char ucPinType,
     const CByteArray & oAPDU, unsigned long & ulRemaining,
-    bool bShowDlg)
+    void *wndGeometry )
 {
 	EIDMW_PP_VERIFY_CCID xVerifyCmd;
 	unsigned long ulVerifyCmdLen;
@@ -194,14 +197,14 @@ CByteArray GenericPinpad::PinCmd1(tPinOperation operation,
 	if (m_ioctlVerifyDirect)
 	{
 		return PinpadControl(m_ioctlVerifyDirect, oCmd, operation,
-			ucPinType, pin.csLabel, bShowDlg);
+			ucPinType, pin.csLabel, wndGeometry );
 	}
 	else
 	{
 		PinpadControl(m_ioctlVerifyStart, oCmd, operation,
-			ucPinType, pin.csLabel, false);
+			ucPinType, pin.csLabel);
 		return PinpadControl(m_ioctlVerifyFinish, CByteArray(), operation,
-			ucPinType, "", bShowDlg);
+			ucPinType, "", wndGeometry );
 	}
 }
 
@@ -209,12 +212,12 @@ CByteArray GenericPinpad::PinCmd1(tPinOperation operation,
 CByteArray GenericPinpad::PinCmd2(tPinOperation operation,
 	const tPin & pin, unsigned char ucPinType,
     const CByteArray & oAPDU, unsigned long & ulRemaining,
-    bool bShowDlg)
+    void *wndGeometry )
 {
 	EIDMW_PP_CHANGE_CCID xChangeCmd;
 	unsigned long ulChangeCmdLen;
 	//Gemsafe and IAS need different parameters for VERIFY control interaction
-	bool includes_verify = oAPDU.Size() == 21; 
+	bool includes_verify = oAPDU.Size() == 21;
 
 	memset(&xChangeCmd, 0, sizeof(xChangeCmd));
 	xChangeCmd.bTimerOut = 30;
@@ -241,21 +244,22 @@ CByteArray GenericPinpad::PinCmd2(tPinOperation operation,
 	if (m_ioctlChangeDirect)
 	{
 		return PinpadControl(m_ioctlChangeDirect, oCmd, operation,
-			ucPinType, pin.csLabel, bShowDlg);
+                            ucPinType, pin.csLabel, wndGeometry);
 	}
 	else
 	{
 		PinpadControl(m_ioctlChangeStart, oCmd, operation,
-			ucPinType, pin.csLabel, false);
+			ucPinType, pin.csLabel);
 		return PinpadControl(m_ioctlChangeFinish, CByteArray(), operation,
-			ucPinType, "", bShowDlg);
+			ucPinType, "", wndGeometry);
 	}
 }
 
 bool GenericPinpad::ShowDlg(unsigned char pinpadOperation, unsigned char ucPintype,
 	const std::string & csPinLabel, const std::string & csReader,
-	unsigned long *pulDlgHandle)
+	unsigned long *pulDlgHandle, void *wndGeometry)
 {
+
 	const char *csMesg = "";
 	DlgPinUsage dlgUsage = DLG_PIN_UNKNOWN;
 	switch(ucPintype)
@@ -270,14 +274,15 @@ bool GenericPinpad::ShowDlg(unsigned char pinpadOperation, unsigned char ucPinty
 	{
 		case EIDMW_PP_OP_VERIFY: dlgOperation = DLG_PIN_OP_VERIFY; break;
 		case EIDMW_PP_OP_CHANGE: dlgOperation = DLG_PIN_OP_CHANGE; break;
+		case EIDMW_PP_OP_UNBLOCK_CHANGE: dlgOperation = DLG_PIN_OP_UNBLOCK_CHANGE; break;
 		default: throw CMWEXCEPTION(EIDMW_ERR_CHECK);
 	}
-	std::wstring wideReader = utilStringWiden(csReader);	
+	std::wstring wideReader = utilStringWiden(csReader);
 	std::wstring widePinLabel = utilStringWiden(csPinLabel);
 	std::wstring wideMesg = utilStringWiden(csMesg);
 	return EIDMW_OK == DlgDisplayPinpadInfo(dlgOperation,
 			wideReader.c_str(), dlgUsage,
-			widePinLabel.c_str(), wideMesg.c_str(), pulDlgHandle);
+			widePinLabel.c_str(), wideMesg.c_str(), pulDlgHandle, wndGeometry );
 }
 
 void GenericPinpad::CloseDlg(unsigned long ulDlgHandle)
@@ -286,15 +291,14 @@ void GenericPinpad::CloseDlg(unsigned long ulDlgHandle)
 }
 CByteArray GenericPinpad::PinpadControl(unsigned long ulControl, const CByteArray & oCmd,
 	tPinOperation operation, unsigned char ucPintype,
-	const std::string & csPinLabel,	bool bShowDlg)
+	const std::string & csPinLabel,	void *wndGeometry )
 {
 	unsigned char pinpadOperation = PinOperation2Lib(operation);
-
+	bool showDlg = ulControl != CCID_IOCTL_GET_FEATURE_REQUEST;
 	unsigned long ulDlgHandle;
-	bool bCloseDlg = bShowDlg;
-	if (bShowDlg)
-		bCloseDlg = ShowDlg(pinpadOperation,
-		ucPintype, csPinLabel, m_csReader, &ulDlgHandle);
+	
+	if (showDlg)
+		ShowDlg(pinpadOperation, ucPintype, csPinLabel, m_csReader, &ulDlgHandle, wndGeometry);
 
 	CByteArray oResp;
 	try
@@ -309,10 +313,11 @@ CByteArray GenericPinpad::PinpadControl(unsigned long ulControl, const CByteArra
 	}
 	catch (...)
 	{
-		CloseDlg(ulDlgHandle);
-		throw ;
+		if(showDlg)
+			CloseDlg(ulDlgHandle);
+		throw;
 	}
-	if (bShowDlg)
+	if (showDlg)
 		CloseDlg(ulDlgHandle);
 
 	return oResp;
@@ -331,7 +336,7 @@ void GenericPinpad::GetFeatureList()
 
 	try {
 		CByteArray oFeatures = PinpadControl(CCID_IOCTL_GET_FEATURE_REQUEST,
-			CByteArray(), PIN_OP_VERIFY, 0, "", false);
+			CByteArray(), PIN_OP_VERIFY, 0, "");
 
 		// Example of a feature list: 06 04 00 31 20 30 07 04 00 31 20 34
 		// Which means:
@@ -373,7 +378,7 @@ unsigned char GenericPinpad::PinOperation2Lib(tPinOperation operation)
 	{
 	case PIN_OP_VERIFY: return EIDMW_PP_OP_VERIFY;
 	case PIN_OP_CHANGE: return EIDMW_PP_OP_CHANGE;
-	case PIN_OP_RESET:	return EIDMW_PP_OP_CHANGE;
+	case PIN_OP_RESET:	return EIDMW_PP_OP_UNBLOCK_CHANGE;
 	// Add others when needed
 	default: throw CMWEXCEPTION(EIDMW_ERR_CHECK);
 	}

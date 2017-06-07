@@ -43,18 +43,16 @@ PTEID_CertifStatus ConvertCertStatus(APL_CertifStatus eStatus)
 	//Convert the APL_CertifStatus into a status for the 'outside world"
 
 	switch(eStatus)
-	{ 
-	case APL_CERTIF_STATUS_TEST:
-		return PTEID_CERTIF_STATUS_TEST;
-
-	case APL_CERTIF_STATUS_DATE:
-		return PTEID_CERTIF_STATUS_DATE;
+	{
 
 	case APL_CERTIF_STATUS_REVOKED:
 		return PTEID_CERTIF_STATUS_REVOKED;
 
 	case APL_CERTIF_STATUS_CONNECT:
 		return PTEID_CERTIF_STATUS_CONNECT;
+
+	case APL_CERTIF_STATUS_SUSPENDED:
+		return PTEID_CERTIF_STATUS_SUSPENDED;
 
 	case APL_CERTIF_STATUS_ISSUER:
 		return PTEID_CERTIF_STATUS_ISSUER;
@@ -103,24 +101,6 @@ APL_HashAlgo ConvertHashAlgo(PTEID_HashAlgo eAlgo)
 	}
 }
 
-APL_SaveFileType ConvertFileType(PTEID_FileType fileType)
-{
-	switch(fileType)
-	{ 
-	case PTEID_FILETYPE_TLV:
-		return APL_SAVEFILETYPE_TLV;
-
-	case PTEID_FILETYPE_CSV:
-		return APL_SAVEFILETYPE_CSV;
-
-	case PTEID_FILETYPE_XML:
-		return APL_SAVEFILETYPE_XML;
-
-	default:
-		return APL_SAVEFILETYPE_UNKNOWN;
-	}
-}
-
 tLOG_Level ConvertLogLevel(PTEID_LogLevel level)
 {
 	switch(level)
@@ -142,18 +122,4 @@ tLOG_Level ConvertLogLevel(PTEID_LogLevel level)
 	}
 }
 
-APL_ValidationLevel ConvertValidationLevel(PTEID_ValidationLevel eLevel)
-{
-	switch(eLevel)
-	{ 
-	case PTEID_VALIDATION_LEVEL_OPTIONAL:
-		return APL_VALIDATION_LEVEL_OPTIONAL;
-
-	case PTEID_VALIDATION_LEVEL_MANDATORY:
-		return APL_VALIDATION_LEVEL_MANDATORY;
-
-	default:
-		return APL_VALIDATION_LEVEL_NONE;
-	}
-}
 }

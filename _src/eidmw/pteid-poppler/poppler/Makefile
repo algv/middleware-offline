@@ -1,4 +1,4 @@
-CFLAGS= -fPIC -O3 -I.. -I../goo/ -g
+
 
 BASENAME=libpteid-poppler
 
@@ -7,8 +7,10 @@ BASENAME=libpteid-poppler
 ifeq ($(shell uname), Darwin)
 	LIB_FILENAME=$(BASENAME).dylib
 	LDFLAGS += -liconv
+	CFLAGS= -fno-omit-frame-pointer -fPIC -O3 -I.. -I../goo/ -I../../_Builds/ -g
 else
-	LIB_FILENAME=$(BASENAME).so
+	LIB_FILENAME=$(BASENAME).a
+	CFLAGS= -fno-omit-frame-pointer --std=c++98 -fPIC -O3 -I.. -I../goo/ -I../../_Builds/ -g
 endif
 
 SOURCES =		\
@@ -68,8 +70,6 @@ SOURCES =		\
 #	FontInfo.cc		\
 #	UnicodeTypeTable.cc	\
 #	CharCodeToUnicode.cc	\
-#	Function.cc		\
-#	FontEncodingTables.cc	\
 
 GOO_SRC = $(wildcard ../goo/*cc)
 FOFI_SRC = $(wildcard ../fofi/*.cc)
@@ -82,8 +82,8 @@ FOFI_OBJS := $(subst .cc,.o,$(FOFI_SRC))
 all:    $(LIB_FILENAME)
 
 $(LIB_FILENAME): $(OBJS) $(GOO_OBJS) memmem.o
-	 $(CXX) -shared -o $@ $^ $(LDLIBS) $(LDFLAGS)
-	 cp $(LIB_FILENAME) ../../lib
+	ar rcs $@ $^ 
+	cp $(LIB_FILENAME) ../../lib
 
 ../goo/%.o : ../goo/%.cc
 	$(CXX) -o $@  $(CFLAGS) -c $<

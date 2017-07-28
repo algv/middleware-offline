@@ -3,9 +3,21 @@ import QtQuick 2.6
 /* Constants imports */
 import "../../scripts/Constants.js" as Constants
 
+
 PageCardNotesForm {
 
-    propertyEditNotes{
+
+    Connections {
+        target: gapi
+        onSignalPersoDataLoaded: {
+            console.log("QML: onSignalPersoDataLoaded!")
+            loadPersoData(persoNotes)
+        }
+    }
+
+    propertyEditNotes {
+        //text: gapi.getNotesFile()
+        
         onCursorRectangleChanged: {
             ensureVisible(propertyEditNotes.cursorRectangle)
         }
@@ -23,6 +35,11 @@ PageCardNotesForm {
         }
     }
 
+    function loadPersoData(text) {
+        propertyEditNotes.text = text
+        propertyBusyIndicator.running = false
+    }
+
     function ensureVisible(r)
     {
         if (propertyFlickNotes.contentY >= r.y){
@@ -31,8 +48,19 @@ PageCardNotesForm {
             propertyFlickNotes.contentY = r.y+r.height-propertyFlickNotes.height;
         }
     }
+    function listProperties(item)
+    {
+        for (var p in item)
+            console.log(p + ": " + item[p]);
+    }
+
 
     Component.onCompleted: {
         propertyEditNotes.forceActiveFocus()
+        propertyBusyIndicator.running = true
+        //console.log("Listing GAPI object properties in QML...")
+        //listProperties(gapi)
+        //gapi.signalPersoDataChanged.connect(loadPersoData)
+        gapi.startReadingPersoNotes()
     }
 }

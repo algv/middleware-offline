@@ -526,7 +526,7 @@ void MainWnd::showChangeAddressDialog(long code)
 							    " process number and error code ready, and contact the"
 							    " Citizen Card support line at telephone number +351 211 950 500 or e-mail cartaodecidadao@irn.mj.pt.");
 
-	PTEID_LOG(PTEID_LOG_LEVEL_ERROR, "eidgui", "AddressChange op finished with error code 0x%08x", code);
+	PTEID_LOG(PTEID_LOG_LEVEL_DEBUG, "eidgui", "AddressChange op finished with error code 0x%08x", code);
 	QMessageBox::Icon icon = QMessageBox::NoIcon;
 	switch(code)
 	{
@@ -547,7 +547,10 @@ void MainWnd::showChangeAddressDialog(long code)
 			icon = QMessageBox::Critical;
 			sam_error_code = code;
 			break;
-
+		case EIDMW_SAM_UNCONFIRMED_CHANGE:
+			error_msg = tr("Address change process is incomplete!") + "\n\n" + tr("The address is changed in the card but not confirmed by the State central services");
+			icon = QMessageBox::Critical;
+			break;
 		case EIDMW_SSL_PROTOCOL_ERROR:
 			error_msg = tr("Error in the Address Change operation!") + "\n\n" + tr("Please make sure you have a valid authentication certificate");
 			icon = QMessageBox::Critical;
@@ -599,7 +602,7 @@ void MainWnd::doChangeAddress(const char *process, const char *secret_code)
 	}
 	catch(PTEID_Exception & exception)
 	{
-		qDebug() << "Caught exception in eidlib ChangeAddress()... closing progressBar";
+		PTEID_LOG(PTEID_LOG_LEVEL_ERROR, "eidgui", "Caught exception in EidCard.ChangeAddress()... closing progressBar");
 		this->addressProgressChanged(100);
 		this->addressChangeFinished(exception.GetError());
 
@@ -608,7 +611,6 @@ void MainWnd::doChangeAddress(const char *process, const char *secret_code)
 		return;
 	}
 
-	//TODO: UI issue - we need to call refreshTabAddress() after the address is successfully changed...
 	free((char *)process);
 	free((char *)secret_code);
 	this->addressChangeFinished(0);
@@ -2270,14 +2272,22 @@ void MainWnd::loadCardDataAddress( void )
 
 	getCardForReading(new_card);
 
-	if (new_card != NULL)
+	try
 	{
-		Show_Address_Card(*new_card);
+
+		if (new_card != NULL)
+		{
+			LoadDataAddress(*new_card);
+		}
+		else
+		{
+			qDebug() << "loadCardDataAddress: Failed to getCardForReading() !" ;
+		}
 	}
-	else
-	{
-		qDebug() << "loadCardDataAddress: Failed to getCardForReading() !" ;
+	catch(PTEID_Exception &e) {
+		qDebug() << "loadCardDataAddress: caught exception loading address data. Error code: " << e.GetError(); 
 	}
+
 }
 
 //*****************************************************
@@ -2294,7 +2304,7 @@ bool MainWnd::loadCardDataPersoData( void )
 
 	if (new_card != NULL)
 	{
-		Show_PersoData_Card(*new_card);
+		LoadDataPersoData(*new_card);
 	}
 
 	return true;
@@ -2341,7 +2351,7 @@ void MainWnd::loadCardDataCertificates( void )
 
 	if (new_card != NULL)
 	{
-		Show_Certificates_Card(*new_card);
+		 LoadDataCertificates(*new_card);
 	}
 
 }
@@ -2950,21 +2960,6 @@ void MainWnd::Show_Identity_Card(PTEID_EIDCard& Card)
 	enableFileMenu();
 }
 
-void MainWnd::Show_Address_Card(PTEID_EIDCard& Card)
-{
-	LoadDataAddress(Card);
-}
-
-void MainWnd::Show_PersoData_Card(PTEID_EIDCard& Card)
-{
-	LoadDataPersoData(Card);
-}
-
-void MainWnd::Show_Certificates_Card(PTEID_EIDCard& Card)
-{
-	LoadDataCertificates(Card);
-}
-
 QTreeCertItem* MainWnd::buildTree(PTEID_Certificate &cert, bool &bEx)
 {
 	if (cert.isRoot())
@@ -3059,21 +3054,29 @@ void MainWnd::LoadDataID(PTEID_EIDCard& Card)
 	setEnabledCertifButtons(false);
 	m_TypeCard = Card.getType();
 
-	if(!m_CI_Data.isDataLoaded())
+	if (!m_CI_Data.isDataLoaded())
 	{
-	//Load data from card in a new thread
+	    //Load data from card in a new thread
 		CardDataLoader loader(m_CI_Data, Card, m_CurrReaderName, this);
-		QFuture<void> future = QtConcurrent::run(&loader, &CardDataLoader::Load);
+		QFuture<LoadingErrorCode> future = QtConcurrent::run(&loader, &CardDataLoader::Load);
 		this->FutureWatcher.setFuture(future);
 		ProgressExec();
 
-		if (error_sod)
+		LoadingErrorCode rc = future.result();	
+		if (rc == LOADING_ERROR_SOD)
 		{
 			QString title = tr("SOD validation");
 			QString msg = tr("SOD validation failed: card data consistency is compromised!");
 			QMessageBox msgBoxcc(QMessageBox::Warning, title, msg, 0, this);
 			msgBoxcc.setModal(true);
 			msgBoxcc.exec();
+		}
+		else if (rc == LOADING_ERROR_GENERIC) 
+		{
+			
+			QString	msg = tr("Error loading card data");
+			
+			ShowPTEIDError( msg );
 		}
 		else
 		{
@@ -3127,7 +3130,7 @@ void MainWnd::LoadDataPersoData(PTEID_EIDCard& Card)
 	m_ui.btnPersoDataSave->setEnabled(true);
 	m_TypeCard = Card.getType();
 	CardDataLoader loader(m_CI_Data, Card, m_CurrReaderName);
-	QFuture<void> future = QtConcurrent::run(loader, &CardDataLoader::LoadPersoData);
+	QFuture<LoadingErrorCode> future = QtConcurrent::run(loader, &CardDataLoader::LoadPersoData);
 	this->FutureWatcher.setFuture(future);
 	ProgressExec();
 }
@@ -3141,7 +3144,7 @@ void MainWnd::LoadDataCertificates(PTEID_EIDCard& Card)
 	CardDataLoader loader(m_CI_Data, Card, m_CurrReaderName);
 	//loader.LoadCertificateData();
 
-	QFuture<void> future = QtConcurrent::run(loader, &CardDataLoader::LoadCertificateData);
+	QFuture<LoadingErrorCode> future = QtConcurrent::run(loader, &CardDataLoader::LoadCertificateData);
 	this->FutureWatcher.setFuture(future);
 	//if(!m_CI_Data.isDataLoaded())
 	ProgressExec();
@@ -4386,7 +4389,7 @@ bool MainWnd::ProviderNameCorrect (PCCERT_CONTEXT pCertContext )
 #endif
 
 
-void CardDataLoader::Load()
+LoadingErrorCode CardDataLoader::Load()
 {
 	this->mwnd->clearErrorSOD();
 	try
@@ -4397,11 +4400,20 @@ void CardDataLoader::Load()
 
 	catch (PTEID_Exception &e)
 	{
+		qDebug() << "Caught exception in CardDataLoader::Load()..." << e.GetError();
+		long errorCode = e.GetError();	 	
+		 	
+	    if (errorCode >= EIDMW_SOD_UNEXPECTED_VALUE &&	 	
+	       errorCode <= EIDMW_SOD_ERR_VERIFY_SOD_SIGN)	 	
+	    {	 	
+	       return LOADING_ERROR_SOD;
+	    }
 
-		this->mwnd->setErrorSOD();
-
-		qDebug() << "Caught exception in RetrieveData()..." << e.GetError();
-		return;
+		return LOADING_ERROR_GENERIC;
+	}
+	catch(std::exception &ex) {
+		qDebug() << "Caught std::exception in CardDataLoader::Load()..." << ex.what();
+		return LOADING_ERROR_GENERIC;
 	}
 
 	if (this->mwnd)
@@ -4417,16 +4429,36 @@ void CardDataLoader::Load()
 			this->mwnd->showCertImportMessage(bImported);
 		}
 	}
+	return LOADING_OK;
 }
 
-void CardDataLoader::LoadPersoData()
+LoadingErrorCode CardDataLoader::LoadPersoData()
 {
-	this->information.LoadDataPersoData(card, readerName);
+	try
+	{
+		this->information.LoadDataPersoData(card, readerName);
+	}
+	catch(PTEID_Exception &e)
+	{
+		return LOADING_ERROR_GENERIC;
+	}
+
+	return LOADING_OK;
+	
 }
 
-void CardDataLoader::LoadCertificateData()
+LoadingErrorCode CardDataLoader::LoadCertificateData()
 {
+	try {
 	this->information.LoadDataCertificates(card, readerName);
+
+	}
+	catch(PTEID_Exception &e)
+	{
+		return LOADING_ERROR_GENERIC;
+	}
+
+	return LOADING_OK;
 }
 
 

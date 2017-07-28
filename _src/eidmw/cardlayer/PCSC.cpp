@@ -99,41 +99,6 @@ CByteArray CPCSC::ListReaders()
 	}
 }
 
-/*
-static char *state2string(char *buf, unsigned long state)
-{
-	sprintf(buf, "%0x = %0x 0000", state, state / 0x10000);
-	if (state & SCARD_STATE_UNPOWERED)
-		strcat(buf, " | SCARD_STATE_UNPOWERED");
-	if (state & SCARD_STATE_MUTE)
-		strcat(buf, " | SCARD_STATE_MUTE");
-	if (state & SCARD_STATE_INUSE)
-		strcat(buf, " | SCARD_STATE_INUSE");
-	if (state & SCARD_STATE_EXCLUSIVE)
-		strcat(buf, " | SCARD_STATE_EXCLUSIVE");
-	if (state & SCARD_STATE_ATRMATCH)
-		strcat(buf, " | SCARD_STATE_ATRMATCH");
-	if (state & SCARD_STATE_PRESENT)
-		strcat(buf, " | SCARD_STATE_PRESENT");
-	if (state & SCARD_STATE_EMPTY)
-		strcat(buf, " | SCARD_STATE_EMPTY");
-	if (state & SCARD_STATE_UNAVAILABLE)
-		strcat(buf, " | SCARD_STATE_UNAVAILABLE");
-	if (state & SCARD_STATE_UNKNOWN)
-		strcat(buf, " | SCARD_STATE_UNKNOWN");
-	if (state & SCARD_STATE_CHANGED)
-		strcat(buf, " | SCARD_STATE_CHANGED");
-	if (state & SCARD_STATE_IGNORE)
-		strcat(buf, " | SCARD_STATE_IGNORE");
-	if (state == SCARD_STATE_UNAWARE)
-		strcat(buf, " | SCARD_STATE_UNAWARE");
-
-	return buf;
-}
-char csCurrState[200];
-char csNextState[200];
-*/
-
 bool CPCSC::GetStatusChange(unsigned long ulTimeout,
 	tReaderInfo *pReaderInfos, unsigned long ulReaderCount)
 {
@@ -376,8 +341,6 @@ try_again:
 		pioSendPci, oCmdAPDU.GetBytes(), (DWORD) oCmdAPDU.Size(),
 		pioRecvPci, tucRecv, &dwRecvLen);
 
-	//printf(":::::: %ld vs2 %ld :::::\n",SCARD_S_SUCCESS,lRet);
-
 	*plRetVal = lRet;
 	if (SCARD_S_SUCCESS != lRet)
 	{
@@ -390,20 +353,18 @@ try_again:
 		}
 #endif
 		MWLOG(LEV_DEBUG, MOD_CAL, L"        SCardTransmit(): 0x%0x", lRet);
-		//throw CMWEXCEPTION(PcscToErr(lRet));
+
+		throw CMWEXCEPTION(PcscToErr(lRet));
 	}
+
 	// Don't log the full response for privacy reasons, only SW1-SW2
-	//MWLOG(LEV_DEBUG, MOD_CAL, L"        
-
-	//DEBUG
-	//printf("SCardTransmit(): %ls .\n", CByteArray(tucRecv, (unsigned long) dwRecvLen).ToWString(true, true, 0, (unsigned long) dwRecvLen).c_str() );
-
 	MWLOG(LEV_DEBUG, MOD_CAL, L"        SCardTransmit(): SW12 = %02X %02X",
 		tucRecv[dwRecvLen - 2], tucRecv[dwRecvLen - 1]);
+
 	//DEBUG
 	//printf ("SCardTransmit(): SW12 = %02X %02X\n", tucRecv[dwRecvLen - 2], tucRecv[dwRecvLen - 1]);
+	
 	//check response, and add 25 ms delay when error was returned
-
 	if( (tucRecv[dwRecvLen - 2] != 0x90) && (tucRecv[dwRecvLen - 1]!=0x00) &&
 		(tucRecv[dwRecvLen - 2] != 0x61) )
 	{
@@ -412,7 +373,6 @@ try_again:
 
 	return CByteArray(tucRecv, (unsigned long) dwRecvLen);
 }
-
 
 
 void CPCSC::Recover(SCARDHANDLE hCard, unsigned long * pulLockCount )
@@ -428,7 +388,7 @@ void CPCSC::Recover(SCARDHANDLE hCard, unsigned long * pulLockCount )
 	for (i = 0; (i < 10) && (lRet != SCARD_S_SUCCESS); i++)
 	{
 		if (i != 0)
-			CThread::SleepMillisecs(1000);
+			CThread::SleepMillisecs(100);
 
 		lRet = SCardReconnect(hCard, SCARD_SHARE_SHARED, SCARD_PROTOCOL_T0, SCARD_RESET_CARD, &ap);
 		if ( lRet != SCARD_S_SUCCESS )
@@ -475,7 +435,7 @@ CByteArray CPCSC::Control(SCARDHANDLE hCard, unsigned long ulControl, const CByt
 #endif
 	if (SCARD_S_SUCCESS != lRet)
 	{
-#ifndef WIN32		
+#ifndef WIN32
 		//Special-casing the PIN Blocked response for GemPC Pinpad under pcscd
 		if (lRet == SCARD_E_NOT_TRANSACTED)
 		{
@@ -520,6 +480,10 @@ void CPCSC::EndTransaction(SCARDHANDLE hCard)
 {
 	LONG lRet = SCardEndTransaction(hCard, SCARD_LEAVE_CARD);
 	MWLOG(LEV_DEBUG, MOD_CAL, L"    SCardEndTransaction(0x%0x): 0x%0x", hCard, lRet);
+
+	//Log this specific case as error, it may be useful to know if the user removed the card in the middle of an operation
+	if (lRet == SCARD_W_REMOVED_CARD)
+		MWLOG(LEV_DEBUG, MOD_CAL, L"Smart card removed when performing SCardEndTransaction!");
 }
 
 long CPCSC::SW12ToErr(unsigned long ulSW12)

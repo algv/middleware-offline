@@ -30,6 +30,10 @@
 #include "MiscUtil.h"
 #include "Thread.h"
 
+#ifdef WIN32
+#include <wincrypt.h>
+#endif
+
 #include <openssl/evp.h>
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
@@ -1303,11 +1307,7 @@ char *APL_CryptoFwk::GetOCSPUrl(X509 *pX509_Cert)
 	pStack = (STACK_OF(ACCESS_DESCRIPTION)*) X509_get_ext_d2i(pX509_Cert, NID_info_access, NULL, NULL);
 
     if(pStack == NULL)
-#ifdef WIN32
         return _strdup("");
-#else
-        return strdup("");
-#endif
 
 	for(int j = 0; j < sk_ACCESS_DESCRIPTION_num(pStack); j++)
     {
@@ -1328,11 +1328,8 @@ char *APL_CryptoFwk::GetOCSPUrl(X509 *pX509_Cert)
 	if(!bFound)
 		return NULL;
 
-#ifdef WIN32
-        return _strdup(pData);
-#else
-        return strdup(pData);
-#endif
+    return _strdup(pData);
+
 }
 
 bool APL_CryptoFwk::GetCDPUrl(const CByteArray &cert, std::string &url)
@@ -1373,11 +1370,8 @@ char *APL_CryptoFwk::GetCDPUrl(X509 *pX509_Cert)
 	pStack = (STACK_OF(DIST_POINT)*) X509_get_ext_d2i(pX509_Cert, NID_crl_distribution_points, NULL, NULL);
 
     if(pStack == NULL)
-#ifdef WIN32
-        return _strdup("");
-#else
-        return strdup("");
-#endif
+       return _strdup("");
+
 
     for(int j = 0; j < sk_DIST_POINT_num(pStack); j++)
     {
@@ -1407,11 +1401,8 @@ char *APL_CryptoFwk::GetCDPUrl(X509 *pX509_Cert)
 	if(!bFound)
 		return NULL;
 
-#ifdef WIN32
-        return _strdup(pData);
-#else
-        return strdup(pData);
-#endif
+    return _strdup(pData);
+
 }
 
 bool APL_CryptoFwk::getCertInfo(const CByteArray &cert, tCertifInfo &info, const char *dateFormat)
@@ -1499,6 +1490,41 @@ X509_CRL *APL_CryptoFwk::getX509CRL(const CByteArray &crl)
 	return m_CrlMemoryCache->getX509CRL(crl,baHash);
 }
 
+
+void loadWindowsRootCertificates(X509_STORE *store) 
+{
+#ifdef WIN32
+    HCERTSTORE hStore;
+    PCCERT_CONTEXT pContext = NULL;
+    X509 *x509;
+
+    hStore = CertOpenSystemStore(NULL, L"ROOT");
+
+	if (!hStore) {
+		MWLOG(LEV_ERROR, MOD_APL, "cryptoframework: Failed to open Windows ROOT cert store!");
+		return;
+	}
+
+    while (pContext = CertEnumCertificatesInStore(hStore, pContext))
+    {
+
+        x509 = NULL;
+        x509 = d2i_X509(NULL, (const unsigned char **)&pContext->pbCertEncoded, pContext->cbCertEncoded);
+        if (x509)
+        {
+            int i = X509_STORE_add_cert(store, x509);
+
+            if (i == 1)
+				MWLOG(LEV_DEBUG, MOD_APL, "loadWindowsRootCerts: Adding Root cert: %s", X509_NAME_oneline(X509_get_subject_name(x509), 0, 0));
+        }
+    }
+	CertFreeCertificateContext(pContext);
+	CertCloseStore(hStore, 0);
+#endif
+}
+
+
+
 BIO *APL_CryptoFwk::Connect(char *pszHost, int iPort, int iSSL, SSL_CTX **ppSSLCtx)
 {
 
@@ -1507,7 +1533,22 @@ BIO *APL_CryptoFwk::Connect(char *pszHost, int iPort, int iSSL, SSL_CTX **ppSSLC
 	if (iSSL)
 	{
 		OpenSSL_add_all_algorithms();
+		SSL_library_init();
+		SSL_load_error_strings();
+		ERR_load_BIO_strings();
+
 		SSL_CTX *pSSLCtx = SSL_CTX_new(TLSv1_1_client_method());
+		X509_STORE *store = SSL_CTX_get_cert_store(pSSLCtx);
+
+		loadWindowsRootCertificates(store);
+		//This will only load root certs for Linux
+		SSL_CTX_set_default_verify_paths(pSSLCtx);
+
+		SSL_CTX_set_options(pSSLCtx, SSL_OP_NO_TICKET | SSL_OP_NO_SSLv2);
+
+#ifndef __APPLE__
+		SSL_CTX_set_verify(pSSLCtx, SSL_VERIFY_PEER, NULL);
+#endif
 
 		if (!(pConnect = BIO_new_ssl_connect(pSSLCtx)))
 			return NULL;
@@ -1518,10 +1559,9 @@ BIO *APL_CryptoFwk::Connect(char *pszHost, int iPort, int iSSL, SSL_CTX **ppSSLC
 	{
 		if (!(pConnect = BIO_new_connect(pszHost)))
 		{
-				//TODO: Remove this errors or log them better
-			ERR_print_errors_fp(stderr);
+			unsigned long sslError = ERR_get_error();
+			MWLOG(LEV_ERROR, MOD_APL, "APL_CryptoFwk::Connect() : Error returned by BIO_new_connect() - %s", ERR_error_string(sslError, NULL));
 			return NULL;
-
 		}
 	}
 

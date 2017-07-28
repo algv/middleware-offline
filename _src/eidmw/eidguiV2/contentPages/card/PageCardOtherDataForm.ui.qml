@@ -6,32 +6,26 @@ import "../../components" as Components
 
 Item {
     anchors.fill: parent
+
+    property alias propertyTextBoxNIF: textBoxNIF
+    property alias propertyTextBoxNISS: textBoxNISS
+    property alias propertyTextBoxNSNS: textBoxNSNS
+    property alias propertyTextBoxCardVersion: textBoxCardVersion
+    property alias propertyTextBoxIssueDate: textBoxIssueDate
+    property alias propertyTextBoxIssuingEntity: textBoxIssuingEntity
+    property alias propertyTextBoxDocumentType: textBoxDocumentType
+    property alias propertyTextBoxPlaceOfRequest: textBoxPlaceOfRequest
+    property alias propertyTextBoxCardState: textBoxCardState
+
     Item {
         id: rowTop
-        width: parent.width - Constants.WIDTH_PHOTO_IMAGE - 2 * Constants.SIZE_ROW_H_SPACE
-        height: parent.height * Constants.SIZE_ROW_TOP_V_RELATIVE
-
-        Item{
-            id: rectTopLeft
-            width: parent.width
-            height: parent.height
-        }
-        Item{
-            id: rectToRight
-            width: Constants.WIDTH_PHOTO_IMAGE + Constants.SIZE_ROW_H_SPACE
-            height: parent.height
-            anchors.left: rectTopLeft.right
-            anchors.leftMargin: Constants.SIZE_ROW_H_SPACE
-
-            Image {
-                anchors.bottom: parent.bottom
-                width: parent.width
-                antialiasing: true
-                fillMode: Image.PreserveAspectFit
-                source: "../../images/logo_cartao_cidadao.png"
-            }
-        }
+        width: parent.width
+        height: parent.height * Constants.HEIGHT_CARD_OTHER_DATA_ROW_TOP_V_RELATIVE
+                + (parent.height + Constants.TITLE_BAR_SIZE - Constants.SCREEN_MINIMUM_HEIGHT)
+                * Constants.HEIGHT_CARD_OTHER_DATA_ROW_TOP_INC_RELATIVE
+        Components.CardRowTop{}
     }
+
     Item {
         id: rowTaxNum
         width: parent.width
@@ -44,9 +38,10 @@ Item {
         Item{
             id: rectTaxNum
             width: (parent.width - 2 * Constants.SIZE_ROW_H_SPACE ) * 0.33
-            Components.LabelTextBoxForm{
+            Components.LabelTextBoxForm {
+                id: textBoxNIF
                 propertyDateText.text: "N.º Identificação Fiscal"
-                propertyDateField.text: "21342342342342"
+                propertyDateField.text: ""
             }
         }
         Item{
@@ -54,19 +49,21 @@ Item {
             width: (parent.width - 2 * Constants.SIZE_ROW_H_SPACE ) * 0.33
             anchors.left: rectTaxNum.right
             anchors.leftMargin: Constants.SIZE_ROW_H_SPACE
-            Components.LabelTextBoxForm{
+            Components.LabelTextBoxForm {
+                id: textBoxNISS
                 propertyDateText.text: "N.º Segurança Social"
-                propertyDateField.text: "3453452452345"
+                propertyDateField.text: ""
             }
         }
         Item{
             id: rectHealthNum
-            width: (parent.width - 2 * Constants.SIZE_ROW_H_SPACE ) * 0.33
+            width: (parent.width - 2 * Constants.SIZE_ROW_H_SPACE ) * 0.34
             anchors.left: rectSocialSecurityNum.right
             anchors.leftMargin: Constants.SIZE_ROW_H_SPACE
-            Components.LabelTextBoxForm{
+            Components.LabelTextBoxForm {
+                id: textBoxNSNS
                 propertyDateText.text: "N. º Utente de Saúde"
-                propertyDateField.text: "3453452452345234"
+                propertyDateField.text: ""
             }
         }
     }
@@ -83,9 +80,10 @@ Item {
         Item{
             id: rectCardVersion
             width: (parent.width - 1 * Constants.SIZE_ROW_H_SPACE ) * 0.5
-            Components.LabelTextBoxForm{
+            Components.LabelTextBoxForm {
+                id: textBoxCardVersion
                 propertyDateText.text: "Versão do Cartão"
-                propertyDateField.text: "004.004.21"
+                propertyDateField.text: ""
             }
         }
         Item{
@@ -93,9 +91,10 @@ Item {
             width: (parent.width - 1 * Constants.SIZE_ROW_H_SPACE ) * 0.5
             anchors.left: rectCardVersion.right
             anchors.leftMargin: Constants.SIZE_ROW_H_SPACE
-            Components.LabelTextBoxForm{
+            Components.LabelTextBoxForm {
+                id: textBoxIssueDate
                 propertyDateText.text: "Data de Emissão"
-                propertyDateField.text: "23 10 2014"
+                propertyDateField.text: ""
             }
         }
     }
@@ -111,9 +110,10 @@ Item {
         Item{
             id: rectIssuingEntity
             width: (parent.width - 1 * Constants.SIZE_ROW_H_SPACE ) * 0.5
-            Components.LabelTextBoxForm{
+            Components.LabelTextBoxForm {
+                id: textBoxIssuingEntity
                 propertyDateText.text: "Entidade Emissora"
-                propertyDateField.text: "República Portuguesa"
+                propertyDateField.text: ""
             }
         }
         Item{
@@ -122,46 +122,9 @@ Item {
             anchors.left: rectIssuingEntity.right
             anchors.leftMargin: Constants.SIZE_ROW_H_SPACE
             Components.LabelTextBoxForm{
-                propertyDateText.text: "Tipo de documento"
-                propertyDateField.text: "Cartão de Cidadão"
-            }
-        }
-    }
-    Item {
-        id: rowCardStatus
-        width: parent.width
-        height: Constants.SIZE_TEXT_LABEL
-                + Constants.SIZE_TEXT_V_SPACE
-                + 3 * Constants.SIZE_TEXT_FIELD
-        anchors.top: rowIssuingEntity.bottom
-        anchors.topMargin: Constants.SIZE_ROW_V_SPACE
-
-        Item{
-            id: rectCardStatus
-            width: (parent.width - 1 * Constants.SIZE_ROW_H_SPACE ) * 0.5
-            Components.LabelTextBoxForm{
-                propertyDateText.text: "Estado do Cartão"
-                propertyDateField.text: "O Cartão do Cidadão foi ativado"
-            }
-        }
-        Item{
-            id: rectCardStatusText
-            width: (parent.width - 1 * Constants.SIZE_ROW_H_SPACE ) * 0.5
-            anchors.left: rectCardStatus.right
-            anchors.leftMargin: Constants.SIZE_ROW_H_SPACE
-            Text {
-                id: dateField
-                y: Constants.SIZE_TEXT_FIELD_V_SPACE
-                text: "Para verificar se o cartão não está suspenso ou revogado, deverá validar os certificados no \
-separador Certificados"
-                width: parent.width
-                height: parent.height
-                anchors.horizontalCenter: parent.horizontalCenter
-                font.capitalization: Font.AllUppercase
-                font.pixelSize: Constants.SIZE_TEXT_FIELD
-                font.family: lato.name
-                color: Constants.COLOR_TEXT_LABEL
-                wrapMode: Text.WordWrap
+                id: textBoxDocumentType
+                propertyDateText.text: "Tipo de Documento"
+                propertyDateField.text: ""
             }
         }
     }
@@ -171,16 +134,57 @@ separador Certificados"
         height: Constants.SIZE_TEXT_LABEL
                 + Constants.SIZE_TEXT_V_SPACE
                 + 2 * Constants.SIZE_TEXT_FIELD
-        anchors.top: rowCardStatus.bottom
+        anchors.top: rowIssuingEntity.bottom
         anchors.topMargin: Constants.SIZE_ROW_V_SPACE
 
         Item{
             id: rectLocalOfRequest
-            width: (parent.width - 1 * Constants.SIZE_ROW_H_SPACE ) * 0.5
-            Components.LabelTextBoxForm{
+            width: (parent.width )
+            Components.LabelTextBoxForm {
+                id: textBoxPlaceOfRequest
                 propertyDateText.text: "Local de Pedido"
-                propertyDateField.text: "DIC Campus de Justiça Lisboa"
+                propertyDateField.text: ""
             }
+        }
+    }
+
+    Item {
+        id: rowCardStatus
+        width: parent.width
+        height: Constants.SIZE_TEXT_LABEL
+                + Constants.SIZE_TEXT_V_SPACE
+                + 2 * Constants.SIZE_TEXT_FIELD
+        anchors.top: rowLocalOfRequest.bottom
+        anchors.topMargin: 40
+
+        Item{
+            id: rectCardStatus
+            width: (parent.width )
+            Components.LabelTextBoxForm{
+                id: textBoxCardState
+                propertyDateText.text: "Estado do Cartão"
+                propertyDateField.text: ""
+            }
+        }
+    }
+
+    Item {
+        id: rowCardStatusText
+        width: parent.width
+        anchors.top: rowCardStatus.bottom
+        anchors.topMargin: Constants.SIZE_TEXT_V_SPACE
+
+        Text {
+            id: dateField
+            text: "Para verificar se o cartão não está suspenso ou revogado, \
+deverá validar os certificados em Segurança - Certificados"
+            width: parent.width
+            anchors.horizontalCenter: parent.horizontalCenter
+            font.capitalization: Font.MixedCase
+            font.pixelSize: Constants.SIZE_TEXT_FIELD
+            font.family: lato.name
+            color: Constants.COLOR_TEXT_LABEL
+            wrapMode: Text.WordWrap
         }
     }
 }

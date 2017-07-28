@@ -29,6 +29,7 @@
 #include "eidErrors.h"
 #include "APLConfig.h"
 #include "PhotoPteid.h"
+#include "MiscUtil.h"
 #include "APLPublicKey.h"
 #include "Log.h"
 #include "SODParser.h"
@@ -36,8 +37,6 @@
 #include <openssl/err.h>
 #include <iostream>
 #include <fstream>
-
-
 
 
 
@@ -63,9 +62,6 @@ tCardFileStatus APL_EidFile_Trace::VerifyFile()
 	if(!m_card)
 		return CARDFILESTATUS_ERROR;
 
-	APL_EIDCard *pcard=dynamic_cast<APL_EIDCard *>(m_card);
-	tCardFileStatus filestatus;
-
 	return CARDFILESTATUS_OK;
 }
 
@@ -81,8 +77,6 @@ bool APL_EidFile_Trace::MapFields()
 		return true;
 
 	CByteArray pteidngtraceBuffer;
-	char cBuffer[15500];
-	unsigned char ucBuffer[15500];
 	unsigned long ulLen=0;
 	CTLVBuffer oTLVBuffer;
     oTLVBuffer.ParseTLV(m_data.GetBytes(), m_data.Size());
@@ -628,7 +622,7 @@ const char *APL_EidFile_ID::getParents()
 	string m_Parents = m_GivenNameFather + " " + m_SurnameFather + " * " + m_GivenNameMother + " " + m_SurnameMother;
 
 	if(ShowData())
-		return strdup(m_Parents.c_str());
+		return _strdup(m_Parents.c_str());
 
 	return "";
 }
@@ -1274,6 +1268,7 @@ tCardFileStatus APL_EidFile_Sod::VerifyFile()
 	if (m_isVerified) // no need to check again
 		return CARDFILESTATUS_OK;
 
+
 	if (!m_SODCheck) // check is not activated
 		return CARDFILESTATUS_OK;
 
@@ -1298,7 +1293,7 @@ tCardFileStatus APL_EidFile_Sod::VerifyFile()
 	// Load only the SOD relevant root certificates
 
 	// martinho: load all certificates, let openssl do the job and find the needed ones...
-	for (int i = 0; i<pcard->getCertificates()->countSODCAs(); i++){
+	for (unsigned long i = 0; i < pcard->getCertificates()->countSODCAs(); i++){
 		APL_Certif * sod_ca = pcard->getCertificates()->getSODCA(i);
 		X509 *pX509 = NULL;
 		const unsigned char *p = sod_ca->getData().GetBytes();
@@ -1461,7 +1456,6 @@ bool APL_EidFile_PersoData::MapFields()
 		return true;
 
 	CByteArray pteidngPersoDataBuffer;
-    char cBuffer[1200];
     unsigned long ulLen=0;
 
     CTLVBuffer oTLVBuffer;

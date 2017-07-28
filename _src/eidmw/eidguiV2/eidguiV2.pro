@@ -1,9 +1,22 @@
 TEMPLATE = app
 
-QT += quick quickcontrols2
+QT += quick quickcontrols2 concurrent
+
+#Needed for the FileSaveDialog class
+QT += core-private
+QT += gui-private
+QT += widgets
+
 CONFIG += c++11
 
-SOURCES += main.cpp
+SOURCES += main.cpp \
+    appcontroller.cpp \
+    gapi.cpp \
+    filesavedialog.cpp
+
+INCLUDEPATH += /usr/include/poppler/qt5/
+
+LIBS += -L../lib -lpteidlib -lpoppler-qt5
 
 # Additional import path used to resolve QML modules in Qt Creator's code model
 QML_IMPORT_PATH =
@@ -31,3 +44,8 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
 
 DISTFILES +=
+
+HEADERS += \
+    appcontroller.h \
+    gapi.h \
+    filesavedialog.h

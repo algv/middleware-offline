@@ -21,24 +21,15 @@
         <file>contentPages/help/PageHelpAboutForm.ui.qml</file>
         <file>contentPages/help/PageHelpDocOnline.qml</file>
         <file>contentPages/help/PageHelpDocOnlineForm.ui.qml</file>
-        <file>contentPages/help/PageHelpUpdates.qml</file>
-        <file>contentPages/help/PageHelpUpdatesForm.ui.qml</file>
-        <file>contentPages/definitions/PageDefinitionsParameters.qml</file>
-        <file>contentPages/definitions/PageDefinitionsParametersForm.ui.qml</file>
         <file>contentPages/home/PageHome.qml</file>
         <file>contentPages/home/PageHomeForm.ui.qml</file>
-        <file>contentPages/card/photo.png</file>
-        <file>images/ajuda_icon.png</file>
-        <file>images/definicoes_icon.png</file>
         <file>images/logo_autenticacao_gov.png</file>
+        <file>images/logo_autenticacao_gov100.png</file>
         <file>contentPages/security/PageSecurityCertificates.qml</file>
         <file>contentPages/security/PageSecurityCertificatesForm.ui.qml</file>
         <file>contentPages/security/PageSecurityPinCodes.qml</file>
         <file>contentPages/security/PageSecurityPinCodesForm.ui.qml</file>
-        <file>images/logo_cartao_cidadao.png</file>
         <file>MainMenuBottomModel.qml</file>
-        <file>images/ajuda_icon_sel.png</file>
-        <file>images/definicoes_icon_sel.png</file>
         <file>components/LabelTextBox.qml</file>
         <file>components/LabelTextBoxForm.ui.qml</file>
         <file>components/Button.qml</file>
@@ -47,15 +38,45 @@
         <file>images/arrow-right_hover.png</file>
         <file>images/arrow-right_white_AMA.png</file>
         <file>qtquickcontrols2.conf</file>
-        <file>images/CCdemo.png</file>
-        <file>images/Pdfdemo.png</file>
         <file>contentPages/services/PageServicesSignAdvanced.qml</file>
         <file>contentPages/services/PageServicesSignAdvancedForm.ui.qml</file>
         <file>contentPages/services/PageServicesSignSimple.qml</file>
         <file>contentPages/services/PageServicesSignSimpleForm.ui.qml</file>
-        <file>images/ic_highlight_off_black_24dp.png</file>
-        <file>images/ic_highlight_on_black_24dp.png</file>
         <file>contentPages/definitions/PageDefinitionsApp.qml</file>
         <file>contentPages/definitions/PageDefinitionsAppForm.ui.qml</file>
+        <file>images/logo_cor400.png</file>
+        <file>components/Accordion.qml</file>
+        <file>contentPages/definitions/PageDefinitionsUpdates.qml</file>
+        <file>contentPages/definitions/PageDefinitionsUpdatesForm.ui.qml</file>
+        <file>contentPages/security/PinCodesModel.qml</file>
+        <file>components/TextBullet.qml</file>
+        <file>components/CardRowTop.qml</file>
+        <file>images/definitions_icon.png</file>
+        <file>images/definitions_icon_selected.png</file>
+        <file>images/help_icon.png</file>
+        <file>images/help_icon_selected.png</file>
+        <file>contentPages/definitions/PageDefinitionsSignature.qml</file>
+        <file>contentPages/definitions/PageDefinitionsSignatureForm.ui.qml</file>
+        <file>images/dummy/photo.png</file>
+        <file>images/titleBar/maximize.png</file>
+        <file>images/titleBar/minimize.png</file>
+        <file>images/titleBar/quit.png</file>
+        <file>images/titleBar/maximize_hover.png</file>
+        <file>images/titleBar/minimize_hover.png</file>
+        <file>images/titleBar/quit_hover.png</file>
+        <file>images/dummy/CCdemo.png</file>
+        <file>images/dummy/CCdemo_custom.png</file>
+        <file>images/dummy/Pdfdemo.png</file>
+        <file>images/remove_file.png</file>
+        <file>images/remove_file_hover.png</file>
+        <file>images/logo_CC.png</file>
+        <file>components/TitleBar.qml</file>
+        <file>components/FrameWindow.qml</file>
+        <file>images/flags/pt32.png</file>
+        <file>images/flags/uk32.png</file>
+        <file>favicon.ico</file>
+        <file>images/tooltip_grey.png</file>
+        <file>components/PDFPreview.qml</file>
+        <file>images/icons-move.png</file>
     </qresource>
 </RCC>

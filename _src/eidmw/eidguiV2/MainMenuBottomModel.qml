@@ -4,36 +4,36 @@ ListModel {
     ListElement {
         name: "Definições"
         expand: false
-        imageUrl: "images/definicoes_icon.png"
-        imageUrlSel: "images/definicoes_icon_sel.png"
+        imageUrl: "images/definitions_icon.png"
+        imageUrlSel: "images/definitions_icon_selected.png"
         subdata:[
             ListElement {
                 subName: "Personalização da Assinatura"
                 expand: false
-                url: "contentPages/definitions/PageDefinitionsParameters.qml"
+                url: "contentPages/definitions/PageDefinitionsSignature.qml"
             },
             ListElement {
                 subName: "Configuração da aplicação"
                 expand: false
                 url: "contentPages/definitions/PageDefinitionsApp.qml"
+            },
+            ListElement {
+                subName: "Atualizações"
+                expand: false
+                url: "contentPages/definitions/PageDefinitionsUpdates.qml"
             }
         ]
     }
     ListElement {
         name: "Ajuda"
         expand: false
-        imageUrl: "images/ajuda_icon.png"
-        imageUrlSel: "images/ajuda_icon_sel.png"
+        imageUrl: "images/help_icon.png"
+        imageUrlSel: "images/help_icon_selected.png"
         subdata:[
             ListElement {
-                subName: "Documentação Online"
+                subName: "Documentação"
                 expand: false
                 url: "contentPages/help/PageHelpDocOnline.qml"
-            },
-            ListElement {
-                subName: "Atualizações"
-                expand: false
-                url: "contentPages/help/PageHelpUpdates.qml"
             },
             ListElement {
                 subName: "Acerca"

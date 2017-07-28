@@ -14,32 +14,23 @@ Item {
 
     property alias propertyFlickNotes: flickable
     property alias propertyEditNotes: edit
+    property alias propertyBusyIndicator: busyIndicator
 
     Item {
         id: rowTop
-        width: parent.width - Constants.WIDTH_PHOTO_IMAGE - 2 * Constants.SIZE_ROW_H_SPACE
-        height: parent.height * Constants.SIZE_ROW_TOP_V_RELATIVE
-
-        Item{
-            id: rectTopLeft
-            width: parent.width
-            height: parent.height
-        }
-        Item{
-            id: rectToRight
-            width: Constants.WIDTH_PHOTO_IMAGE + Constants.SIZE_ROW_H_SPACE
-            height: parent.height
-            anchors.left: rectTopLeft.right
-            anchors.leftMargin: Constants.SIZE_ROW_H_SPACE
-
-            Image {
-                anchors.bottom: parent.bottom
-                width: parent.width
-                antialiasing: true
-                fillMode: Image.PreserveAspectFit
-                source: "../../images/logo_cartao_cidadao.png"
-            }
-        }
+        width: parent.width
+        height: parent.height * Constants.HEIGHT_CARD_NOTES_ROW_TOP_V_RELATIVE
+                + (parent.height + Constants.TITLE_BAR_SIZE - Constants.SCREEN_MINIMUM_HEIGHT)
+                * Constants.HEIGHT_CARD_NOTES_ROW_TOP_INC_RELATIVE
+        Components.CardRowTop{}
+    }
+    
+    BusyIndicator {
+       id: busyIndicator
+       running: false
+       anchors.centerIn: parent
+       // BusyIndicator should be on top of all other content
+       z: 1
     }
 
     Item {
@@ -71,14 +62,16 @@ Item {
                 samples: Constants.FORM_SHADOW_SAMPLES
                 color: Constants.COLOR_FORM_SHADOW
                 source: rectFieldFlick
+                spread: Constants.FORM_SHADOW_SPREAD
+                opacity: Constants.FORM_SHADOW_OPACITY_FORM_EFFECT
             }
             RectangularGlow {
-                id: effectGlowFlick
                 anchors.fill: rectFieldFlick
-                glowRadius: Constants.FORM_GROW_RADIUS
+                glowRadius: Constants.FORM_GLOW_RADIUS
                 spread: Constants.FORM_GLOW_SPREAD
                 color: Constants.COLOR_FORM_GLOW
                 cornerRadius: Constants.FORM_GLOW_CORNER_RADIUS
+                opacity: Constants.FORM_GLOW_OPACITY_FORM_EFFECT
             }
             Rectangle {
                 id: rectFieldFlick
@@ -128,10 +121,10 @@ Item {
         id: rowNotesCount
         width: parent.width
         height: Constants.SIZE_TEXT_LABEL
-                + Constants.SIZE_TEXT_V_SPACE
-                + 3 * Constants.SIZE_TEXT_FIELD
+                + 2 * Constants.SIZE_TEXT_V_SPACE
+                + 2 * Constants.SIZE_TEXT_FIELD
         anchors.top: rowText.bottom
-        anchors.topMargin: 2 * Constants.SIZE_ROW_V_SPACE
+        anchors.topMargin: Constants.SIZE_ROW_V_SPACE
 
         Item{
             id: rectNotesCount
@@ -152,10 +145,13 @@ Item {
 
             Button {
                 text: "Gravar Notas"
-                width: parent.width
-                height: parent.height
+                width: Constants.WIDTH_BUTTON
+                height: Constants.HEIGHT_BOTTOM_COMPONENT
                 anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                font.pixelSize: Constants.SIZE_TEXT_FIELD
                 font.family: lato.name
+                font.capitalization: Font.MixedCase
             }
         }
     }

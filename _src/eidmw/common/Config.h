@@ -142,6 +142,7 @@ replace $install by string in install parameter
 #define EIDMW_CNF_GENERAL_SCAP_HOST     L"scap_host"
 #define EIDMW_CNF_GENERAL_SCAP_PORT     L"scap_port"
 #define EIDMW_CNF_GENERAL_SHOW_JAVA_APPS L"show_java_apps"
+#define EIDMW_CNF_GENERAL_CMD_HOST      L"cmd_host"
 
 #define EIDMW_CNF_SECTION_LOGGING       L"logging"              //section with the logging parameters
 #define EIDMW_CNF_LOGGING_DIRNAME       L"log_dirname"          //string, location of the log-file; $home/pteid/	Full path with volume name.
@@ -184,6 +185,7 @@ replace $install by string in install parameter
 #define EIDMW_CNF_GUITOOL_STARTMINI     L"start_minimized"          //number; 0=no(default), 1=yes
 #define EIDMW_CNF_GUITOOL_SHOWPIC       L"show_picture"             //number; 0=no(default), 1=yes
 #define EIDMW_CNF_GUITOOL_SHOWNOTIFICATION  L"show_notification"    //number; 0=no, 1=yes(default)
+#define EIDMW_CNF_GUITOOL_SHOWANIMATIONS  L"show_animations"        //number; 0=no, 1=yes(default)
 #define EIDMW_CNF_GUITOOL_SHOWTBAR      L"show_toolbar"             //number; 0=no, 1=yes
 #define EIDMW_CNF_GUITOOL_VIRTUALKBD    L"use_virtual_keypad"       //number; 0=no, 1=yes
 #define EIDMW_CNF_GUITOOL_AUTOCARDREAD  L"automatic_cardreading"    //number; 0=no, 1=yes(default)
@@ -193,7 +195,7 @@ replace $install by string in install parameter
 #define EIDMW_CNF_GUITOOL_FILESAVE		L"default_save_path"        //string; path, ""(default)
 
 #define EIDMW_CNF_SECTION_XSIGN			L"xsign"					//section for xsign
-#define EIDMW_CNF_XSIGN_TSAURL			L"tsa_url"					//string url of the tsa
+#define EIDMW_CNF_XSIGN_TSAURL			L"tsa_url"					//string URL of the Timestamp Server
 #define EIDMW_CNF_XSIGN_ONLINE			L"online"					//number; 0=no(default), 1=yes
 #define EIDMW_CNF_XSIGN_WORKINGDIR		L"working_dir"				//string working directory
 #define EIDMW_CNF_XSIGN_TIMEOUT			L"timeout"					//number;
@@ -286,6 +288,7 @@ public:
     static const struct Param_Num EIDMW_CONFIG_PARAM_GENERAL_SHOW_JAVA_APPS;
     static const struct Param_Str EIDMW_CONFIG_PARAM_GENERAL_SCAP_HOST;
     static const struct Param_Str EIDMW_CONFIG_PARAM_GENERAL_SCAP_PORT;
+    static const struct Param_Str EIDMW_CONFIG_PARAM_GENERAL_CMD_HOST;
 
     //LOGGING
     static const struct Param_Str EIDMW_CONFIG_PARAM_LOGGING_DIRNAME;
@@ -313,6 +316,9 @@ public:
     static const struct Param_Num EIDMW_CONFIG_PARAM_CERTCACHE_VALIDITY;
     static const struct Param_Num EIDMW_CONFIG_PARAM_CERTCACHE_WAITDELAY;
 
+    //TIMESTAMP
+    static const struct Param_Str EIDMW_CONFIG_PARAM_TIMESTAMP_HOST;
+
     //PROXY
     static const struct Param_Str EIDMW_CONFIG_PARAM_PROXY_HOST;
     static const struct Param_Num EIDMW_CONFIG_PARAM_PROXY_PORT;
@@ -326,6 +332,7 @@ public:
     static const struct Param_Num EIDMW_CONFIG_PARAM_GUITOOL_STARTMINI;
     static const struct Param_Num EIDMW_CONFIG_PARAM_GUITOOL_SHOWPIC;
     static const struct Param_Num EIDMW_CONFIG_PARAM_GUITOOL_SHOWNOTIFICATION;
+    static const struct Param_Num EIDMW_CONFIG_PARAM_GUITOOL_SHOWANIMATIONS;
     static const struct Param_Num EIDMW_CONFIG_PARAM_GUITOOL_SHOWTBAR;
     static const struct Param_Num EIDMW_CONFIG_PARAM_GUITOOL_VIRTUALKBD;
     static const struct Param_Num EIDMW_CONFIG_PARAM_GUITOOL_AUTOCARDREAD;

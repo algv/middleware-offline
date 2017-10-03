@@ -292,13 +292,19 @@ void addCertificateChain(PKCS7 *p7)
     APL_Card *card = AppLayer.getReader().getCard();
     APL_SmartCard * eid_card = static_cast<APL_SmartCard *> (card);
     APL_Certifs *certs = eid_card->getCertificates();
-    APL_Certif *auth_cert = certs->getCert(APL_CERTIF_TYPE_SIGNATURE);
+    APL_Certif *signature_cert = certs->getCert(APL_CERTIF_TYPE_SIGNATURE);
 
-    APL_Certif *certif = auth_cert;
+    APL_Certif *certif = signature_cert;
     
     while(!certif->isRoot())
     {
-        APL_Certif * issuer = certif->getIssuer();
+        APL_Certif * issuer = NULL;
+	    issuer = certif->getIssuer();
+
+        if (issuer == NULL) {
+            MWLOG(LEV_ERROR, MOD_APL, "addCertificateChain() Couldn't find issuer for cert: %s", certif->getOwnerName());
+            break;
+        }
 
         MWLOG(LEV_DEBUG, MOD_APL, "signPKCS7: addCertificateChain: Loading cert: %s", issuer->getOwnerName());
         add_certificate(p7, certif->getData());
@@ -307,12 +313,18 @@ void addCertificateChain(PKCS7 *p7)
 
 }
 
+void addExternalCertificateChain(PKCS7 *p7, std::vector<CByteArray> ca_certificates) {
+
+    for (int i = 0; i != ca_certificates.size(); i++)
+        add_certificate(p7, ca_certificates.at(i));
+}
+
 /*  *********************************************************
     ***          computeHash_pkcs7()                    ***
     ********************************************************* */
 CByteArray computeHash_pkcs7( unsigned char *data, unsigned long dataLen
                             , CByteArray certificate
-                            , CByteArray CA_certificate
+                            , std::vector<CByteArray> &ca_certificates
                             , bool timestamp
                             , PKCS7 *p7
                             , PKCS7_SIGNER_INFO **out_signer_info) {
@@ -385,8 +397,8 @@ CByteArray computeHash_pkcs7( unsigned char *data, unsigned long dataLen
 
     signer_info = PKCS7_add_signature(p7, x509, X509_get_pubkey(x509), EVP_sha256());
 
-    if ( signer_info == NULL ){
-        TRACE_ERR( "Null signer_info" );
+    if ( signer_info == NULL ) {
+        TRACE_ERR("Null signer_info");
         isError = true;
 
         goto err_hashCalculate;
@@ -394,8 +406,12 @@ CByteArray computeHash_pkcs7( unsigned char *data, unsigned long dataLen
 
     PKCS7_add_certificate( p7, x509 );
 
-    //TODO: use different implementation for CMD certificates
-    addCertificateChain(p7);
+    if (ca_certificates.size() > 0) {
+        addExternalCertificateChain(p7, ca_certificates);
+    }
+    else {
+        addCertificateChain(p7);
+    }
 
     PKCS7_set_detached( p7, 1);
 
@@ -482,11 +498,11 @@ int getSignedData_pkcs7( unsigned char *signature, unsigned int signatureLen
     signer_info->enc_digest = ASN1_OCTET_STRING_new();
     ASN1_OCTET_STRING_set( signer_info->enc_digest, signature, signatureLen );
 
-    if (timestamp){
+    if (timestamp) {
         TSAClient tsp;
         unsigned char *digest_tp = (unsigned char *)malloc( SHA256_LEN );
         if ( NULL == digest_tp ){
-            TRACE_ERR( "Null digest_tp" );
+            TRACE_ERR( "digest_tp: malloc failed" );
             return 2;
         }
 
@@ -496,14 +512,14 @@ int getSignedData_pkcs7( unsigned char *signature, unsigned int signatureLen
         tsp.timestamp_data( digest_tp, SHA256_LEN );
         tsresp = tsp.getResponse();
 
-        if (tsresp.Size() == 0){
+        if (tsresp.Size() == 0) {
             MWLOG( LEV_ERROR, MOD_APL, L"PKCS7 Sign: Timestamp Error - response is empty\n" );
             return_code = 1;
-        } else{
+        } else {
             timestamp_token = tsresp.GetBytes();
             tsp_token_len = tsresp.Size();
         }
-        free( digest_tp );
+        free(digest_tp);
     }
 
     if ( timestamp_token && tsp_token_len > 0 ) {

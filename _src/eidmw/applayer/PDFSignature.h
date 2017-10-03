@@ -33,6 +33,7 @@ namespace eIDMW
 		EIDMW_APL_API PDFSignature(const char *path);
 		EIDMW_APL_API ~PDFSignature();
 
+                EIDMW_APL_API void setFile(char *pdf_file_path);
 		//Batch Operations (with PIN caching)
 		EIDMW_APL_API void batchAddFile(char *file_path, bool last_page);
 		EIDMW_APL_API void enableTimestamp();
@@ -52,33 +53,32 @@ namespace eIDMW
 		EIDMW_APL_API void enableSmallSignature();
 
         bool getBatch_mode();
-        void setBatch_mode( bool batch_mode );
+		EIDMW_APL_API void setBatch_mode(bool batch_mode);
 
         /* isCertificate */
         bool isExternalCertificate();
-        CByteArray getIsExtCertificate();
         void setIsExtCertificate( bool in_IsExternalCertificate );
 
         /* Certificate */
-        CByteArray getExternCertificate();
-        void setExternCertificate( CByteArray certificate );
+		EIDMW_APL_API void setExternCertificate(CByteArray certificate);
 
-        /* Certificate CA */
-        CByteArray getExternCertificateCA();
-        void setExternCertificateCA( CByteArray certificateCA );
+        /* CA Certificates */
+		EIDMW_APL_API void setExternCertificateCA(std::vector<CByteArray> &certificateCAS);
 
         /* Hash */
-        CByteArray getHash();
+		EIDMW_APL_API CByteArray getHash();
+        
         void setHash( CByteArray in_hash );
-        void computeHash( unsigned char *data, unsigned long dataLen
-                        , CByteArray certificate
-                        , CByteArray CA_certificate );
+        void computeHash(unsigned char *data, unsigned long dataLen,
+                         CByteArray certificate,
+                         std::vector<CByteArray> &CA_certificates);
 
-        /* signClose */
-        int signClose( CByteArray signature );
+        
+		EIDMW_APL_API int signClose(CByteArray signature);
 
 	private:
-		void getCitizenData();
+		void parseCitizenDataFromCert(CByteArray &certData);
+		CByteArray getCitizenCertificate();
 		std::string generateFinalPath(const char *output_dir, const char *path);
 		PDFRectangle computeSigLocationFromSector(double, double, int);
 		PDFRectangle computeSigLocationFromSectorLandscape(double, double, int);
@@ -112,7 +112,8 @@ namespace eIDMW
 
         PKCS7 *m_pkcs7;
         CByteArray m_externCertificate;
-        CByteArray m_externCertificateCA;
+        std::vector<CByteArray> m_ca_certificates;
+
         CByteArray m_hash;
         PKCS7_SIGNER_INFO *m_signerInfo;
         GooString *m_outputName;

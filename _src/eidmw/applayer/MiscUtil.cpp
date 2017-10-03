@@ -19,7 +19,6 @@
 **************************************************************************** */
 #include "MiscUtil.h"
 
-
 #include <openssl/bio.h>
 #include <openssl/evp.h>
 #include <openssl/buffer.h>
@@ -36,7 +35,7 @@
 
 #include <cstdio>
 #include <cstring>
-
+#include <string>
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -58,7 +57,7 @@ namespace eIDMW
 /*  *********************************************************
     ***          getCPtr()                                ***
     ********************************************************* */
-char *getCPtr( std::string inStr, int *outLen ){
+char *getCPtr( std::string inStr, int *outLen ) {
     char *c_str;
 
     c_str = (char *)malloc( inStr.length() + 1 );
@@ -67,7 +66,7 @@ char *getCPtr( std::string inStr, int *outLen ){
     if ( outLen != NULL ) *outLen = strlen( c_str );
 
     return c_str;
-}/* getCPtr() */
+}
 
 const void *memmem(const void *haystack, size_t n, const void *needle, size_t m)
 {
@@ -176,115 +175,126 @@ void replace_lastdot_inplace(char* str_in)
 		*last_dot = '_';
 }
 
-/*  *********************************************************
-    ***          string toPEM()                           ***
-    ********************************************************* */
-char *toPEM( char *p_certificate, int certificateLen ){
+
+std::vector<std::string> toPEM(char *p_certificate, int certificateLen) {
+
+	std::vector<std::string> certs;
 
     string strCertificate( p_certificate, certificateLen );
 
-    if ( strCertificate.empty() ){
-        return NULL;
-    }/* if ( strCertificate.empty() ) */
+    if (strCertificate.empty()) {
+        throw CMWEXCEPTION(EIDMW_ERR_PARAM_BAD);
+    }
 
-    /*
-        Search for STR_BEGIN_CERTIFICATE
-    */
-    std::size_t found = strCertificate.find( STR_BEGIN_CERTIFICATE );
-    if ( found == string::npos ){
-        found = 0;
-        strCertificate.insert( found , STR_BEGIN_CERTIFICATE );
-    }/* if ( found == string::npos ) */
+    std::size_t found_init = 0;
+    std::size_t found_after = 0;
+    std::size_t found_end = 0;
+    while(true)
+    {
+    	std::string certificate;
+    	
+	    /*
+	      Search for STR_BEGIN_CERTIFICATE
+	    */
+	    found_init = strCertificate.find(STR_BEGIN_CERTIFICATE, found_init);
+	    if (found_init == string::npos) {
+	        break;
+	    }
 
-    /*
-        Add newline after STR_BEGIN_CERTIFICATE
-    */
-    found += strlen( STR_BEGIN_CERTIFICATE );
-    if ( strCertificate.substr( found, 1 ) != "\n" ){
-        strCertificate.insert( found, "\n" );
-    }/* if ( strCertificate.substr( (found - 1), 1 ) != "\n" ) */
+	    /*
+	      Add newline after STR_BEGIN_CERTIFICATE
+	    */
+	    found_after = found_init + strlen(STR_BEGIN_CERTIFICATE);
+	    if ( strCertificate.substr( found_after, 1 ) != "\n") {
+	        strCertificate.insert(found_after, "\n" );
+	    }
 
-    /*
-        Search for STR_END_CERTIFICATE
-    */
-    found = strCertificate.find( STR_END_CERTIFICATE );
-    if ( found == string::npos ){
-        found = strCertificate.length();
-        strCertificate.insert( found, STR_END_CERTIFICATE );
-    }/* if ( found == string::npos ) */
+	    /*
+	        Search for STR_END_CERTIFICATE
+	    */
+	    found_end = strCertificate.find(STR_END_CERTIFICATE, found_init);
+	    if ( found_end == string::npos ) {
+	        throw CMWEXCEPTION(EIDMW_ERR_PARAM_BAD);
+	    }
 
-    /*
-        Add newline before STR_END_CERTIFICATE
-    */
-    if ( strCertificate.substr( (found - 1), 1 ) != "\n" ){
-        strCertificate.insert( found, "\n" );
-    }/* if ( strCertificate.substr( (found - 1), 1 ) != "\n" ) */
+	    /*
+	        Add newline before STR_END_CERTIFICATE
+	    */
+	    if ( strCertificate.substr( (found_end - 1), 1 ) != "\n") {
+	        strCertificate.insert( found_end, "\n" );
+	    }
+	    int pos_end = found_end + strlen(STR_END_CERTIFICATE) + 1;
 
-    char *pem = getCPtr( strCertificate, NULL );
-    return pem;
-}/* toPEM() */
+	    certificate = strCertificate.substr(found_init, pos_end-found_init);
+	    certs.push_back(certificate);
+
+	    found_init = found_end;
+    }
+
+    return certs;
+}
 
 /*  *********************************************************
     ***          X509_to_PEM()                            ***
     ********************************************************* */
-char *X509_to_PEM( X509 *x509 ){
+char *X509_to_PEM(X509 *x509) {
 
     BIO *bio = NULL;
     char *pem = NULL;
 
-    if ( NULL == x509 ){
+    if ( NULL == x509 ) {
         return NULL;
-    }/* if ( NULL == x509 ) */
+    }
 
     bio = BIO_new( BIO_s_mem() );
-    if ( NULL == bio ){
+    if ( NULL == bio ) {
         return NULL;
-    }/* if ( NULL == bio ) */
+   	}
 
-    if ( 0 == PEM_write_bio_X509( bio, x509 ) ){
+    if ( 0 == PEM_write_bio_X509(bio, x509)) {
         BIO_free( bio );
         return NULL;
-    }/* if ( 0 == PEM_write_bio_X509( bio, x509 ) ) */
+    }
 
     pem = (char *) malloc( bio->num_write + 1 );
     if ( NULL == pem ){
         BIO_free(bio);
         return NULL;
-    }/* if ( NULL == pem ) */
+    }
 
     memset( pem, 0, bio->num_write + 1 );
     BIO_read( bio, pem, bio->num_write );
     BIO_free( bio );
 
     return pem;
-}/* X509_to_PEM() */
+}
 
 /*  *********************************************************
     ***          PEM_to_X509()                            ***
     ********************************************************* */
-X509 *PEM_to_X509( char *pem ){
+X509 *PEM_to_X509(char *pem) {
     X509 *x509 = NULL;
     BIO *bio = NULL;
 
     if ( NULL == pem ){
         return NULL;
-    }/* if ( NULL == pem ) */
+    }
 
     bio = BIO_new_mem_buf(pem, strlen(pem));
     if ( NULL == bio ){
         return NULL;
-    }/* if ( NULL == bio ) */
+    }
 
     x509 = PEM_read_bio_X509( bio, NULL, NULL, NULL );
     BIO_free( bio );
 
     return x509;
-}/* PEM_to_X509() */
+}
 
 /*  *********************************************************
     ***          X509_to_DER()                            ***
     ********************************************************* */
-int X509_to_DER( X509 *x509, unsigned char **der ){
+int X509_to_DER( X509 *x509, unsigned char **der ) {
 
     if ( NULL == der ) return -1;
     *der = NULL;
@@ -292,7 +302,7 @@ int X509_to_DER( X509 *x509, unsigned char **der ){
     int len = i2d_X509( x509, der );
 
     return len;
-}/* X509_to_DER() */
+}
 
 /*  *********************************************************
     ***          DER_to_X509()                            ***
@@ -302,7 +312,7 @@ X509 *DER_to_X509( unsigned char *der, int len ){
     X509 *x509 = d2i_X509( NULL, (const unsigned char**)&p, len );
 
     return x509;
-}/* DER_to_X509() */
+}
 
 /*  *********************************************************
     ***          DER_to_PEM()                            ***
@@ -313,7 +323,7 @@ char *DER_to_PEM( unsigned char *der, int len ){
     if ( NULL == x509) return (char *)NULL;
 
     return X509_to_PEM( x509 );
-}/* DER_to_PEM() */
+}
 
 /*  *********************************************************
     ***          DER_to_PEM()                            ***
@@ -324,7 +334,7 @@ int PEM_to_DER( char *pem, unsigned char **der ){
     if ( NULL == x509) return ((int )-1);
 
     return X509_to_DER( x509, der );
-}/* DER_to_PEM() */
+}
 
 /*
 Base64 encode binary-data: it can be used also for C-style strings if we ignore the 0x0 terminator

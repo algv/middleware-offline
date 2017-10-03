@@ -397,11 +397,12 @@ bool CPteidCard::Activate(const char *pinCode, CByteArray &BCDDate, bool blockAc
 			throw CMWEXCEPTION(EIDMW_ERR_CARDTYPE_UNKNOWN);
 	}
 
-	/* the activation code is not listed in the internal card structures */
+	/* The activation PIN is not listed in the internal card structures */
 	tPin activationPin = {true,LABEL,0,0,0,ANY_ID_BIGGER_THAN_6,0,0,4,8,8,PTEIDNG_ACTIVATION_CODE_ID,padChar,PIN_ENC_ASCII,"",""};
 	unsigned long ulRemaining;
+	std::string strPinCode = pinCode != NULL ? std::string(pinCode) : "";
 
-	bool bOK = PinCmd(PIN_OP_VERIFY, activationPin, pinCode, "", ulRemaining, NULL);
+	bool bOK = PinCmd(PIN_OP_VERIFY, activationPin, strPinCode, "", ulRemaining, NULL);
 	if (!bOK)
 		return bOK;
 
@@ -471,6 +472,8 @@ DlgPinUsage CPteidCard::PinUsage2Dlg(const tPin & Pin, const tPrivKey *pKey)
         usage = DLG_PIN_SIGN;
     else if (Pin.ulID == 3)
         usage = DLG_PIN_ADDRESS;
+    else 
+    	usage = DLG_PIN_ACTIVATE;
 
 	return usage;
 }

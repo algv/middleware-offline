@@ -102,6 +102,30 @@ namespace eIDMW
 			delete m_doc;
 	}
 
+        void PDFSignature::setFile(char *pdf_file_path)
+        {
+            m_visible = false;
+            m_page = 1;
+            m_sector = 0;
+            //Illegal values to start with
+            location_x = -1;
+            location_y = -1;
+            m_civil_number = NULL;
+            m_citizen_fullname = NULL;
+            m_batch_mode = false;
+            m_timestamp = false;
+            m_isLandscape = false;
+            m_small_signature = false;
+            my_custom_image.img_data = NULL;
+            m_doc = new PDFDoc(new GooString(pdf_file_path));
+
+            m_card = NULL;
+            m_signerInfo = NULL;
+            m_pkcs7 = NULL;
+            m_outputName = NULL;
+            m_signStarted = false;
+            m_isExternalCertificate = false;
+        }
 	void PDFSignature::batchAddFile(char *file_path, bool last_page)
 	{
 		m_files_to_sign.push_back(std::make_pair(_strdup(file_path), last_page));
@@ -276,36 +300,42 @@ namespace eIDMW
 		return sig_rect;
 	}
 
-	void PDFSignature::getCitizenData()
+	//TODO: split this into 1) reading cert from card  2) and parsing cert
+	CByteArray PDFSignature::getCitizenCertificate()
 	{
-            if ( NULL == m_card ){
-                MWLOG(LEV_ERROR, MOD_APL, "getCitizenData() - Null m_card!");
-                return;
-            }/* if ( NULL == m_card ) */
+			fprintf(stderr, "DEBUG: getCitizenData() This should only be called for Card Signature!\n");
 
             CByteArray certData;
-            char *data_serial = (char *)malloc(256);
-            char *data_common_name = (char *)malloc(256);
+           
 
             m_card->readFile(PTEID_FILE_CERT_SIGNATURE, certData);
 
-            unsigned char * cert_data = certData.GetBytes();
-            X509 *x509 = d2i_X509(NULL, (const unsigned char**)&cert_data, certData.Size());
+            return certData;
+	}
 
-            if (x509 == NULL){
-                MWLOG(LEV_ERROR, MOD_APL, L"loadCert() Error decoding certificate data!");
-                free(data_serial);
-                free(data_common_name);
-                return;
-            }
+	void PDFSignature::parseCitizenDataFromCert(CByteArray &certData) {
+		const int cert_field_size = 256;
 
-            X509_NAME * subj = X509_get_subject_name(x509);
-            X509_NAME_get_text_by_NID(subj, NID_serialNumber, data_serial, 256);
-            X509_NAME_get_text_by_NID(subj, NID_commonName, data_common_name, 256);
+		unsigned char * cert_data = certData.GetBytes();
+		char *data_serial = (char *)malloc(cert_field_size);
+        char *data_common_name = (char *)malloc(cert_field_size);
 
-            m_civil_number = data_serial;
-            m_citizen_fullname = data_common_name;
-            X509_free(x509);
+		X509 *x509 = d2i_X509(NULL, (const unsigned char**)&cert_data, certData.Size());
+
+		if (x509 == NULL) {
+			MWLOG(LEV_ERROR, MOD_APL, L"parseCitizenDataFromCert() Error decoding certificate data!");
+			free(data_serial);
+			free(data_common_name);
+			return;
+		}
+
+		X509_NAME * subj = X509_get_subject_name(x509);
+		X509_NAME_get_text_by_NID(subj, NID_serialNumber, data_serial, cert_field_size);
+		X509_NAME_get_text_by_NID(subj, NID_commonName, data_common_name, cert_field_size);
+
+		m_civil_number = data_serial;
+		m_citizen_fullname = data_common_name;
+		X509_free(x509);
 	}
 
 	int PDFSignature::getPageCount()
@@ -518,43 +548,47 @@ namespace eIDMW
 
 		unsigned char *to_sign;
 
-		//Civil number and name should be only read once
-		if (m_civil_number == NULL)
-		   getCitizenData();
-
+		if (isExternalCertificate()) {
+			parseCitizenDataFromCert(m_externCertificate);
+		}
+		else {
+			//Civil number and name should be only read once
+			if (m_civil_number == NULL) {
+		   		CByteArray signatureCert = getCitizenCertificate();
+		   		parseCitizenDataFromCert(signatureCert);
+		   	}
+		}
+		
         bool incremental = doc->isSigned() || doc->isReaderEnabled();
 
 		if (this->my_custom_image.img_data != NULL)
 			doc->addCustomSignatureImage(my_custom_image.img_data, my_custom_image.img_length);
 
-                doc->prepareSignature(incremental, &sig_location, m_citizen_fullname, m_civil_number,
-			         location, reason, m_page, m_sector, isLangPT);
-                unsigned long len = doc->getSigByteArray(&to_sign, incremental);
+        doc->prepareSignature(incremental, &sig_location, m_citizen_fullname, m_civil_number,
+			         location, reason, m_page, m_sector, isLangPT, !isExternalCertificate());
+        unsigned long len = doc->getSigByteArray(&to_sign, incremental);
 
 		int rc = 0;
 		try
 		{
             m_outputName = outputName;
 
-            /* Get certificate & certificateCA */
-            CByteArray certificate, certificateCA;
+            /* Get certificate */
+            CByteArray certificate;
 
-            if ( isExternalCertificate() ){
-                certificate = getExternCertificate();
-                certificateCA = getExternCertificateCA();
-            } 
-            else{
-                m_card->readFile( PTEID_FILE_CERT_SIGNATURE, certificate );
-                m_card->readFile( PTEID_FILE_CERT_ROOT_SIGN, certificateCA );
+            if (isExternalCertificate()) {
+                certificate = m_externCertificate;
+            }
+            else {
+                m_card->readFile(PTEID_FILE_CERT_SIGNATURE, certificate);
                 /*
-                    Encode certificate to internal format:
                     Trim the padding zero bytes which are useless
                     and affect the certificate digest computation
                 */
                 certificate.TrimRight( 0 );
             }
 
-            computeHash(to_sign, len, certificate, certificateCA );
+            computeHash(to_sign, len, certificate, m_ca_certificates);
 
             m_signStarted = true;
 		}
@@ -589,44 +623,32 @@ namespace eIDMW
         return m_isExternalCertificate;
     }
 
-    CByteArray PDFSignature::getIsExtCertificate(){
-        return m_isExternalCertificate;
-    }
-
-    void PDFSignature::setIsExtCertificate( bool in_IsExternalCertificate ){
+    void PDFSignature::setIsExtCertificate(bool in_IsExternalCertificate) {
         m_isExternalCertificate = in_IsExternalCertificate;
     }
 
-    CByteArray PDFSignature::getExternCertificate(){
-        return m_externCertificate;
-    }
-
-    void PDFSignature::setExternCertificate( CByteArray certificate ){
+    void PDFSignature::setExternCertificate( CByteArray certificate) {
         m_externCertificate = certificate;
 
         setIsExtCertificate( true );
     }
 
-    CByteArray PDFSignature::getExternCertificateCA(){
-        return m_externCertificateCA;
-    }
-
-    void PDFSignature::setExternCertificateCA( CByteArray certificateCA ){
-        m_externCertificateCA = certificateCA;
+    void PDFSignature::setExternCertificateCA(std::vector<CByteArray> &certificateCAS) {
+        m_ca_certificates = certificateCAS;
     }
 
     /* Hash */
-    CByteArray PDFSignature::getHash(){
+    CByteArray PDFSignature::getHash() {
         return m_hash;
     }
 
-    void PDFSignature::setHash( CByteArray in_hash ){
+    void PDFSignature::setHash(CByteArray in_hash) {
         m_hash = in_hash;
     }
 
-    void PDFSignature::computeHash( unsigned char *data, unsigned long dataLen
-                                    , CByteArray certificate
-                                    , CByteArray certificateCA ){
+    void PDFSignature::computeHash(unsigned char *data, unsigned long dataLen,
+                                     CByteArray certificate,
+                                     std::vector<CByteArray> &certificate_cas) {
 
         OpenSSL_add_all_algorithms();
         if ( m_pkcs7 != NULL ) PKCS7_free( m_pkcs7 );
@@ -636,14 +658,14 @@ namespace eIDMW
 
         CByteArray in_hash = computeHash_pkcs7( data, dataLen
                                                 , certificate
-                                                , certificateCA
+                                                , certificate_cas
                                                 , m_timestamp
                                                 , m_pkcs7
                                                 , &m_signerInfo );
-        setHash( in_hash );
+        setHash(in_hash);
     }
 
-    int PDFSignature::signClose( CByteArray signature ){
+    int PDFSignature::signClose(CByteArray signature) {
 
         if ( !m_signStarted ) {
             MWLOG( LEV_DEBUG, MOD_APL, "signClose: Signature not started" );
@@ -655,7 +677,8 @@ namespace eIDMW
         if ( NULL == m_doc ) {
             fprintf( stderr, "NULL m_doc\n" );
 
-            if ( m_pkcs7 != NULL ) PKCS7_free( m_pkcs7 );
+            if ( m_pkcs7 != NULL ) 
+            	PKCS7_free( m_pkcs7 );
             throw CMWEXCEPTION(EIDMW_ERR_UNKNOWN);
         }
 
@@ -669,7 +692,9 @@ namespace eIDMW
                                 , m_pkcs7
                                 , &signature_contents );
 
-        if ( return_code != errNone ) throw CMWEXCEPTION(EIDMW_ERR_UNKNOWN);
+        //Don't report "unknown error" exception in the case of timestamp error     
+        if (return_code > 1)
+        	throw CMWEXCEPTION(EIDMW_ERR_UNKNOWN);
 
         m_doc->closeSignature( signature_contents );
 
@@ -692,6 +717,10 @@ namespace eIDMW
 
         PKCS7_free( m_pkcs7 );
         m_pkcs7 = NULL;
+
+        if (return_code == 1) {
+        	throw CMWEXCEPTION(EIDMW_TIMESTAMP_ERROR);
+        }
 
         return return_code;
     }

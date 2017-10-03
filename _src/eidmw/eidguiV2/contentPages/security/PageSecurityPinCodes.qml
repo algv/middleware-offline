@@ -14,89 +14,73 @@ PageSecurityPinCodesForm {
         target: gapi
 
         onSignalCardAccessError: {
-            propertyBusyIndicator.running = false
-            if (error_code === GAPI.NoReaderFound) {
-                console.log("Error: No card reader found!")
-                dialogError.propertyDialogErrorLabelText.text = "No card reader found!"
-            }
-            else if (error_code === GAPI.NoCardFound) {
-                console.log("Error: No Card Found!")
-                dialogError.propertyDialogErrorLabelText.text = "No Card Found!"
-            }else {
-                console.log("Error: Reading Card Error")
-                dialogError.propertyDialogErrorLabelText.text = "Reading Card Error!"
-            }
-
-            propertyTriesLeftAuthPin.text = ""
-            propertyTriesLeftSignPin.text = ""
-            propertyTriesLeftAddressPin.text = ""
-            propertyButtonModifyAuth.enabled = false
-            propertyButtonModifySign.enabled = false
-            propertyButtonModifyAddress.enabled = false
-            propertyButtonTestAuth.enabled = false
-            propertyButtonTestSign.enabled = false
-            propertyButtonTestAddress.enabled = false
-
-            dialogError.open()
-        }
-    }
-
-    Dialog {
-        id: dialogError
-        width: 400
-        height: 200
-        visible: false
-
-        font.family: lato.name
-        // Center dialog in the main view
-        x: - mainMenuView.width - subMenuView.width
-           + mainView.width * 0.5 - dialogError.width * 0.5
-        y: parent.height * 0.5 - dialogError.height * 0.5
-
-        property alias propertyDialogErrorLabelText: textError
-
-        header: Label {
-            id: dialogErrorLabelText
-            text: "Error"
-            elide: Label.ElideRight
-            padding: 24
-            bottomPadding: 0
-            font.bold: true
-            font.pixelSize: 16
-            color: Constants.COLOR_MAIN_BLUE
-        }
-        Item {
-            width: parent.width
-            height: rectError.height
-
-            Item {
-                id: rectError
-                width: parent.width
-                height: 90
-
-                anchors.horizontalCenter: parent.horizontalCenter
-                Text {
-                    id: textError
-                    verticalAlignment: Text.AlignVCenter
-                    anchors.verticalCenter: parent.verticalCenter
-                    font.pixelSize: Constants.SIZE_TEXT_LABEL
-                    font.family: lato.name
-                    color: Constants.COLOR_TEXT_LABEL
-                    height: parent.height
-                    width: parent.width
-                    anchors.bottom: parent.bottom
+            console.log("Security Pin Codes onSignalCardAccessError")
+            if(error_code != GAPI.CardUserPinCancel){
+                if (error_code == GAPI.NoReaderFound) {
+                    mainFormID.propertyPageLoader.propertyGeneralTitleText.text =
+                            qsTranslate("Popup Card","STR_POPUP_ERROR")
+                    mainFormID.propertyPageLoader.propertyGeneralPopUpLabelText.text =
+                            qsTranslate("Popup Card","STR_POPUP_NO_CARD_READER")
                 }
+                else if (error_code == GAPI.NoCardFound) {
+                    mainFormID.propertyPageLoader.propertyGeneralTitleText.text =
+                            qsTranslate("Popup Card","STR_POPUP_ERROR")
+                    mainFormID.propertyPageLoader.propertyGeneralPopUpLabelText.text =
+                            qsTranslate("Popup Card","STR_POPUP_NO_CARD")
+                }
+                else if (error_code == GAPI.SodCardReadError) {
+                    mainFormID.propertyPageLoader.propertyGeneralTitleText.text =
+                            qsTranslate("Popup Card","STR_POPUP_ERROR")
+                    mainFormID.propertyPageLoader.propertyGeneralPopUpLabelText.text =
+                            qsTranslate("Popup Card","STR_SOD_VALIDATION_ERROR")
+                }
+                else {
+                    mainFormID.propertyPageLoader.propertyGeneralTitleText.text =
+                            qsTranslate("Popup Card","STR_POPUP_ERROR")
+                    mainFormID.propertyPageLoader.propertyGeneralPopUpLabelText.text =
+                            qsTranslate("Popup Card","STR_POPUP_CARD_ACCESS_ERROR")
+                }
+                mainFormID.propertyPageLoader.propertyGeneralPopUp.visible = true;
+                propertyButtonModifyAuth.enabled = false
+                propertyButtonTestAuth.enabled = false
+                propertyButtonModifySign.enabled = false
+                propertyButtonTestSign.enabled = false
+                propertyButtonModifyAddress.enabled = false
+                propertyButtonTestAddress.enabled = false
             }
-            Button {
-                width: Constants.WIDTH_BUTTON
-                height:Constants.HEIGHT_BOTTOM_COMPONENT
-                text: "OK"
-                anchors.horizontalCenter: parent.horizontalCenter
-                anchors.top: rectError.bottom
-                font.pixelSize: Constants.SIZE_TEXT_FIELD
-                font.family: lato.name
-                font.capitalization: Font.MixedCase
-                onClicked: dialogError.close()
+            propertyBusyIndicator.running = false
+        }
+        onSignalCardDataChanged: {
+            console.log("Security Pin Codes --> Data Changed")
+            propertyButtonModifyAuth.enabled = true
+            propertyButtonTestAuth.enabled = true
+            propertyButtonModifySign.enabled = true
+            propertyButtonTestSign.enabled = true
+            propertyButtonModifyAddress.enabled = true
+            propertyButtonTestAddress.enabled = true
+            propertyBusyIndicator.running = false
+        }
+        onSignalCardChanged: {
+            console.log("Security Pin Codes onSignalCardChanged")
+            if (error_code == GAPI.ET_CARD_REMOVED) {
+                propertyButtonModifyAuth.enabled = false
+                propertyButtonTestAuth.enabled = false
+                propertyButtonModifySign.enabled = false
+                propertyButtonTestSign.enabled = false
+                propertyButtonModifyAddress.enabled = false
+                propertyButtonTestAddress.enabled = false
+            }
+            else if (error_code == GAPI.ET_CARD_CHANGED) {
+                propertyBusyIndicator.running = true
+                gapi.startCardReading()
+            }
+            else{
+                propertyButtonModifyAuth.enabled = false
+                propertyButtonTestAuth.enabled = false
+                propertyButtonModifySign.enabled = false
+                propertyButtonTestSign.enabled = false
+                propertyButtonModifyAddress.enabled = false
+                propertyButtonTestAddress.enabled = false
             }
         }
     }
@@ -134,7 +118,7 @@ PageSecurityPinCodesForm {
                 anchors.horizontalCenter: parent.horizontalCenter
                 Text {
                     id: textOkPin
-                    text: "PIN introduzido correctamente."
+                    text: qsTranslate("Popup PIN","STR_POPUP_CARD_PIN_SUCESS")
                     verticalAlignment: Text.AlignVCenter
                     anchors.verticalCenter: parent.verticalCenter
                     font.pixelSize: Constants.SIZE_TEXT_LABEL
@@ -171,7 +155,7 @@ PageSecurityPinCodesForm {
         y: parent.height * 0.5 - dialogBadPin.height * 0.5
 
         header: Label {
-            text: "Verificação de PIN"
+            text: qsTranslate("Popup PIN","STR_POPUP_CARD_PIN_VERIFY")
             elide: Label.ElideRight
             padding: 24
             bottomPadding: 0
@@ -267,7 +251,7 @@ PageSecurityPinCodesForm {
                     width: parent.width * 0.5
                     anchors.verticalCenter: parent.verticalCenter
                     font.italic: textFieldPin.text === "" ? true: false
-                    placeholderText: "PIN Atual?"
+                    placeholderText: qsTranslate("Popup PIN","STR_POPUP_CARD_PIN_CURRENT")
                     echoMode : TextInput.Password
                     validator: RegExpValidator { regExp: /[0-9]+/ }
                     maximumLength: 8
@@ -293,37 +277,43 @@ PageSecurityPinCodesForm {
             case 0:
                 triesLeft = gapi.verifyAuthPin(textFieldPin.text)
                 if (triesLeft === 0) {
-                    propertyTriesLeftAuthPin.text = "PIN bloqueado!"
+                    propertyTriesLeftAuthPin.text = qsTranslate("Popup PIN","STR_POPUP_CARD_PIN_BLOCKED")
                 }
                 else if (triesLeft === Constants.TRIES_LEFT_ERROR) {
                     propertyTriesLeftAuthPin.text = ""
                 }
                 else {
-                    propertyTriesLeftAuthPin.text = "Restam "+ triesLeft + " tentativas."
+                    propertyTriesLeftAuthPin.text = qsTranslate("Popup PIN","STR_POPUP_CARD_REMAIN")
+                            + " " + triesLeft + " "
+                            + qsTranslate("Popup PIN","STR_POPUP_CARD_TRIES")
                 }
                 break;
             case 1:
                 triesLeft = gapi.verifySignPin(textFieldPin.text)
                 if (triesLeft === 0) {
-                    propertyTriesLeftSignPin.text = "PIN bloqueado!"
+                    propertyTriesLeftSignPin.text = qsTranslate("Popup PIN","STR_POPUP_CARD_PIN_BLOCKED")
                 }
                 else if (triesLeft === Constants.TRIES_LEFT_ERROR) {
                     propertyTriesLeftSignPin.text = ""
                 }
                 else {
-                    propertyTriesLeftSignPin.text = "Restam "+ triesLeft + " tentativas."
+                    propertyTriesLeftSignPin.text = qsTranslate("Popup PIN","STR_POPUP_CARD_REMAIN")
+                            + " " + triesLeft + " "
+                            + qsTranslate("Popup PIN","STR_POPUP_CARD_TRIES")
                 }
                 break;
             case 2:
                 triesLeft = gapi.verifyAddressPin(textFieldPin.text)
                 if (triesLeft === 0) {
-                    propertyTriesLeftAddressPin.text = "PIN bloqueado!"
+                    propertyTriesLeftAddressPin.text = qsTranslate("Popup PIN","STR_POPUP_CARD_PIN_BLOCKED")
                 }
                 else if (triesLeft === Constants.TRIES_LEFT_ERROR) {
                     propertyTriesLeftAddressPin.text = ""
                 }
                 else {
-                    propertyTriesLeftAddressPin.text = "Restam "+ triesLeft + " tentativas."
+                    propertyTriesLeftAddressPin.text = qsTranslate("Popup PIN","STR_POPUP_CARD_REMAIN")
+                            + " " + triesLeft + " "
+                            + qsTranslate("Popup PIN","STR_POPUP_CARD_TRIES")
                 }
                 break;
             default:
@@ -335,20 +325,24 @@ PageSecurityPinCodesForm {
             propertyBusyIndicator.running = false
 
             if (triesLeft === 3) {
-                dialogPinOK.propertyDialogOkLabelText.text = "Verificação de PIN"
-                dialogPinOK.propertyTextOkPin.text = "PIN introduzido correctamente"
+                dialogPinOK.propertyDialogOkLabelText.text = qsTranslate("Popup PIN","STR_POPUP_CARD_PIN_VERIFY")
+                dialogPinOK.propertyTextOkPin.text = qsTranslate("Popup PIN","STR_POPUP_CARD_PIN_SUCESS")
                 dialogPinOK.open()
             }
             else if (triesLeft === 0) {
-                textBadPin.text = "PIN bloqueado!"
+                textBadPin.text = qsTranslate("Popup PIN","STR_POPUP_CARD_PIN_BLOCKED")
                 dialogBadPin.open()
             }
             else if (triesLeft === Constants.TRIES_LEFT_ERROR) {
-                textBadPin.text = "Erro na leitura do cartão!"
+                textBadPin.text = qsTranslate("Popup Card","STR_POPUP_CARD_ACCESS_ERROR")
                 dialogBadPin.open()
             }
             else {
-                textBadPin.text = "O PIN introduzido está errado! \n\n" + "Restam "+ triesLeft + " tentativas."
+                textBadPin.text = qsTranslate("Popup PIN","STR_POPUP_CARD_PIN_WRONG")
+                        + " \n\n"
+                        + qsTranslate("Popup PIN","STR_POPUP_CARD_REMAIN")
+                        + " " + triesLeft + " "
+                        + qsTranslate("Popup PIN","STR_POPUP_CARD_TRIES")
                 dialogBadPin.open()
             }
         }
@@ -396,7 +390,7 @@ PageSecurityPinCodesForm {
                 anchors.horizontalCenter: parent.horizontalCenter
                 Text {
                     id: textPinCurrent
-                    text: "PIN Atual"
+                    text: qsTranslate("Popup PIN","STR_POPUP_CARD_PIN_CURRENT")
                     verticalAlignment: Text.AlignVCenter
                     anchors.verticalCenter: parent.verticalCenter
                     font.pixelSize: Constants.SIZE_TEXT_LABEL
@@ -411,7 +405,7 @@ PageSecurityPinCodesForm {
                     width: parent.width * 0.5
                     anchors.verticalCenter: parent.verticalCenter
                     font.italic: textFieldPinCurrent.text === "" ? true: false
-                    placeholderText: "PIN Atual?"
+                    placeholderText: qsTranslate("Popup PIN","STR_POPUP_CARD_PIN_CURRENT")
                     echoMode : TextInput.Password
                     validator: RegExpValidator { regExp: /[0-9]+/ }
                     maximumLength: 8
@@ -430,7 +424,7 @@ PageSecurityPinCodesForm {
                 anchors.horizontalCenter: parent.horizontalCenter
                 Text {
                     id: textPinNew
-                    text: "Novo PIN"
+                    text: qsTranslate("Popup PIN","STR_POPUP_CARD_PIN_NEW")
                     verticalAlignment: Text.AlignVCenter
                     anchors.verticalCenter: parent.verticalCenter
                     font.pixelSize: Constants.SIZE_TEXT_LABEL
@@ -445,7 +439,7 @@ PageSecurityPinCodesForm {
                     width: parent.width * 0.5
                     anchors.verticalCenter: parent.verticalCenter
                     font.italic: textFieldPinNew.text === "" ? true: false
-                    placeholderText: "Novo PIN?"
+                    placeholderText: qsTranslate("Popup PIN","STR_POPUP_CARD_PIN_NEW") + "?"
                     echoMode : TextInput.Password
                     validator: RegExpValidator { regExp: /[0-9]+/ }
                     maximumLength: 8
@@ -464,7 +458,7 @@ PageSecurityPinCodesForm {
                 anchors.horizontalCenter: parent.horizontalCenter
                 Text {
                     id: textPinConfirm
-                    text: "Confirmar novo PIN"
+                    text: qsTranslate("Popup PIN","STR_POPUP_CARD_PIN_CONFIRM")
                     verticalAlignment: Text.AlignVCenter
                     anchors.verticalCenter: parent.verticalCenter
                     font.pixelSize: Constants.SIZE_TEXT_LABEL
@@ -479,7 +473,7 @@ PageSecurityPinCodesForm {
                     width: parent.width * 0.5
                     anchors.verticalCenter: parent.verticalCenter
                     font.italic: textFieldPinConfirm.text === "" ? true: false
-                    placeholderText: "Confirmar novo PIN?"
+                    placeholderText: qsTranslate("Popup PIN","STR_POPUP_CARD_PIN_CONFIRM") + "?"
                     echoMode : TextInput.Password
                     validator: RegExpValidator { regExp: /[0-9]+/ }
                     maximumLength: 8
@@ -527,37 +521,43 @@ PageSecurityPinCodesForm {
                 case 0:
                     triesLeft = gapi.changeAuthPin(textFieldPinCurrent.text,textFieldPinNew.text)
                     if (triesLeft === 0) {
-                        propertyTriesLeftAuthPin.text = "PIN bloqueado!"
+                        propertyTriesLeftAuthPin.text = qsTranslate("Popup PIN","STR_POPUP_CARD_PIN_BLOCKED")
                     }
                     else if (triesLeft === Constants.TRIES_LEFT_ERROR) {
                         propertyTriesLeftAuthPin.text = ""
                     }
                     else {
-                        propertyTriesLeftAuthPin.text = "Restam "+ triesLeft + " tentativas."
+                        propertyTriesLeftAuthPin.text = qsTranslate("Popup PIN","STR_POPUP_CARD_REMAIN")
+                                + " " + triesLeft + " "
+                                + qsTranslate("Popup PIN","STR_POPUP_CARD_TRIES")
                     }
                     break;
                 case 1:
                     triesLeft = gapi.changeSignPin(textFieldPinCurrent.text,textFieldPinNew.text)
                     if (triesLeft === 0) {
-                        propertyTriesLeftSignPin.text = "PIN bloqueado!"
+                        propertyTriesLeftSignPin.text = qsTranslate("Popup PIN","STR_POPUP_CARD_PIN_BLOCKED")
                     }
                     else if (triesLeft === Constants.TRIES_LEFT_ERROR) {
                         propertyTriesLeftSignPin.text = ""
                     }
                     else {
-                        propertyTriesLeftSignPin.text = "Restam "+ triesLeft + " tentativas."
+                        propertyTriesLeftSignPin.text = qsTranslate("Popup PIN","STR_POPUP_CARD_REMAIN")
+                                + " " + triesLeft + " "
+                                + qsTranslate("Popup PIN","STR_POPUP_CARD_TRIES")
                     }
                     break;
                 case 2:
                     triesLeft = gapi.changeAddressPin(textFieldPinCurrent.text,textFieldPinNew.text)
                     if (triesLeft === 0) {
-                        propertyTriesLeftAddressPin.text = "PIN bloqueado!"
+                        propertyTriesLeftAddressPin.text = qsTranslate("Popup PIN","STR_POPUP_CARD_PIN_BLOCKED")
                     }
                     else if (triesLeft === Constants.TRIES_LEFT_ERROR) {
                         propertyTriesLeftAddressPin.text = ""
                     }
                     else {
-                        propertyTriesLeftAddressPin.text = "Restam "+ triesLeft + " tentativas."
+                        propertyTriesLeftAddressPin.text = qsTranslate("Popup PIN","STR_POPUP_CARD_REMAIN")
+                                                + " " + triesLeft + " "
+                                                + qsTranslate("Popup PIN","STR_POPUP_CARD_TRIES")
                     }
                     break;
                 default:
@@ -569,26 +569,30 @@ PageSecurityPinCodesForm {
                 propertyBusyIndicator.running = false
 
                 if (triesLeft === 3) {
-                    dialogPinOK.propertyDialogOkLabelText.text = "Modificação de PIN"
-                    dialogPinOK.propertyTextOkPin.text = "Alteração de PIN efectuada"
+                    dialogPinOK.propertyDialogOkLabelText.text = qsTranslate("Popup PIN","STR_PIN_MODIFY")
+                    dialogPinOK.propertyTextOkPin.text = qsTranslate("Popup PIN","STR_PIN_MODIFY_SUCESS")
                     dialogPinOK.open()
                 }
                 else if (triesLeft === 0) {
-                    textBadPin.text = "PIN bloqueado!"
+                    textBadPin.text = qsTranslate("Popup PIN","STR_POPUP_CARD_PIN_BLOCKED")
                     dialogBadPin.open()
                 }
                 else if (triesLeft === Constants.TRIES_LEFT_ERROR) {
-                    textBadPin.text = "Erro na leitura do cartão!"
+                    textBadPin.text = qsTranslate("Popup Card","STR_POPUP_CARD_ACCESS_ERROR")
                     dialogBadPin.open()
                 }
                 else {
-                    textBadPin.text = "O PIN introduzido está errado! \n\n" + "Restam "+ triesLeft + " tentativas."
+                    textBadPin.text = qsTranslate("Popup PIN","STR_POPUP_CARD_PIN_WRONG")
+                            + " \n\n"
+                            + qsTranslate("Popup PIN","STR_POPUP_CARD_REMAIN")
+                            + " " + triesLeft + " "
+                            + qsTranslate("Popup PIN","STR_POPUP_CARD_TRIES")
 
                     dialogBadPin.open()
                 }
             }else{
                 propertyBusyIndicator.running = false
-                textPinMsgConfirm.text = "Novo PIN e PIN de confirmação têm de ser iguais"
+                textPinMsgConfirm.text = qsTranslate("Popup PIN","STR_PIN_NEW_CONFIRM")
                 dialogModifyPin.open()
             }
         }
@@ -604,22 +608,24 @@ PageSecurityPinCodesForm {
                 var triesLeft = 0
                 triesLeft = gapi.changeAuthPin("","")
                 if (triesLeft === 3) {
-                    dialogPinOK.propertyDialogOkLabelText.text = "Modificação de PIN"
-                    dialogPinOK.propertyTextOkPin.text = "Alteração de PIN efectuada"
+                    dialogPinOK.propertyDialogOkLabelText.text = qsTranslate("Popup PIN","STR_PIN_MODIFY")
+                    dialogPinOK.propertyTextOkPin.text = qsTranslate("Popup PIN","STR_PIN_MODIFY_SUCESS")
                     dialogPinOK.open()
                 }
                 if (triesLeft === 0) {
-                    propertyTriesLeftAuthPin.text = "PIN bloqueado!"
+                    propertyTriesLeftAuthPin.text = qsTranslate("Popup PIN","STR_POPUP_CARD_PIN_BLOCKED")
                 }
                 else if (triesLeft === Constants.TRIES_LEFT_ERROR) {
                     propertyTriesLeftAuthPin.text = ""
                 }
                 else {
-                    propertyTriesLeftAuthPin.text = "Restam "+ triesLeft + " tentativas."
+                    propertyTriesLeftAuthPin.text = qsTranslate("Popup PIN","STR_POPUP_CARD_REMAIN")
+                                            + " " + triesLeft + " "
+                                            + qsTranslate("Popup PIN","STR_POPUP_CARD_TRIES")
                 }
             }else{
                 mainFormID.opacity = 0.5
-                dialogModifyPin.propertyLabelModifyTextTitle.text = "Modificar o Pin de Autenticação"
+                dialogModifyPin.propertyLabelModifyTextTitle.text = qsTranslate("Popup PIN","STR_PIN_AUTH_MODIFY")
                 dialogModifyPin.propertyTextFieldPinCurrent.text = ""
                 dialogModifyPin.propertyTextFieldPinNew.text = ""
                 dialogModifyPin.propertyTextFieldPinConfirm.text = ""
@@ -634,23 +640,25 @@ PageSecurityPinCodesForm {
                 var triesLeft = 0
                 triesLeft = gapi.verifyAuthPin("")
                 if (triesLeft === 3) {
-                    dialogPinOK.propertyDialogOkLabelText.text = "Verificação de PIN"
-                    dialogPinOK.propertyTextOkPin.text = "PIN introduzido correctamente"
+                    dialogPinOK.propertyDialogOkLabelText.text = qsTranslate("Popup PIN","STR_POPUP_CARD_PIN_VERIFY")
+                    dialogPinOK.propertyTextOkPin.text = qsTranslate("Popup PIN","STR_POPUP_CARD_PIN_SUCESS")
                     dialogPinOK.open()
                 }
                 if (triesLeft === 0) {
-                    propertyTriesLeftAuthPin.text = "PIN bloqueado!"
+                    propertyTriesLeftAuthPin.text = qsTranslate("Popup PIN","STR_POPUP_CARD_PIN_BLOCKED")
                 }
                 else if (triesLeft === Constants.TRIES_LEFT_ERROR) {
                     propertyTriesLeftAuthPin.text = ""
                 }
                 else {
-                    propertyTriesLeftAuthPin.text = "Restam "+ triesLeft + " tentativas."
+                    propertyTriesLeftAuthPin.text = qsTranslate("Popup PIN","STR_POPUP_CARD_REMAIN")
+                                            + " " + triesLeft + " "
+                                            + qsTranslate("Popup PIN","STR_POPUP_CARD_TRIES")
                 }
             }else{
                 mainFormID.opacity = 0.5
-                dialogTestPin.propertyLabelTextTitle.text = "Verificar o Pin da Autenticação"
-                dialogTestPin.propertyTextTypePin.text = "PIN da Autenticação"
+                dialogTestPin.propertyLabelTextTitle.text = qsTranslate("Popup PIN","STR_POPUP_CARD_PIN_VERIFY_AUTH")
+                dialogTestPin.propertyTextTypePin.text = qsTranslate("Popup PIN","STR_POPUP_CARD_PIN_AUTH")
                 dialogTestPin.propertyTextFieldPin.text = ""
                 dialogTestPin.open()
             }
@@ -665,22 +673,24 @@ PageSecurityPinCodesForm {
                 var triesLeft = 0
                 triesLeft = gapi.changeSignPin("","")
                 if (triesLeft === 3) {
-                    dialogPinOK.propertyDialogOkLabelText.text = "Modificação de PIN"
-                    dialogPinOK.propertyTextOkPin.text = "Alteração de PIN efectuada"
+                    dialogPinOK.propertyDialogOkLabelText.text = qsTranslate("Popup PIN","STR_PIN_MODIFY")
+                    dialogPinOK.propertyTextOkPin.text = qsTranslate("Popup PIN","STR_PIN_MODIFY_SUCESS")
                     dialogPinOK.open()
                 }
                 if (triesLeft === 0) {
-                    propertyTriesLeftSignPin.text = "PIN bloqueado!"
+                    propertyTriesLeftSignPin.text = qsTranslate("Popup PIN","STR_POPUP_CARD_PIN_BLOCKED")
                 }
                 else if (triesLeft === Constants.TRIES_LEFT_ERROR) {
                     propertyTriesLeftSignPin.text = ""
                 }
                 else {
-                    propertyTriesLeftSignPin.text = "Restam "+ triesLeft + " tentativas."
+                    propertyTriesLeftSignPin.text = qsTranslate("Popup PIN","STR_POPUP_CARD_REMAIN")
+                                            + " " + triesLeft + " "
+                                            + qsTranslate("Popup PIN","STR_POPUP_CARD_TRIES")
                 }
             }else{
                 mainFormID.opacity = 0.5
-                dialogModifyPin.propertyLabelModifyTextTitle.text = "Modificar o Pin da Assinatura"
+                dialogModifyPin.propertyLabelModifyTextTitle.text = qsTranslate("Popup PIN","STR_PIN_SIGN_MODIFY")
                 dialogModifyPin.propertyTextFieldPinCurrent.text = ""
                 dialogModifyPin.propertyTextFieldPinNew.text = ""
                 dialogModifyPin.propertyTextFieldPinConfirm.text = ""
@@ -697,23 +707,25 @@ PageSecurityPinCodesForm {
                 var triesLeft = 0
                 triesLeft = gapi.verifySignPin("")
                 if (triesLeft === 3) {
-                    dialogPinOK.propertyDialogOkLabelText.text = "Verificação de PIN"
-                    dialogPinOK.propertyTextOkPin.text = "PIN introduzido correctamente"
+                    dialogPinOK.propertyDialogOkLabelText.text = qsTranslate("Popup PIN","STR_POPUP_CARD_PIN_VERIFY")
+                    dialogPinOK.propertyTextOkPin.text = qsTranslate("Popup PIN","STR_POPUP_CARD_PIN_SUCESS")
                     dialogPinOK.open()
                 }
                 if (triesLeft === 0) {
-                    propertyTriesLeftSignPin.text = "PIN bloqueado!"
+                    propertyTriesLeftSignPin.text = qsTranslate("Popup PIN","STR_POPUP_CARD_PIN_BLOCKED")
                 }
                 else if (triesLeft === Constants.TRIES_LEFT_ERROR) {
                     propertyTriesLeftSignPin.text = ""
                 }
                 else {
-                    propertyTriesLeftSignPin.text = "Restam "+ triesLeft + " tentativas."
+                    propertyTriesLeftSignPin.text = qsTranslate("Popup PIN","STR_POPUP_CARD_REMAIN")
+                                            + " " + triesLeft + " "
+                                            + qsTranslate("Popup PIN","STR_POPUP_CARD_TRIES")
                 }
             }else{
                 mainFormID.opacity = 0.5
-                dialogTestPin.propertyLabelTextTitle.text = "Verificar o Pin da Assinatura"
-                dialogTestPin.propertyTextTypePin.text = "PIN da Assinatura"
+                dialogTestPin.propertyLabelTextTitle.text = qsTranslate("Popup PIN","STR_POPUP_CARD_PIN_VERIFY_SIGN")
+                dialogTestPin.propertyTextTypePin.text = qsTranslate("Popup PIN","STR_POPUP_CARD_PIN_SIGN")
                 dialogTestPin.propertyTextFieldPin.text = ""
                 dialogTestPin.open()
             }
@@ -724,24 +736,26 @@ PageSecurityPinCodesForm {
 
             if(Constants.USE_SDK_PIN_UI_POPUP){
                 var triesLeft = 0
-                triesLeft = gapi.changeSignPin("","")
+                triesLeft = gapi.changeAddressPin("","")
                 if (triesLeft === 3) {
-                    dialogPinOK.propertyDialogOkLabelText.text = "Modificação de PIN"
-                    dialogPinOK.propertyTextOkPin.text = "Alteração de PIN efectuada"
+                    dialogPinOK.propertyDialogOkLabelText.text = qsTranslate("Popup PIN","STR_PIN_MODIFY")
+                    dialogPinOK.propertyTextOkPin.text = qsTranslate("Popup PIN","STR_PIN_MODIFY_SUCESS")
                     dialogPinOK.open()
                 }
                 if (triesLeft === 0) {
-                    propertyTriesLeftSignPin.text = "PIN bloqueado!"
+                    propertyTriesLeftSignPin.text = qsTranslate("Popup PIN","STR_POPUP_CARD_PIN_BLOCKED")
                 }
                 else if (triesLeft === Constants.TRIES_LEFT_ERROR) {
                     propertyTriesLeftSignPin.text = ""
                 }
                 else {
-                    propertyTriesLeftSignPin.text = "Restam "+ triesLeft + " tentativas."
+                    propertyTriesLeftSignPin.text = qsTranslate("Popup PIN","STR_POPUP_CARD_REMAIN")
+                            + " " + triesLeft + " "
+                            + qsTranslate("Popup PIN","STR_POPUP_CARD_TRIES")
                 }
             }else{
                 mainFormID.opacity = 0.5
-                dialogModifyPin.propertyLabelModifyTextTitle.text = "Modificar o Pin da Morada"
+                dialogModifyPin.propertyLabelModifyTextTitle.text = qsTranslate("Popup PIN","STR_PIN_ADDRESS_MODIFY")
                 dialogModifyPin.propertyTextFieldPinCurrent.text = ""
                 dialogModifyPin.propertyTextFieldPinNew.text = ""
                 dialogModifyPin.propertyTextFieldPinConfirm.text = ""
@@ -757,23 +771,27 @@ PageSecurityPinCodesForm {
                 var triesLeft = 0
                 triesLeft = gapi.verifyAddressPin("")
                 if (triesLeft === 3) {
-                    dialogPinOK.propertyDialogOkLabelText.text = "Verificação de PIN"
-                    dialogPinOK.propertyTextOkPin.text = "PIN introduzido correctamente"
+                    dialogPinOK.propertyDialogOkLabelText.text = qsTranslate("Popup PIN","STR_POPUP_CARD_PIN_VERIFY")
+                    dialogPinOK.propertyTextOkPin.text = qsTranslate("Popup PIN","STR_POPUP_CARD_PIN_SUCESS")
                     dialogPinOK.open()
                 }
                 if (triesLeft === 0) {
-                    propertyTriesLeftAddressPin.text = "PIN bloqueado!"
+                    propertyTriesLeftAddressPin.text = qsTranslate("Popup PIN","STR_POPUP_CARD_PIN_BLOCKED")
                 }
                 else if (triesLeft === Constants.TRIES_LEFT_ERROR) {
                     propertyTriesLeftAddressPin.text = ""
                 }
                 else {
-                    propertyTriesLeftAddressPin.text = "Restam "+ triesLeft + " tentativas."
+                    propertyTriesLeftAddressPin.text = qsTranslate("Popup PIN","STR_POPUP_CARD_REMAIN")
+                            + " " + triesLeft + " "
+                            + qsTranslate("Popup PIN","STR_POPUP_CARD_TRIES")
                 }
             }else{
                 mainFormID.opacity = 0.5
-                dialogTestPin.propertyLabelTextTitle.text = "Verificar o Pin da Morada"
-                dialogTestPin.propertyTextTypePin.text = "PIN da Morada"
+                dialogTestPin.propertyLabelTextTitle.text =
+                        qsTranslate("Popup PIN","STR_POPUP_CARD_PIN_VERIFY_ADDRESS")
+                dialogTestPin.propertyTextTypePin.text =
+                        qsTranslate("Popup PIN","STR_POPUP_CARD_PIN_ADDRESS")
                 dialogTestPin.propertyTextFieldPin.text = ""
                 dialogTestPin.open()
             }
@@ -789,13 +807,15 @@ PageSecurityPinCodesForm {
                 console.log("Auth Pin tries left = " + gapi.getTriesLeftAuthPin())
                 triesLeft = gapi.getTriesLeftAuthPin()
                 if (triesLeft === 0) {
-                    propertyTriesLeftAuthPin.text = "PIN bloqueado!"
+                    propertyTriesLeftAuthPin.text = qsTranslate("Popup PIN","STR_POPUP_CARD_PIN_BLOCKED")
                 }
                 else if (triesLeft === Constants.TRIES_LEFT_ERROR) {
                     propertyTriesLeftAuthPin.text = ""
                 }
                 else {
-                    propertyTriesLeftAuthPin.text = "Restam "+ triesLeft + " tentativas."
+                    propertyTriesLeftAuthPin.text = qsTranslate("Popup PIN","STR_POPUP_CARD_REMAIN")
+                            + " " + triesLeft + " "
+                            + qsTranslate("Popup PIN","STR_POPUP_CARD_TRIES")
                     propertyButtonModifyAuth.enabled = true
                     propertyButtonTestAuth.enabled = true
                 }
@@ -804,13 +824,15 @@ PageSecurityPinCodesForm {
                 console.log("Sign Pin tries left = " + gapi.getTriesLeftSignPin())
                 triesLeft = gapi.getTriesLeftSignPin()
                 if (triesLeft === 0) {
-                    propertyTriesLeftSignPin.text = "PIN bloqueado!"
+                    propertyTriesLeftSignPin.text = qsTranslate("Popup PIN","STR_POPUP_CARD_PIN_BLOCKED")
                 }
                 else if (triesLeft === Constants.TRIES_LEFT_ERROR) {
                     propertyTriesLeftSignPin.text = ""
                 }
                 else {
-                    propertyTriesLeftSignPin.text = "Restam "+ triesLeft + " tentativas."
+                    propertyTriesLeftSignPin.text = qsTranslate("Popup PIN","STR_POPUP_CARD_REMAIN")
+                            + " " + triesLeft + " "
+                            + qsTranslate("Popup PIN","STR_POPUP_CARD_TRIES")
                     propertyButtonModifySign.enabled = true
                     propertyButtonTestSign.enabled = true
                 }
@@ -819,7 +841,7 @@ PageSecurityPinCodesForm {
                 console.log("Address Pin tries left = " + gapi.getTriesLeftAddressPin())
                 triesLeft = gapi.getTriesLeftAddressPin()
                 if (triesLeft === 0) {
-                    propertyTriesLeftAddressPin.text = "PIN bloqueado!"
+                    propertyTriesLeftAddressPin.text = qsTranslate("Popup PIN","STR_POPUP_CARD_PIN_BLOCKED")
                 }
                 else if (triesLeft === Constants.TRIES_LEFT_ERROR) {
                     propertyTriesLeftAddressPin.text = ""
@@ -827,7 +849,9 @@ PageSecurityPinCodesForm {
                     propertyButtonTestAddress.enabled = true
                 }
                 else {
-                    propertyTriesLeftAddressPin.text = "Restam "+ triesLeft + " tentativas."
+                    propertyTriesLeftAddressPin.text = qsTranslate("Popup PIN","STR_POPUP_CARD_REMAIN")
+                            + " " + triesLeft + " "
+                            + qsTranslate("Popup PIN","STR_POPUP_CARD_TRIES")
                     propertyButtonModifyAddress.enabled = true
                     propertyButtonTestAddress.enabled = true
                 }
@@ -844,7 +868,7 @@ PageSecurityPinCodesForm {
         var triesLeft = 0
         triesLeft = gapi.getTriesLeftAuthPin()
         if (triesLeft === 0) {
-            propertyTriesLeftAuthPin.text = "PIN bloqueado!"
+            propertyTriesLeftAuthPin.text = qsTranslate("Popup PIN","STR_POPUP_CARD_PIN_BLOCKED")
         }
         else if (triesLeft === Constants.TRIES_LEFT_ERROR) {
             propertyTriesLeftAuthPin.text = ""
@@ -852,7 +876,9 @@ PageSecurityPinCodesForm {
             propertyButtonTestAuth.enabled = true
         }
         else {
-            propertyTriesLeftAuthPin.text = "Restam "+ triesLeft + " tentativas."
+            propertyTriesLeftAuthPin.text = qsTranslate("Popup PIN","STR_POPUP_CARD_REMAIN")
+                    + " " + triesLeft + " "
+                    + qsTranslate("Popup PIN","STR_POPUP_CARD_TRIES")
             propertyButtonModifyAuth.enabled = true
             propertyButtonTestAuth.enabled = true
 

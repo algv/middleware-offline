@@ -3,7 +3,6 @@ import QtQuick.Controls 2.1
 import QtQuick.Dialogs 1.0
 import QtGraphicalEffects 1.0
 
-
 /* Constants imports */
 import "../../scripts/Constants.js" as Constants
 import "../../components" as Components
@@ -14,15 +13,45 @@ import QtQuick.Templates 2.0 as T
 Item {
     anchors.fill: parent
 
-    property variant filesArray:[]
+    property variant filesArray: []
     property bool fileLoaded: false
     property alias propertyFileDialog: fileDialog
+    property alias propertyBusyIndicator: busyIndicator
     property alias propertyMouseAreaPreCustom: mouseAreaPreCustom
     property alias propertyButtonAdd: buttonAdd
     property alias propertyButtonRemove: buttonRemove
     property alias propertyDropArea: dropArea
     property alias propertyRadioButtonDefault: radioButtonDefault
     property alias propertyRadioButtonCustom: radioButtonCustom
+
+    property real propertySigLineHeight: rectPreDefault.height * 0.1
+
+    property alias propertySigReasonText: sigReasonText
+    property alias propertySigSignedByText: sigSignedByText
+    property alias propertySigSignedByNameText: sigSignedByNameText
+    property alias propertySigNumIdText: sigNumIdText
+    property alias propertySigDateText: sigDateText
+    property alias propertySigLocationText: sigLocationText
+
+    property alias propertySigReasonTextCustom: sigReasonTextCustom
+    property alias propertySigSignedByTextCustom: sigSignedByTextCustom
+    property alias propertySigSignedByNameTextCustom: sigSignedByNameTextCustom
+    property alias propertySigNumIdTextCustom: sigNumIdTextCustom
+    property alias propertySigDateTextCustom: sigDateTextCustom
+    property alias propertySigLocationTextCustom: sigLocationTextCustom
+
+    property alias propertySigImg: dragSigImage
+    property alias propertySigWaterImg: dragSigWaterImage
+    property alias propertySigWaterImgCustom: dragSigWaterImageCustom
+    property alias propertyImagePreCustom: imagePreCustom
+
+    BusyIndicator {
+        id: busyIndicator
+        running: false
+        anchors.centerIn: parent
+        // BusyIndicator should be on top of all other content
+        z: 1
+    }
 
     Item {
         id: rowMain
@@ -33,11 +62,11 @@ Item {
             id: radioGroup
         }
 
-        Item{
+        Item {
             id: rectTop
             width: parent.width
-            height: parent.height * 0.5
-                    - ((Constants.HEIGHT_BOTTOM_COMPONENT + Constants.SIZE_ROW_V_SPACE) * 0.5)
+            height: parent.height * 0.5 - ((Constants.HEIGHT_BOTTOM_COMPONENT
+                                            + Constants.SIZE_ROW_V_SPACE) * 0.5)
             anchors.leftMargin: Constants.SIZE_ROW_H_SPACE
 
             DropShadow {
@@ -62,7 +91,8 @@ Item {
 
             RadioButton {
                 id: radioButtonDefault
-                text: "Usar assinatura padrão"
+                text: qsTranslate("PageDefinitionsSignature",
+                                  "STR_CUSTOM_SIGN_TITLE")
                 T.ButtonGroup.group: radioGroup
                 checked: true
                 opacity: enabled ? 1.0 : Constants.OPACITY_SIGNATURE_TEXT_DISABLED
@@ -85,38 +115,126 @@ Item {
                 color: "white"
                 anchors.top: radioButtonDefault.bottom
 
-                Image {
-                    id: imagePreDefault
-                    width: parent.width
-                    height: parent.height
-                    antialiasing: true
-                    fillMode: Image.PreserveAspectFit
-                    source: "../../images/dummy/CCdemo.png"
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    visible: true
+                Item {
+                    anchors.fill: rectPreDefault
                     opacity: radioButtonDefault.checked ? 1 : Constants.OPACITY_SIGNATURE_IMAGE_DISABLED
-                }
+                    Text {
+                        id: sigReasonText
+                        font.pixelSize: propertySigLineHeight * 0.8
+                        font.italic: true
+                        height: propertySigLineHeight
+                        width: parent.width - 4
+                        clip: true
+                        font.family: lato.name
+                        color: Constants.COLOR_TEXT_LABEL
+                        text: ""
+                        anchors.topMargin: 2
+                        x: 2
+                        visible: true
+                    }
+                    Image {
+                        id: dragSigWaterImage
+                        height: propertySigLineHeight * 4
+                        fillMode: Image.PreserveAspectFit
+                        anchors.top: sigReasonText.bottom
+                        anchors.topMargin: 2
+                        x: 2
+                        visible: true
+                    }
+                    Text {
+                        id: sigSignedByText
+                        font.pixelSize: propertySigLineHeight * 0.8
+                        height: propertySigLineHeight
+                        font.family: lato.name
+                        color: Constants.COLOR_TEXT_BODY
+                        anchors.top: sigReasonText.bottom
+                        text: ""
+                        x: 2
+                        visible: true
+                    }
+                    Text {
+                        id: sigSignedByNameText
+                        font.pixelSize: propertySigLineHeight * 0.8
+                        height: propertySigLineHeight
+                        width: parent.width - sigSignedByText.paintedWidth - 6
+                        clip: true
+                        font.family: lato.name
+                        font.bold: true
+                        color: Constants.COLOR_TEXT_BODY
+                        anchors.top: sigReasonText.bottom
+                        anchors.left: sigSignedByText.right
+                        text: ""
+                        x: 2
+                        visible: true
+                    }
+                    Text {
+                        id: sigNumIdText
+                        font.pixelSize: propertySigLineHeight * 0.8
+                        height: propertySigLineHeight
+                        width: parent.width - 4
+                        clip: true
+                        font.family: lato.name
+                        color: Constants.COLOR_TEXT_BODY
+                        anchors.top: sigSignedByText.bottom
+                        text: ""
+                        x: 2
+                        visible: true
+                    }
+                    Text {
+                        id: sigDateText
+                        font.pixelSize: propertySigLineHeight * 0.8
+                        height: propertySigLineHeight
+                        width: parent.width - 4
+                        clip: true
+                        font.family: lato.name
+                        color: Constants.COLOR_TEXT_BODY
+                        anchors.top: sigNumIdText.bottom
+                        x: 2
+                        visible: true
+                    }
+                    Text {
+                        id: sigLocationText
+                        font.pixelSize: propertySigLineHeight * 0.8
+                        height: propertySigLineHeight
+                        width: parent.width - 4
+                        clip: true
+                        font.family: lato.name
+                        color: Constants.COLOR_TEXT_BODY
+                        anchors.top: sigDateText.bottom
+                        text: ""
+                        x: 2
+                        visible: true
+                    }
 
+                    Image {
+                        id: dragSigImage
+                        height: propertySigLineHeight * 3
+                        fillMode: Image.PreserveAspectFit
+                        anchors.top: sigLocationText.bottom
+                        anchors.topMargin: parent.height * 0.1
+                        x: 2
+                        visible: true
+                    }
+                }
             }
         }
 
-        Item{
+        Item {
             id: rectBottom
             width: parent.width
-            height: parent.height * 0.5
-                    - ((Constants.HEIGHT_BOTTOM_COMPONENT + Constants.SIZE_ROW_V_SPACE) * 0.5)
+            height: parent.height * 0.5 - ((Constants.HEIGHT_BOTTOM_COMPONENT
+                                            + Constants.SIZE_ROW_V_SPACE) * 0.5)
                     + Constants.HEIGHT_BOTTOM_COMPONENT
             anchors.top: rectTop.bottom
             anchors.topMargin: Constants.SIZE_ROW_V_SPACE
 
-
             FileDialog {
                 id: fileDialog
-                title: "Escolha o ficheiro da assinatura personalizada"
+                title: qsTranslate("Popup File", "STR_POPUP_FILE_INPUT")
                 folder: shortcuts.home
-                modality : Qt.WindowModal
+                modality: Qt.WindowModal
                 selectMultiple: false
-                nameFilters: [ "Image files (*.jpg *.png)", "All files (*)" ]
+                nameFilters: ["Image files (*.jpg *.png)", "All files (*)"]
                 Component.onCompleted: visible = false
             }
             DropShadow {
@@ -141,7 +259,8 @@ Item {
 
             RadioButton {
                 id: radioButtonCustom
-                text: "Usar assinatura personalizada"
+                text: qsTranslate("PageDefinitionsSignature",
+                                  "STR_CUSTOM_SIGN_CUSTOM_TITLE")
                 T.ButtonGroup.group: radioGroup
                 font.pixelSize: Constants.SIZE_TEXT_LABEL
                 enabled: fileLoaded
@@ -160,80 +279,187 @@ Item {
             Rectangle {
                 id: rectPreCustom
                 width: parent.width
-                height: parent.height - radioButtonCustom.height
+                height: parent.height - radioButtonCustom.height - Constants.HEIGHT_BOTTOM_COMPONENT
                 color: "white"
                 anchors.top: radioButtonCustom.bottom
 
-                Image {
-                    id: imagePreCustom
-                    width: parent.width
-                    height: parent.height - Constants.HEIGHT_BOTTOM_COMPONENT
-                    antialiasing: true
-                    fillMode: Image.PreserveAspectFit
-                    source: "../../images/dummy/CCdemo_custom.png"
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    visible: fileLoaded
-                    opacity: radioButtonCustom.checked ? 1 : Constants.OPACITY_SIGNATURE_IMAGE_DISABLED
-                }
-                Text {
-                    id: textDragMsgImg
-                    width: parent.width
-                    height: parent.height - Constants.HEIGHT_BOTTOM_COMPONENT
-                    text:
-                        "Arraste para esta zona o ficheiro da assinatura personalizada
-ou
-clique para procurar o ficheiro
-( Dimensão máxima da imagem: 185 x 41 px)"
-                    font.bold: true
-                    wrapMode: Text.WordWrap
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                    font.pixelSize: Constants.SIZE_TEXT_BODY
-                    color: Constants.COLOR_TEXT_LABEL
-                    visible: !fileLoaded
-                    font.family: lato.name
+                Item {
+                    anchors.fill: rectPreCustom
                     DropArea {
-                        id: dropArea;
-                        anchors.fill: parent;
+                        id: dropArea
+                        anchors.fill: parent
+                        z: 1
+                    }
+
+                    MouseArea {
+                        id: mouseAreaPreCustom
+                        anchors.fill: parent
+                    }
+
+                    Text {
+                        id: sigReasonTextCustom
+                        font.pixelSize: propertySigLineHeight * 0.8
+                        font.italic: true
+                        height: propertySigLineHeight
+                        width: parent.width - 4
+                        clip: true
+                        font.family: lato.name
+                        color: Constants.COLOR_TEXT_LABEL
+                        text: ""
+                        anchors.topMargin: 2
+                        x: 2
+                        visible: true
+                        opacity: radioButtonCustom.checked ? 1 : Constants.OPACITY_SIGNATURE_IMAGE_DISABLED
+                    }
+                    Image {
+                        id: dragSigWaterImageCustom
+                        height: propertySigLineHeight * 4
+                        fillMode: Image.PreserveAspectFit
+                        anchors.top: sigReasonTextCustom.bottom
+                        anchors.topMargin: 2
+                        x: 2
+                        visible: true
+                        opacity: radioButtonCustom.checked ? 1 : Constants.OPACITY_SIGNATURE_IMAGE_DISABLED
+                    }
+                    Text {
+                        id: sigSignedByTextCustom
+                        font.pixelSize: propertySigLineHeight * 0.8
+                        height: propertySigLineHeight
+                        font.family: lato.name
+                        color: Constants.COLOR_TEXT_BODY
+                        anchors.top: sigReasonTextCustom.bottom
+                        x: 2
+                        visible: true
+                        opacity: radioButtonCustom.checked ? 1 : Constants.OPACITY_SIGNATURE_IMAGE_DISABLED
+                    }
+                    Text {
+                        id: sigSignedByNameTextCustom
+                        font.pixelSize: propertySigLineHeight * 0.8
+                        height: propertySigLineHeight
+                        width: parent.width - sigSignedByTextCustom.paintedWidth - 6
+                        clip: true
+                        font.family: lato.name
+                        font.bold: true
+                        color: Constants.COLOR_TEXT_BODY
+                        anchors.top: sigReasonTextCustom.bottom
+                        anchors.left: sigSignedByTextCustom.right
+                        x: 2
+                        visible: true
+                        opacity: radioButtonCustom.checked ? 1 : Constants.OPACITY_SIGNATURE_IMAGE_DISABLED
+                    }
+                    Text {
+                        id: sigNumIdTextCustom
+                        font.pixelSize: propertySigLineHeight * 0.8
+                        height: propertySigLineHeight
+                        width: parent.width - 4
+                        clip: true
+                        font.family: lato.name
+                        color: Constants.COLOR_TEXT_BODY
+                        anchors.top: sigSignedByTextCustom.bottom
+                        x: 2
+                        visible: true
+                        opacity: radioButtonCustom.checked ? 1 : Constants.OPACITY_SIGNATURE_IMAGE_DISABLED
+                    }
+                    Text {
+                        id: sigDateTextCustom
+                        font.pixelSize: propertySigLineHeight * 0.8
+                        height: propertySigLineHeight
+                        width: parent.width - 4
+                        clip: true
+                        font.family: lato.name
+                        color: Constants.COLOR_TEXT_BODY
+                        anchors.top: sigNumIdTextCustom.bottom
+                        x: 2
+                        visible: true
+                        opacity: radioButtonCustom.checked ? 1 : Constants.OPACITY_SIGNATURE_IMAGE_DISABLED
+                    }
+                    Text {
+                        id: sigLocationTextCustom
+                        font.pixelSize: propertySigLineHeight * 0.8
+                        height: propertySigLineHeight
+                        width: parent.width - 4
+                        clip: true
+                        font.family: lato.name
+                        color: Constants.COLOR_TEXT_BODY
+                        anchors.top: sigDateTextCustom.bottom
+                        x: 2
+                        visible: true
+                        opacity: radioButtonCustom.checked ? 1 : Constants.OPACITY_SIGNATURE_IMAGE_DISABLED
+                    }
+                    Rectangle {
+                        id: rectPreCustomImage
+                        width: 185
+                        height: 41
+                        anchors.top: sigLocationTextCustom.bottom
+                        anchors.topMargin: parent.height * 0.1
+                        x: 2
+                        visible: true
+                        color: Constants.COLOR_MAIN_SOFT_GRAY
+
+                        Image {
+                            id: imagePreCustom
+                            width: 185
+                            height: 41
+                            antialiasing: true
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            anchors.verticalCenter: parent.verticalCenter
+                            visible: fileLoaded
+                            opacity: radioButtonCustom.checked ? 1 : Constants.OPACITY_SIGNATURE_IMAGE_DISABLED
+                        }
+                    }
+                    Text {
+                        id: textDragMsgImg
+                        width: parent.width - rectPreCustomImage.width
+                        text: qsTranslate("PageDefinitionsSignature",
+                                          "STR_CUSTOM_SIGN_FILE_LOAD")
+                        font.bold: true
+                        wrapMode: Text.WordWrap
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                        anchors.top: sigLocationTextCustom.bottom
+                        anchors.topMargin: parent.height * 0.1
+                        anchors.left: rectPreCustomImage.right
+                        font.pixelSize: Constants.SIZE_TEXT_BODY
+                        color: Constants.COLOR_TEXT_LABEL
+                        visible: !fileLoaded
+                        font.family: lato.name
                     }
                 }
-                MouseArea {
-                    id: mouseAreaPreCustom
-                    width: parent.width
-                    height: parent.height - Constants.HEIGHT_BOTTOM_COMPONENT
-                }
-                Item{
+                Item {
                     id: rectSignLeft
-                    width: parent.width  * 0.50 - Constants.SIZE_ROW_H_SPACE
+                    width: parent.width * 0.50 - Constants.SIZE_ROW_H_SPACE
                     height: Constants.HEIGHT_BOTTOM_COMPONENT
-                    anchors.top: imagePreCustom.bottom
+                    anchors.top: rectPreCustom.bottom
                     x: Constants.SIZE_ROW_H_SPACE / 2
 
                     Button {
                         id: buttonRemove
-                        text: "Remover assinatura"
+                        text: qsTranslate("PageDefinitionsSignature",
+                                          "STR_CUSTOM_SIGN_REMOVE_BUTTON")
                         width: Constants.WIDTH_BUTTON
-                        height:Constants.HEIGHT_BOTTOM_COMPONENT
+                        height: Constants.HEIGHT_BOTTOM_COMPONENT
                         anchors.right: parent.right
                         font.pixelSize: Constants.SIZE_TEXT_FIELD
                         font.family: lato.name
                         font.capitalization: Font.MixedCase
                         anchors.horizontalCenter: parent.horizontalCenter
+                        enabled: fileLoaded
                     }
                 }
-                Item{
+                Item {
                     id: rectSignRight
                     width: parent.width * 0.50 - Constants.SIZE_ROW_H_SPACE
                     height: Constants.HEIGHT_BOTTOM_COMPONENT
-                    anchors.top: imagePreCustom.bottom
+                    anchors.top: rectPreCustom.bottom
                     anchors.left: rectSignLeft.right
                     anchors.leftMargin: Constants.SIZE_ROW_H_SPACE
 
                     Button {
                         id: buttonAdd
-                        text: "Adicionar assinatura"
+                        text: qsTranslate("PageDefinitionsSignature",
+                                          "STR_CUSTOM_SIGN_ADD_BUTTON")
                         width: Constants.WIDTH_BUTTON
-                        height:Constants.HEIGHT_BOTTOM_COMPONENT
+                        height: Constants.HEIGHT_BOTTOM_COMPONENT
                         anchors.right: parent.right
                         font.pixelSize: Constants.SIZE_TEXT_FIELD
                         font.family: lato.name

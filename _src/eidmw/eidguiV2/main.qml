@@ -6,6 +6,11 @@ import QtQuick.Controls.Universal 2.1
 import Qt.labs.settings 1.0
 import QtQuick.Window 2.2
 
+import "scripts/Functions.js" as Functions
+
+//Import C++ defined enums
+import eidguiV2 1.0
+
 /* Constants imports */
 import "scripts/Constants.js" as Constants
 
@@ -21,16 +26,168 @@ Window {
 
     title: "Autenticação.Gov"
 
-    property string appVersion: "Versão 0.0.0 - 0000"
-
     FontLoader { id: karma; source: "qrc:/fonts/karma/Karma-Medium.ttf" }
     FontLoader { id: lato; source: "qrc:/fonts/lato/Lato-Regular.ttf" }
 
+    onMinimumWidthChanged: {
+        console.log("Window Loaded")
+        controler.initTranslation()
+        gapi.initTranslation()
+    }
+
     onWidthChanged: {
         console.log("Resizing app width: " + width + "height" + height)
-        mainFormID.propertyMainMenuView.width = getMainMenuWidth(width)
-        mainFormID.propertySubMenuView.width = getSubMenuWidth(width)
-        mainFormID.propertyContentPagesView.width = getContentPagesMenuWidth(width)
+        mainFormID.propertyMainMenuView.width = Functions.getMainMenuWidth(width)
+        mainFormID.propertySubMenuView.width = Functions.getSubMenuWidth(width)
+        mainFormID.propertyContentPagesView.width = Functions.getContentPagesMenuWidth(width)
+    }
+
+    Connections {
+        target: controler
+        onSignalLanguageChangedError: {
+            mainFormID.propertyPageLoader.propertyGeneralTitleText.text =
+                    "Erro / Error"
+            mainFormID.propertyPageLoader.propertyGeneralPopUpLabelText.text =
+                    "Erro na leitura dos idiomas. Por favor, reinstale a aplicação \n
+Load language error. Please reinstall the application"
+            mainFormID.propertyPageLoader.propertyGeneralPopUp.visible = true
+        }
+    }
+
+    Connections {
+        target: gapi
+        onSignalGenericError: {
+            console.log("Signal onSignalGenericError")
+            mainFormID.propertyPageLoader.propertyGeneralTitleText.text =
+                    qsTranslate("Popup Card","STR_POPUP_ERROR")
+            mainFormID.propertyPageLoader.propertyGeneralPopUpLabelText.text =
+                    qsTranslate("Popup Card","STR_GENERIC_ERROR_MSG") + "\n\n" +
+                    qsTranslate("Popup Card","STR_ERROR_CODE") + error_code
+            mainFormID.propertyPageLoader.propertyGeneralPopUp.visible = true;
+        }
+        onSignalLanguageChangedError: {
+            mainFormID.propertyPageLoader.propertyGeneralTitleText.text =
+                    "Erro / Error"
+            mainFormID.propertyPageLoader.propertyGeneralPopUpLabelText.text =
+                    "Erro na leitura dos idiomas. Por favor, reinstale a aplicação \n
+Load language error. Please reinstall the application"
+            mainFormID.propertyPageLoader.propertyGeneralPopUp.visible = true
+        }
+
+        onSignalSetReaderComboIndex: {
+            console.log("onSignalSetReaderComboIndex index = " + selected_reader)
+            comboBoxReader.currentIndex = selected_reader
+        }
+
+        onSignalReaderContext: {
+            //console.log("Reader List: " + gapi.getRetReaderList())
+            //console.log("Reader List Count: " + gapi.getRetReaderList().length)
+
+            for ( var i = 0; i < gapi.getRetReaderList().length; ++i ) {
+              //  console.log("Reader List " + "i = " + i +" : "+ gapi.getRetReaderList()[i])
+                comboBoxReader.model = gapi.getRetReaderList()
+            }
+            mainFormID.opacity = 0.5
+            readerContext.open()
+        }
+    }
+    Dialog {
+        id: readerContext
+        width: 400
+        height: 250
+        visible: false
+        font.family: lato.name
+        // Center dialog in the main view
+        x: parent.width * 0.5 - readerContext.width * 0.5
+        y: parent.height * 0.5 - readerContext.height * 0.5
+
+        header: Label {
+            id: labelReaderContext
+            text: "Aviso"
+            elide: Label.ElideRight
+            padding: 24
+            bottomPadding: 0
+            font.bold: true
+            font.pixelSize: 16
+            color: Constants.COLOR_MAIN_BLUE
+        }
+        Item {
+            width: parent.width
+            height: rectMessageTop.height + rectReaderCombo.height + rectSwitchRemember.height
+
+            Item {
+                id: rectMessageTop
+                width: parent.width
+                height: 50
+                anchors.horizontalCenter: parent.horizontalCenter
+                Text {
+                    id: textMessageTop
+                    text: "Múltiplos cartões detectados"
+                    font.pixelSize: Constants.SIZE_TEXT_LABEL
+                    font.family: lato.name
+                    color: Constants.COLOR_TEXT_LABEL
+                    height: parent.height
+                    width: parent.width
+                    anchors.bottom: parent.bottom
+                    wrapMode: Text.WordWrap
+                }
+            }
+            Rectangle {
+                id: rectReaderCombo
+                width: parent.width
+                color: "white"
+                height: 3 * Constants.SIZE_TEXT_FIELD
+                anchors.top : rectMessageTop.bottom
+
+                ComboBox {
+                    id: comboBoxReader
+                    width: parent.width
+                    height: 3 * Constants.SIZE_TEXT_FIELD
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    font.family: lato.name
+                    font.pixelSize: Constants.SIZE_TEXT_FIELD
+                    font.capitalization: Font.MixedCase
+                    visible: true
+                }
+            }
+            Item {
+                id: rectSwitchRemember
+                width: parent.width
+                height: 50
+                anchors.top: rectReaderCombo.bottom
+                anchors.horizontalCenter: parent.horizontalCenter
+                visible: true
+                Text {
+                    id: textNote
+                    text:  "Para alterar essa opção mais tarde, vá para o menu de configuração"
+                    font.pixelSize: Constants.SIZE_TEXT_LABEL
+                    font.family: lato.name
+                    color: Constants.COLOR_TEXT_LABEL
+                    height: parent.height
+                    width: parent.width
+                    anchors.bottom: parent.bottom
+                    wrapMode: Text.WordWrap
+                }
+            }
+        }
+
+        standardButtons: DialogButtonBox.Ok | DialogButtonBox.Cancel
+        onAccepted: {
+            console.log("propertyComboBoxReader onActivated index = " + comboBoxReader.currentIndex)
+            gapi.setReaderByUser(comboBoxReader.currentIndex)
+
+            mainFormID.opacity = 1
+            mainFormID.propertyPageLoader.source = mainFormID.propertyPageLoader.source
+
+            // Force reload page loader
+            var temp = mainFormID.propertyPageLoader.source
+            mainFormID.propertyPageLoader.source = ""
+            mainFormID.propertyPageLoader.source = temp
+        }
+        onRejected: {
+            mainFormID.opacity = 1
+        }
     }
 
     MainForm {
@@ -64,7 +221,7 @@ Window {
                     property: "opacity"
                     easing.type: Easing.Linear
                     to: 1;
-                    duration: Constants.ANIMATION_CHANGE_OPACITY
+                    duration: mainFormID.propertShowAnimation ? Constants.ANIMATION_CHANGE_OPACITY : 0
                 }
                 NumberAnimation
                 {
@@ -73,7 +230,7 @@ Window {
                     property: "width"
                     easing.type: Easing.OutQuad
                     to: mainFormID.propertyMainView.width * Constants.MAIN_MENU_VIEW_RELATIVE_SIZE;
-                    duration: Constants.ANIMATION_MOVE_VIEW
+                    duration: mainFormID.propertShowAnimation ? Constants.ANIMATION_MOVE_VIEW : 0
                 }
                 NumberAnimation
                 {
@@ -82,7 +239,7 @@ Window {
                     property: "width"
                     easing.type: Easing.OutQuad
                     to: mainFormID.propertyMainView.width * Constants.SUB_MENU_VIEW_RELATIVE_SIZE;
-                    duration: Constants.ANIMATION_MOVE_VIEW
+                    duration: mainFormID.propertShowAnimation ? Constants.ANIMATION_MOVE_VIEW : 0
                 }
             },
             Transition {
@@ -95,7 +252,7 @@ Window {
                     property: "opacity"
                     easing.type: Easing.Linear
                     to: 1;
-                    duration: Constants.ANIMATION_CHANGE_OPACITY
+                    duration: mainFormID.propertShowAnimation ? Constants.ANIMATION_CHANGE_OPACITY : 0
                 }
                 NumberAnimation
                 {
@@ -104,7 +261,7 @@ Window {
                     property: "opacity"
                     easing.type: Easing.Linear
                     to: 1;
-                    duration: Constants.ANIMATION_CHANGE_OPACITY
+                    duration: mainFormID.propertShowAnimation ? Constants.ANIMATION_CHANGE_OPACITY : 0
                 }
                 NumberAnimation
                 {
@@ -113,7 +270,7 @@ Window {
                     property: "width"
                     easing.type: Easing.OutQuad
                     to: mainFormID.propertyMainView.width * Constants.MAIN_MENU_VIEW_RELATIVE_SIZE;
-                    duration: Constants.ANIMATION_MOVE_VIEW
+                    duration: mainFormID.propertShowAnimation ? Constants.ANIMATION_MOVE_VIEW : 0
                 }
                 NumberAnimation
                 {
@@ -122,7 +279,7 @@ Window {
                     property: "width"
                     easing.type: Easing.OutQuad
                     to: mainFormID.propertyMainView.width * Constants.SUB_MENU_VIEW_RELATIVE_SIZE;
-                    duration: Constants.ANIMATION_MOVE_VIEW
+                    duration: mainFormID.propertShowAnimation ? Constants.ANIMATION_MOVE_VIEW : 0
                 }
                 NumberAnimation
                 {
@@ -131,7 +288,7 @@ Window {
                     property: "width"
                     easing.type: Easing.OutQuad
                     to: mainFormID.propertyMainView.width * Constants.CONTENT_PAGES_VIEW_RELATIVE_SIZE
-                    duration: Constants.ANIMATION_MOVE_VIEW
+                    duration: mainFormID.propertShowAnimation ? Constants.ANIMATION_MOVE_VIEW : 0
                 }
             },
             Transition {
@@ -144,7 +301,7 @@ Window {
                     property: "opacity"
                     easing.type: Easing.Linear
                     to: 0;
-                    duration: Constants.ANIMATION_CHANGE_OPACITY
+                    duration: mainFormID.propertShowAnimation ? Constants.ANIMATION_CHANGE_OPACITY : 0
                 }
                 NumberAnimation
                 {
@@ -153,7 +310,7 @@ Window {
                     property: "opacity"
                     easing.type: Easing.Linear
                     to: 0;
-                    duration: Constants.ANIMATION_CHANGE_OPACITY
+                    duration: mainFormID.propertShowAnimation ? Constants.ANIMATION_CHANGE_OPACITY : 0
                 }
                 NumberAnimation
                 {
@@ -162,7 +319,7 @@ Window {
                     property: "width"
                     easing.type: Easing.OutQuad
                     to: mainFormID.propertyMainView.width;
-                    duration: Constants.ANIMATION_MOVE_VIEW
+                    duration: mainFormID.propertShowAnimation ? Constants.ANIMATION_MOVE_VIEW : 0
                 }
                 NumberAnimation
                 {
@@ -171,7 +328,7 @@ Window {
                     property: "width"
                     easing.type: Easing.OutQuad
                     to: 0;
-                    duration: Constants.ANIMATION_MOVE_VIEW
+                    duration: mainFormID.propertShowAnimation ? Constants.ANIMATION_MOVE_VIEW : 0
                 }
             },
             Transition {
@@ -184,7 +341,7 @@ Window {
                     property: "opacity"
                     easing.type: Easing.Linear
                     to: 0;
-                    duration: Constants.ANIMATION_CHANGE_OPACITY
+                    duration: mainFormID.propertShowAnimation ? Constants.ANIMATION_CHANGE_OPACITY : 0
                 }
                 NumberAnimation
                 {
@@ -193,7 +350,7 @@ Window {
                     property: "opacity"
                     easing.type: Easing.Linear
                     to: 0;
-                    duration: Constants.ANIMATION_CHANGE_OPACITY
+                    duration: mainFormID.propertShowAnimation ? Constants.ANIMATION_CHANGE_OPACITY : 0
                 }
                 NumberAnimation
                 {
@@ -202,7 +359,7 @@ Window {
                     property: "width"
                     easing.type: Easing.OutQuad
                     to: mainFormID.propertyMainView.width;
-                    duration: Constants.ANIMATION_MOVE_VIEW
+                    duration: mainFormID.propertShowAnimation ? Constants.ANIMATION_MOVE_VIEW : 0
                 }
                 NumberAnimation
                 {
@@ -211,7 +368,7 @@ Window {
                     property: "width"
                     easing.type: Easing.OutQuad
                     to: 0;
-                    duration: Constants.ANIMATION_MOVE_VIEW
+                    duration: mainFormID.propertShowAnimation ? Constants.ANIMATION_MOVE_VIEW : 0
                 }
                 NumberAnimation
                 {
@@ -220,7 +377,7 @@ Window {
                     property: "width"
                     easing.type: Easing.OutQuad
                     to: 0
-                    duration: Constants.ANIMATION_MOVE_VIEW
+                    duration: mainFormID.propertShowAnimation ? Constants.ANIMATION_MOVE_VIEW : 0
                 }
             },
             Transition {
@@ -233,7 +390,7 @@ Window {
                     property: "opacity"
                     easing.type: Easing.Linear
                     to: 0;
-                    duration: Constants.ANIMATION_CHANGE_OPACITY
+                    duration: mainFormID.propertShowAnimation ? Constants.ANIMATION_CHANGE_OPACITY : 0
                 }
                 NumberAnimation
                 {
@@ -243,7 +400,7 @@ Window {
                     easing.type: Easing.OutQuad
                     to: mainFormID.propertyMainView.width
                         * (Constants.CONTENT_PAGES_VIEW_RELATIVE_SIZE + Constants.SUB_MENU_VIEW_RELATIVE_SIZE)
-                    duration: Constants.ANIMATION_MOVE_VIEW
+                    duration: mainFormID.propertShowAnimation ? Constants.ANIMATION_MOVE_VIEW : 0
                 }
                 NumberAnimation
                 {
@@ -252,7 +409,7 @@ Window {
                     property: "width"
                     easing.type: Easing.OutQuad
                     to: 0;
-                    duration: Constants.ANIMATION_MOVE_VIEW
+                    duration: mainFormID.propertShowAnimation ? Constants.ANIMATION_MOVE_VIEW : 0
                 }
             },
             Transition {
@@ -265,7 +422,7 @@ Window {
                     property: "opacity"
                     easing.type: Easing.Linear
                     to: 1;
-                    duration: Constants.ANIMATION_CHANGE_OPACITY
+                    duration: mainFormID.propertShowAnimation ? Constants.ANIMATION_CHANGE_OPACITY : 0
                 }
                 NumberAnimation
                 {
@@ -274,7 +431,7 @@ Window {
                     property: "width"
                     easing.type: Easing.OutQuad
                     to: mainFormID.propertyMainView.width * Constants.CONTENT_PAGES_VIEW_RELATIVE_SIZE
-                    duration: Constants.ANIMATION_MOVE_VIEW
+                    duration: mainFormID.propertShowAnimation ? Constants.ANIMATION_MOVE_VIEW : 0
                 }
                 NumberAnimation
                 {
@@ -283,7 +440,7 @@ Window {
                     property: "width"
                     easing.type: Easing.OutQuad
                     to: mainFormID.propertyMainView.width * Constants.SUB_MENU_VIEW_RELATIVE_SIZE;
-                    duration: Constants.ANIMATION_MOVE_VIEW
+                    duration: mainFormID.propertShowAnimation ? Constants.ANIMATION_MOVE_VIEW : 0
                 }
             }
         ]
@@ -372,7 +529,7 @@ Window {
                 }
             }
             Text {
-                text: name
+                text: qsTranslate("MainMenuModel", name) + controler.autoTr
                 color:  mainFormID.propertyMainMenuListView.currentIndex === index ?
                             Constants.COLOR_TEXT_MAIN_MENU_SELECTED :
                             Constants.COLOR_TEXT_MAIN_MENU_DEFAULT
@@ -391,7 +548,7 @@ Window {
                 fillMode: Image.PreserveAspectFit
                 x: parent.width * Constants.IMAGE_ARROW_MAIN_MENU_RELATIVE
                 anchors.verticalCenter: parent.verticalCenter
-                source: getMainMenuArrowSource(index, mouseAreaMainMenu.containsMouse)
+                source: Functions.getMainMenuArrowSource(index, mouseAreaMainMenu.containsMouse)
                 visible: mainFormID.state === "STATE_HOME" ?
                              false:
                              true
@@ -406,6 +563,9 @@ Window {
                              true
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.verticalCenter: parent.bottom
+            }
+            Component.onDestruction: {
+                imageArrowMainMenu.source = ""
             }
         }
     }
@@ -429,8 +589,8 @@ Window {
                                     + mainFormID.propertyMainMenuBottomListView.model.get(index).subdata.get(i).subName);
                         mainFormID.propertySubMenuListView.model
                         .append({
-                                    "subName": mainFormID.propertyMainMenuBottomListView.model.get(index).subdata.get(i)
-                                    .subName,
+                                    "subName": qsTranslate("MainMenuBottomModel",
+                                                           mainFormID.propertyMainMenuBottomListView.model.get(index).subdata.get(i).subName),
                                     "expand": mainFormID.propertyMainMenuBottomListView.model.get(index).subdata.get(i)
                                     .expand,
                                     "url": mainFormID.propertyMainMenuBottomListView.model.get(index).subdata.get(i)
@@ -461,9 +621,14 @@ Window {
                 height: Constants.SIZE_IMAGE_BOTTOM_MENU
                 fillMode: Image.PreserveAspectFit
                 anchors.horizontalCenter: parent.horizontalCenter
-                source: getBottomMenuImgSource(index,mouseAreaMainMenuBottom.containsMouse)
+                source: Functions.getBottomMenuImgSource(index,mouseAreaMainMenuBottom.containsMouse)
+
+            }
+            Component.onDestruction: {
+                imageMainMenuBottom.source = ""
             }
         }
+
     }
     Component {
         id: subMenuDelegate
@@ -490,8 +655,8 @@ Window {
                 }
             }
             Text {
-                text: subName
-                color: getSubNameColor(index, mouseAreaSubMenu.containsMouse)
+                text: qsTranslate("MainMenuModel", subName)
+                color: Functions.getSubNameColor(index, mouseAreaSubMenu.containsMouse)
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.verticalCenter: parent.verticalCenter
                 font.weight: mouseAreaSubMenu.containsMouse ?
@@ -511,161 +676,28 @@ Window {
                 anchors.right: parent.right
                 anchors.rightMargin: Constants.IMAGE_ARROW_SUB_MENU_MARGIN
                 anchors.verticalCenter: parent.verticalCenter
-                source: getSubMenuArrowSource(index, mouseAreaSubMenu.containsMouse)
+                source: Functions.getSubMenuArrowSource(index, mouseAreaSubMenu.containsMouse)
             }
             Rectangle {
                 id: subMenuViewHorizontalLine
                 width: Constants.MAIN_MENU_LINE_H_SIZE
                 height: Constants.MAIN_MENU_LINE_V_SIZE
                 color: Constants.COLOR_MAIN_DARK_GRAY
-                visible: Boolean(getIsVisibleSubMenuViewHorizontalLine(index))
+                visible: Boolean(Functions.getIsVisibleSubMenuViewHorizontalLine(index))
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.verticalCenter: parent.bottom
+            }
+            Component.onDestruction: {
+                imageArrowSubMenu.source = ""
             }
         }
     }
 
     Component.onCompleted: {
         console.log("Window mainWindow Completed")
-
-    }
-
-    function getMainMenuWidth(parentWidth){
-        var handColor
-
-        switch(mainFormID.state) {
-        case "STATE_FIRST_RUN":
-            handColor = parentWidth * 2 * Constants.MAIN_MENU_VIEW_RELATIVE_SIZE
-            break;
-        case "STATE_HOME":
-            handColor = parentWidth
-            break;
-        case "STATE_EXPAND":
-            handColor = parentWidth * Constants.MAIN_MENU_VIEW_RELATIVE_SIZE
-            break;
-        default: //STATE_NORMAL
-            handColor = parentWidth * Constants.MAIN_MENU_VIEW_RELATIVE_SIZE
-        }
-        return handColor
-    }
-    function getSubMenuWidth(parentWidth){
-        var handColor
-
-        switch(mainFormID.state) {
-        case "STATE_FIRST_RUN":
-            handColor = 0
-            break;
-        case "STATE_HOME":
-            handColor = 0
-            break;
-        case "STATE_EXPAND":
-            handColor = 0
-            break;
-        default: //STATE_NORMAL
-            handColor = parentWidth * Constants.SUB_MENU_VIEW_RELATIVE_SIZE
-        }
-        return handColor
-    }
-    function getContentPagesMenuWidth(parentWidth){
-        var handColor
-
-        switch(mainFormID.state) {
-        case "STATE_FIRST_RUN":
-            handColor = parentWidth * Constants.CONTENT_PAGES_VIEW_RELATIVE_SIZE
-            break;
-        case "STATE_HOME":
-            handColor = 0
-            break;
-        case "STATE_EXPAND":
-            handColor = parentWidth * Constants.CONTENT_PAGES_VIEW_RELATIVE_SIZE +
-                    parentWidth * Constants.SUB_MENU_VIEW_RELATIVE_SIZE
-            break;
-        default: //STATE_NORMAL
-            handColor = parentWidth * Constants.CONTENT_PAGES_VIEW_RELATIVE_SIZE
-        }
-        return handColor
-    }
-
-    function getIsVisibleSubMenuViewHorizontalLine(index)
-    {
-        var handVisible
-        if(mainFormID.propertySubMenuListView.count -1 === index ||
-                mainFormID.propertySubMenuListView.currentIndex === index ||
-                mainFormID.propertySubMenuListView.currentIndex -1 === index)
-        {
-            handVisible =  false
-        }else{
-            handVisible =  true
-        }
-        return handVisible
-    }
-
-    function getSubNameColor(index, containsMouse)
-    {
-        var handColor
-        if(mainFormID.propertySubMenuListView.currentIndex === index)
-        {
-            handColor =  Constants.COLOR_TEXT_SUB_MENU_SELECTED
-        }else{
-            if(containsMouse === true)
-            {
-                handColor = Constants.COLOR_TEXT_SUB_MENU_MOUSE_OVER
-            }else{
-                handColor = Constants.COLOR_TEXT_SUB_MENU_DEFAULT
-            }
-        }
-        return handColor
-    }
-
-    function getSubMenuArrowSource(index, containsMouse)
-    {
-        var handSource
-        if(mainFormID.propertySubMenuListView.currentIndex === index)
-        {
-            handSource =  "images/arrow-right_white_AMA.png"
-        }else{
-            if(containsMouse === true)
-            {
-                handSource = "images/arrow-right_hover.png"
-            }else{
-                handSource = ""
-            }
-        }
-        return handSource
-    }
-
-    function getMainMenuArrowSource(index, containsMouse)
-    {
-        var handSource
-        if(mainFormID.propertyMainMenuListView.currentIndex === index)
-        {
-            handSource =  "images/arrow-right_white_AMA.png"
-        }else{
-            if(containsMouse === true)
-            {
-                handSource = "images/arrow-right_hover.png"
-            }else{
-                handSource = ""
-            }
-        }
-        return handSource
-    }
-
-    function getBottomMenuImgSource(index, containsMouse)
-    {
-        var handSource
-        if(mainFormID.propertyMainMenuBottomListView.currentIndex === index)
-        {
-            handSource =  mainFormID.propertyMainMenuBottomListView.model.get(index).imageUrlSel
-        }else{
-            if(containsMouse === true)
-            {
-                handSource = mainFormID.propertyMainMenuBottomListView.model.get(index).imageUrlSel
-            }else{
-                handSource = mainFormID.propertyMainMenuBottomListView.model.get(index).imageUrl
-            }
-        }
-        return handSource
+        gapi.setEventCallbacks()
+        controler.initTranslation()
+        mainFormID.propertShowAnimation = controler.isAnimationsEnabled()
+        gapi.initTranslation()
     }
 }
-

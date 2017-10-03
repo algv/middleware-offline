@@ -2,17 +2,22 @@
 #include <iostream>
 #include <string>
 
+#include <QUuid>
+#include <QByteArray>
+
 #include "cmdServices.h"
 #include "cmdErrors.h"
 #include "WSHttpBinding_USCORECCMovelSignature.nsmap"
 #include "soapWSHttpBinding_USCORECCMovelSignatureProxy.h"
 
+#include "Util.h"
+#include "Config.h"
 #include "MiscUtil.h"
 
 #define CC_MOVEL_SERVICE_GET_CERTIFICATE    ( (char *)"http://Ama.Authentication.Service/CCMovelSignature/GetCertificate" )
 #define CC_MOVEL_SERVICE_SIGN               ( (char *)"http://Ama.Authentication.Service/CCMovelSignature/CCMovelSign" )
 #define CC_MOVEL_SERVICE_VALIDATE_OTP       ( (char *)"http://Ama.Authentication.Service/CCMovelSignature/ValidateOtp" )
-#define ENDPOINT_CC_MOVEL_SIGNATURE         ( (const char *)"https://dev.cmd.autenticacao.gov.pt/Ama.Authentication.Service/CCMovelSignature.svc" )
+#define ENDPOINT_CC_MOVEL_SIGNATURE         ( (const char *)"/Ama.Authentication.Service/CCMovelSignature.svc" )
 
 #define STR_EMPTY                           ""
 #define SOAP_MAX_RETRIES                    3
@@ -22,21 +27,6 @@
 #define SOAP_CONNECT_TIMEOUT_DEFAULT        10 /*20*/
 #define SOAP_MUST_NO_UNDERSTAND             0
 #define SOAP_MUST_UNDERSTAND                1
-
-#define SOAP_RETRY_START  unsigned char retries = 0;                                  \
-                          bool exitFlag = false;                                      \
-                          while ( ( !exitFlag ) && ( retries < SOAP_MAX_RETRIES ) ){  \
-                            if ( retries > 0 ) MWLOG_ERR( logBuf, "Retry: %d", retries );
-
-#define SOAP_RETRY_END(ret) switch( ret ){                                      \
-                                case ERR_NONE:                                  \
-                                    exitFlag = true;                            \
-                                    break;                                      \
-                                default:                                        \
-                                    if ( !IS_SOAP_ERROR(ret) ) exitFlag = true; \
-                            }                                                   \
-                            retries++;                                          \
-                        }
 
 static char logBuf[512];
 
@@ -50,13 +40,13 @@ xsd__base64Binary *encode_base64( soap *sp, std::string in_str ){
     if ( sp == NULL ){
         MWLOG_ERR( logBuf, "Null soap" );
         return NULL;
-    }/* if ( sp == NULL ) */
+    }
 
     xsd__base64Binary *encoded = NULL;
     if ( in_str.empty() ){
         MWLOG_ERR( logBuf, "Empty in_str" );
         return NULL;
-    }/* if ( in_str.empty() ) */
+    }
 
     int len;
     char *c_ptr = getCPtr( in_str, &len );
@@ -67,31 +57,32 @@ xsd__base64Binary *encode_base64( soap *sp, std::string in_str ){
     if ( encoded == NULL ){
         /* this is the same pointer as encoded->__ptr */
         if ( c_ptr != NULL ) free( c_ptr );
-    }/* if ( encoded == NULL ) */
+    }
 
     return encoded;
-}/* CMDServices::encode_base64() */
+}
 
 /*  *********************************************************
     ***    handleError()                                  ***
     ********************************************************* */
 int handleError( WSHttpBinding_USCORECCMovelSignatureProxy proxy, int ret ){
-    if ( ret != SOAP_OK ){
+    if ( ret != SOAP_OK ) {
         if ( ( proxy.soap_fault() != NULL )
-            && ( proxy.soap_fault()->faultstring ) ){
+            && ( proxy.soap_fault()->faultstring)) {
             MWLOG_ERR( logBuf
                         , "SOAP Fault! %s"
                         , proxy.soap_fault()->faultstring );
-        } else{
+        }
+        else{
             MWLOG_ERR( logBuf, "Unknown SOAP Fault! - ret: %d", ret );
-        }/* if ( fault != NULL ) */
+        }
 
         return ret;
-    }/* if ( ret != SOAP_OK ) */
+    }
 
     MWLOG_INFO( logBuf, "No Error" );
     return SOAP_OK;
-}/* handleError() */
+}
 
 /*  *******************************************************************************************************************
     ****
@@ -102,22 +93,28 @@ int handleError( WSHttpBinding_USCORECCMovelSignatureProxy proxy, int ret ){
 /*  *********************************************************
     ***    CMDServices::CMDServices()                     ***
     ********************************************************* */
-CMDServices::CMDServices( const char *endpoint ){
+CMDServices::CMDServices( const char *endpoint ) {
     if ( !init( SOAP_RECV_TIMEOUT_DEFAULT
               , SOAP_SEND_TIMEOUT_DEFAULT
               , SOAP_CONNECT_TIMEOUT_DEFAULT
-              , SOAP_MUST_NO_UNDERSTAND ) ) return;
+              , SOAP_MUST_NO_UNDERSTAND ) ) 
+        return;
 
     const char *new_endpoint = NULL;
-    new_endpoint = ( NULL == endpoint ) ? ENDPOINT_CC_MOVEL_SIGNATURE : endpoint;
+    std::string cmd_host = utilStringNarrow(CConfig::GetString(CConfig::EIDMW_CONFIG_PARAM_GENERAL_CMD_HOST));
+    std::string cmd_endpoint = "https://" + cmd_host + ENDPOINT_CC_MOVEL_SIGNATURE;
+      
+    new_endpoint = ( NULL == endpoint ) ? cmd_endpoint.c_str() : endpoint;
 
-    setEndPoint( new_endpoint );
-}/* CMDServices::CMDServices() */
+    MWLOG_DEBUG(logBuf, "Using Endpoint: %s", new_endpoint);
+
+    setEndPoint(strdup(new_endpoint));
+}
 
 /*  *********************************************************
     ***    CMDServices::~CMDServices()                    ***
     ********************************************************* */
-CMDServices::~CMDServices(){
+CMDServices::~CMDServices() {
     soap *sp = getSoap();
     if ( NULL == sp ) return;
 
@@ -125,18 +122,18 @@ CMDServices::~CMDServices(){
     soap_end( sp );
 
     setSoap( NULL );
-}/* CMDServices::~CMDServices() */
+}
 
 /*  *********************************************************
     ***    CMDServices::init()                            ***
     ********************************************************* */
-bool CMDServices::init( int recv_timeout, int send_timeout
-                        , int connect_timeout, short mustUnderstand ){
+bool CMDServices::init(int recv_timeout, int send_timeout,
+                        int connect_timeout, short mustUnderstand) {
     soap *sp = soap_new2( SOAP_C_UTFSTRING, SOAP_C_UTFSTRING );
     if ( sp == NULL ){
         MWLOG_ERR( logBuf, "Null soap" );
         return false;
-    }/* if ( sp == NULL ) */
+    }
 
     setUserId( STR_EMPTY );
 
@@ -161,82 +158,87 @@ bool CMDServices::init( int recv_timeout, int send_timeout
 
         MWLOG_ERR( logBuf, "soap_ssl_client_context() failed - code: %d", ret );
         return false;
-    }/* if ( ret != SOAP_OK ) */
+    }
 
     setSoap( sp );
 
     return true;
-}/* CMDServices::init() */
+}
 
 /*  *********************************************************
     ***    CMDServices::getSoap()                         ***
     ********************************************************* */
 soap *CMDServices::getSoap(){
     return m_soap;
-}/* CMDServices::getSoap() */
+}
 
 /*  *********************************************************
     ***    CMDServices::setSoap()                         ***
     ********************************************************* */
 void CMDServices::setSoap( soap *in_soap ){
     m_soap = in_soap;
-}/* CMDServices::setSoap() */
+}
 
 /*  *********************************************************
     ***    CMDServices::setEndPoint()                     ***
     ********************************************************* */
 void CMDServices::setEndPoint( const char *endpoint ){
     m_endpoint = endpoint;
-}/* CMDServices::m_endpoint() */
+}
 
 /*  *********************************************************
     ***    CMDServices::getEndPoint()                     ***
     ********************************************************* */
 const char *CMDServices::getEndPoint(){
     return m_endpoint;
-}/* CMDServices::getEndPoint() */
+}
 
 /*  *********************************************************
     ***    CMDServices::getProcessID()                    ***
     ********************************************************* */
 std::string CMDServices::getProcessID(){
     return m_processID;
-}/* CMDServices::getProcessID() */
+}
 
 /*  *********************************************************
     ***    CMDServices::setProcessID()                    ***
     ********************************************************* */
 void CMDServices::setProcessID( std::string processID ){
     m_processID = processID;
-}/* CMDServices::setProcessID() */
+}
 
 /*  *********************************************************
     ***    CMDServices::getApplicationID()                ***
     ********************************************************* */
 std::string CMDServices::getApplicationID(){
     return m_applicationID;
-}/* CMDServices::getApplicationID() */
+}
 
 /*  *********************************************************
     ***    CMDServices::setApplicationID()                ***
     ********************************************************* */
 void CMDServices::setApplicationID( std::string applicationID ){
     m_applicationID = applicationID;
-}/* CMDServices::setApplicationID() */
+}
 
 /*  *********************************************************
     ***    CMDServices::getUserId()                       ***
     ********************************************************* */
 std::string CMDServices::getUserId(){
     return m_userId;
-}/* CMDServices::getUserId() */
+}
 
 /*  *********************************************************
     ***    CMDServices::setUserId()                       ***
     ********************************************************* */
 void CMDServices::setUserId( std::string in_userId ){
     m_userId = in_userId;
-}/* CMDServices::setUserId() */
+}
+
+QString generateMsgID() {
+    QUuid mmg_UUID = QUuid::createUuid();
+    return mmg_UUID.toString();
+}
 
 /*  *******************************************************************************************************************
     ****
@@ -247,20 +249,13 @@ void CMDServices::setUserId( std::string in_userId ){
 /*  *********************************************************
     ***    CMDServices::get_GetCertificateRequest()       ***
     ********************************************************* */
-_ns2__GetCertificate *CMDServices::get_GetCertificateRequest(
-                                                  soap *sp
+_ns2__GetCertificate *CMDServices::get_GetCertificateRequest(soap *sp
                                                 , char *endpoint
                                                 , std::string in_applicationID
-                                                , std::string *in_userId ){
+                                                , std::string *in_userId) {
     SOAP_ENV__Header *soapHeader = soap_new_SOAP_ENV__Header( sp );
     soapHeader->wsa__To = endpoint;
 
-    /* TODO
-        generate random messageID - generate UUID
-        We have to change the MessageID value for each call
-    */
-    char *messageID = (char *)"urn:uuid:50aafd78-f8ad-4744-8059-c0c4a935bca8";
-    soapHeader->wsa__MessageID = messageID;
     soapHeader->wsa__Action = CC_MOVEL_SERVICE_GET_CERTIFICATE;
 
     //Set the created header in our soap structure
@@ -273,7 +268,7 @@ _ns2__GetCertificate *CMDServices::get_GetCertificateRequest(
     send->userId        = in_userId;
 
     return send;
-}/* CMDServices::get_GetCertificateRequest() */
+}
 
 /*  *********************************************************
     ***    CMDServices::checkGetCertificateResponse()     ***
@@ -283,15 +278,15 @@ int CMDServices::checkGetCertificateResponse(
     if ( response == NULL ){
         MWLOG_ERR( logBuf, "Null response" );
         return ERR_NULL_HANDLER;
-    }/* if ( response == NULL ) */
+    }
 
     if ( response->GetCertificateResult == NULL ){
         MWLOG_ERR( logBuf, "Null GetCertificateResult" );
         return ERR_NULL_DATA;
-    }/* if ( response->GetCertificateResult == NULL ) */
+    }
 
     return ERR_NONE;
-}/* CMDServices::checkGetCertificateResponse(() */
+}
 
 /*  *********************************************************
     ***    CMDServices::GetCertificate()                  ***
@@ -303,12 +298,12 @@ int CMDServices::GetCertificate( std::string in_userId
     if ( sp == NULL ){
         MWLOG_ERR( logBuf, "Null soap" );
         return ERR_NULL_HANDLER;
-    }/* if ( sp == NULL ) */
+    }
 
     if ( in_userId.empty() ){
         MWLOG_ERR( logBuf, "Empty userId" );
         return ERR_INV_USERID;
-    }/* if ( in_userId.empty() ) */
+    }
 
     const char *endPoint = getEndPoint();
     WSHttpBinding_USCORECCMovelSignatureProxy proxy
@@ -322,25 +317,27 @@ int CMDServices::GetCertificate( std::string in_userId
                                                         , (char*)endPoint
                                                         , getApplicationID()
                                                         , &in_userId );
-    if ( send == NULL ){
+    if ( send == NULL ) {
         MWLOG_ERR( logBuf, "NULL send parameters" );
         return ERR_NULL_HANDLER;
-    }/* if ( send == NULL ) */
+    }
+
+    QByteArray msg_id = generateMsgID().toUtf8();
+    sp->header->wsa__MessageID = (char *) msg_id.constData();
 
     /*
         Call GetCertificate service
     */
     _ns2__GetCertificateResponse response;
     int ret;
-    SOAP_RETRY_START
-        ret = proxy.GetCertificate( send, response );
-    SOAP_RETRY_END(ret)
+
+    ret = proxy.GetCertificate( send, response );
 
     /* Clean pointers before exit */
-    if ( send->applicationId != NULL ){
+    if ( send->applicationId != NULL ) {
         if ( send->applicationId->__ptr != NULL )
             free( send->applicationId->__ptr );
-    }/* if ( send->applicationId != NULL ) */
+    }
 
     /* Handling errors */
     if ( handleError( proxy, ret ) != ERR_NONE ) return ret;
@@ -353,10 +350,10 @@ int CMDServices::GetCertificate( std::string in_userId
     if ( out_certificate != NULL ){
         *out_certificate = getCPtr( *response.GetCertificateResult
                                     , out_certificateLen );
-    }/* if ( out_certificate != NULL ) */
+    }
 
     return ERR_NONE;
-}/* CMDServices::GetCertificate() */
+}
 
 /*  *******************************************************************************************************************
     ****
@@ -377,12 +374,6 @@ _ns2__CCMovelSign *CMDServices::get_CCMovelSignRequest(
     SOAP_ENV__Header *soapHeader = soap_new_SOAP_ENV__Header( sp );
     soapHeader->wsa__To = endpoint;
 
-    /* TODO
-        generate random messageID - generate UUID
-        We have to change the MessageID value for each call
-    */
-    char *messageID = (char *)"urn:uuid:50aafd78-f8ad-4744-8059-c0c4a935bca9";
-    soapHeader->wsa__MessageID = messageID;
     soapHeader->wsa__Action = CC_MOVEL_SERVICE_SIGN;
 
     //Set the created header in our soap structure
@@ -397,7 +388,7 @@ _ns2__CCMovelSign *CMDServices::get_CCMovelSignRequest(
 
     _ns2__CCMovelSign *send = soap_new_set__ns2__CCMovelSign( sp, soapBody );
     return send;
-}/* CMDServices::get_CCMovelSignRequest() */
+}
 
 /*  *********************************************************
     ***    CMDServices::checkCCMovelSignResponse()        ***
@@ -406,15 +397,15 @@ int CMDServices::checkCCMovelSignResponse( _ns2__CCMovelSignResponse *response )
     if ( response == NULL ){
         MWLOG_ERR( logBuf, "Null response" );
         return ERR_NULL_HANDLER;
-    }/* if ( response == NULL ) */
+    }
 
     if ( response->CCMovelSignResult == NULL ){
         MWLOG_ERR( logBuf, "Null CCMovelSignResult" );
         return ERR_NULL_DATA;
-    }/* if ( response->CCMovelSignResult == NULL ) */
+    }
 
     return ERR_NONE;
-}/* checkCCMovelSignResponse() */
+}
 
 /*  *********************************************************
     ***    CMDServices::CCMovelSign()                     ***
@@ -425,23 +416,23 @@ int CMDServices::CCMovelSign( std::string in_hash, std::string in_pin ){
     if ( sp == NULL ){
         MWLOG_ERR( logBuf, "Null soap" );
         return ERR_NULL_HANDLER;
-    }/* if ( sp == NULL ) */
+    }
 
     if ( in_hash.empty() ){
         MWLOG_ERR( logBuf, "Empty hash" );
         return ERR_INV_HASH;
-    }/* if ( in_hash.empty() ) */
+    }
 
     if ( in_pin.empty() ){
         MWLOG_ERR( logBuf, "Empty pin" );
         return ERR_INV_USERPIN;
-    }/* if ( in_pin.empty() ) */
+    }
 
     std::string in_userId = getUserId();
     if ( in_userId.empty() ){
         MWLOG_ERR( logBuf, "Empty userId" );
         return ERR_INV_USERID;
-    }/* if ( in_userId.empty() ) */
+    }
 
     /*
         ProcessID initialization
@@ -452,6 +443,9 @@ int CMDServices::CCMovelSign( std::string in_hash, std::string in_pin ){
     WSHttpBinding_USCORECCMovelSignatureProxy proxy
                             = WSHttpBinding_USCORECCMovelSignatureProxy( sp );
     proxy.soap_endpoint = endPoint;
+
+    QByteArray msg_id = generateMsgID().toUtf8();
+    sp->header->wsa__MessageID = (char *) msg_id.constData();
 
     /*
         Get CCMovelSign request
@@ -464,16 +458,14 @@ int CMDServices::CCMovelSign( std::string in_hash, std::string in_pin ){
     if ( send == NULL ){
         MWLOG_ERR( logBuf, "NULL send parameters" );
         return ERR_NULL_HANDLER;
-    }/* if ( send == NULL ) */
+    }
 
     /*
         Call CCMovelSign service
     */
     _ns2__CCMovelSignResponse response;
     int ret;
-    SOAP_RETRY_START
-        ret = proxy.CCMovelSign( NULL, NULL, send, response );
-    SOAP_RETRY_END(ret)
+    ret = proxy.CCMovelSign( NULL, NULL, send, response );
 
     /* Clean pointers before exit */
     if ( send->request != NULL ){
@@ -481,18 +473,18 @@ int CMDServices::CCMovelSign( std::string in_hash, std::string in_pin ){
         if ( send->request->Pin != NULL ){
             if ( send->request->Pin->__ptr != NULL )
                 free( send->request->Pin->__ptr );
-        }/* if ( send->request->Pin != NULL ) */
+        }
 
         if ( send->request->Hash != NULL ){
             if ( send->request->Hash->__ptr != NULL )
                 free( send->request->Hash->__ptr );
-        }/* if ( send->request->Hash != NULL ) */
+        }
 
         if ( send->request->ApplicationId != NULL ){
             if ( send->request->ApplicationId->__ptr != NULL )
                 free( send->request->ApplicationId->__ptr );
-        }/* if ( send->request->ApplicationId != NULL ) */
-    }/* if ( send->request != NULL ) */
+        }
+    }
 
     /* Handling errors */
     if ( handleError( proxy, ret ) != ERR_NONE ) return ret;
@@ -506,7 +498,7 @@ int CMDServices::CCMovelSign( std::string in_hash, std::string in_pin ){
     setProcessID( *response.CCMovelSignResult->ProcessId );
 
     return ERR_NONE;
-}/* CMDServices::CCMovelSign(() */
+}
 
 /*  *******************************************************************************************************************
     ****
@@ -525,12 +517,6 @@ _ns2__ValidateOtp *CMDServices::get_ValidateOtpRequest(  soap *sp
     SOAP_ENV__Header *soapHeader = soap_new_SOAP_ENV__Header( sp );
     soapHeader->wsa__To = endpoint;
 
-    /* TODO
-        generate random messageID - generate UUID
-        We have to change the MessageID value for each call
-    */
-    char *messageID = (char *)"urn:uuid:50aafd78-f8ad-4744-8059-c0c4a935bcaa";
-    soapHeader->wsa__MessageID = messageID;
     soapHeader->wsa__Action = CC_MOVEL_SERVICE_VALIDATE_OTP;
 
     //Set the created header in our soap structure
@@ -544,58 +530,57 @@ _ns2__ValidateOtp *CMDServices::get_ValidateOtpRequest(  soap *sp
     send->applicationId = encode_base64( sp, in_applicationID );
 
     return send;
-}/* CMDServices::get_ValidateOtpRequest() */
+}
 
 /*  *********************************************************
     ***    CMDServices::checkValidateOtpResponse()        ***
     ********************************************************* */
 int CMDServices::checkValidateOtpResponse( _ns2__ValidateOtpResponse *response ){
-    if ( response == NULL ){
+    if ( response == NULL ) {
         MWLOG_ERR( logBuf, "Null response" );
         return ERR_NULL_HANDLER;
-    }/* if ( response == NULL ) */
+    }
 
-    if ( response->ValidateOtpResult == NULL ){
+    if ( response->ValidateOtpResult == NULL ) {
         MWLOG_ERR( logBuf, "Null ValidateOtpResult" );
         return ERR_NULL_HANDLER;
-    }/* if ( response->ValidateOtpResult == NULL ) */
+    }
 
-    if ( response->ValidateOtpResult->Signature == NULL ){
+    if ( response->ValidateOtpResult->Signature == NULL ) {
         MWLOG_ERR( logBuf, "Null Signature" );
         return ERR_NULL_HANDLER;
-    }/* if ( response->ValidateOtpResult->Signature == NULL ) */
+    }
 
-    if ( response->ValidateOtpResult->Signature->__ptr == NULL ){
+    if ( response->ValidateOtpResult->Signature->__ptr == NULL ) {
         MWLOG_ERR( logBuf, "Null Signature pointer" );
         return ERR_NULL_DATA;
-    }/* if ( response->ValidateOtpResult->Signature->__ptr == NULL ) */
+    }
 
-    if ( response->ValidateOtpResult->Signature->__size < 1 ){
-        MWLOG_ERR( logBuf, "Invalide Signature pointer size: %d"
-
-                , response->ValidateOtpResult->Signature->__size );
+    if ( response->ValidateOtpResult->Signature->__size < 1 ) {
+        MWLOG_ERR( logBuf, "Invalide Signature pointer size: %d",
+                  response->ValidateOtpResult->Signature->__size);
         return ERR_SIZE;
-    }/* if ( response->ValidateOtpResult->Signature->__ptr == NULL ) */
+    }
 
     return ERR_NONE;
-}/* CMDServices::checkValidateOtpResponse(() */
+}
 
 /*  *********************************************************
     ***    CMDServices::ValidateOtp()                     ***
     ********************************************************* */
 int CMDServices::ValidateOtp( std::string in_code
                             , unsigned char **outSignature
-                            , unsigned int *outSignatureLen ){
+                            , unsigned int *outSignatureLen) {
     soap *sp = getSoap();
     if ( sp == NULL ){
         MWLOG_ERR( logBuf, "Null soap" );
         return ERR_NULL_HANDLER;
-    }/* if ( sp == NULL ) */
+    }
 
     if ( in_code.empty() ){
         MWLOG_ERR( logBuf, "Empty code" );
         return ERR_INV_CODE;
-    }/* if ( in_code.empty() ) */
+    }
 
     std::string code = in_code;
     std::string processId = getProcessID();
@@ -604,10 +589,14 @@ int CMDServices::ValidateOtp( std::string in_code
     WSHttpBinding_USCORECCMovelSignatureProxy proxy
                             = WSHttpBinding_USCORECCMovelSignatureProxy( sp );
     proxy.soap_endpoint = endPoint;
+
+    QByteArray msg_id = generateMsgID().toUtf8();
+    sp->header->wsa__MessageID = (char *) msg_id.constData();
+
     /*
         Get ValidateOtp request
     */
-    _ns2__ValidateOtp *send = get_ValidateOtpRequest(  sp
+    _ns2__ValidateOtp *send = get_ValidateOtpRequest(sp
                                                      , (char*)endPoint
                                                      , getApplicationID()
                                                      , &code
@@ -616,22 +605,21 @@ int CMDServices::ValidateOtp( std::string in_code
     if ( send == NULL ){
         MWLOG_ERR( logBuf, "Null send parameters" );
         return ERR_NULL_HANDLER;
-    }/* if ( send == NULL ) */
+    }
 
     /*
         Call ValidateOtp service
     */
     _ns2__ValidateOtpResponse response;
     int ret;
-    SOAP_RETRY_START
-        ret = proxy.ValidateOtp( NULL, NULL, send, response );
-    SOAP_RETRY_END(ret)
+    ret = proxy.ValidateOtp( NULL, NULL, send, response );
+
 
     /* Clean pointers before exit */
     if ( send->applicationId != NULL ){
         if ( send->applicationId->__ptr != NULL )
             free( send->applicationId->__ptr );
-    }/* if ( send->applicationId != NULL ) */
+    }
 
     /* Handling errors */
     if ( handleError( proxy, ret ) != ERR_NONE ) return ret;
@@ -641,25 +629,25 @@ int CMDServices::ValidateOtp( std::string in_code
     if ( ret != ERR_NONE ) return ret;
 
     /* Set signature */
-    if ( ( outSignature != NULL ) && ( outSignatureLen != NULL ) ){
+    if ( ( outSignature != NULL ) && ( outSignatureLen != NULL ) ) {
         *outSignature =
             (unsigned char*)malloc(
                             response.ValidateOtpResult->Signature->__size );
 
-        if ( outSignature == NULL ){
+        if ( outSignature == NULL ) {
             MWLOG_ERR( logBuf, "Malloc fail!" );
             return ERR_NULL_HANDLER;
-        }/* if ( outSignature == NULL ) */
+        }
 
         memcpy( *outSignature
                 , response.ValidateOtpResult->Signature->__ptr
                 , response.ValidateOtpResult->Signature->__size );
 
         *outSignatureLen = response.ValidateOtpResult->Signature->__size;
-    }/* if ( ( outSignature != NULL ) && ( outSignatureLen != NULL ) ) */
+    }
 
     return ERR_NONE;
-}/* CMDServices::ValidateOtp() */
+}
 
 /*  *******************************************************************************************************************
     ****
@@ -670,53 +658,53 @@ int CMDServices::ValidateOtp( std::string in_code
 /*  *********************************************************
     ***    CMDServices::getCertificate()                  ***
     ********************************************************* */
-int CMDServices::getCertificate( std::string in_userId
-                                , CByteArray& out_cb ){
+int CMDServices::getCertificate(std::string in_userId,
+                                 std::vector<CByteArray> &out_cb)   {
     CByteArray empty_certificate;
 
-    if ( in_userId.empty() ){
+    if ( in_userId.empty() ) {
         MWLOG_ERR( logBuf, "Empty userId" );
         return ERR_INV_USERID;
-    }/* if ( in_userId.empty() ) */
+    }
 
     char *p_certificate = NULL;
     int certificateLen = 0;
 
     int ret = GetCertificate( in_userId, &p_certificate, &certificateLen );
-    if ( ret != ERR_NONE ) return ret;
+    if (ret != ERR_NONE)
+        return ret;
 
-    char *pem = toPEM( p_certificate, certificateLen );
-    free( p_certificate );
+    std::vector<std::string> certs = toPEM(p_certificate, certificateLen );
+    free(p_certificate);
 
-    if ( NULL == pem ){
-        MWLOG_ERR( logBuf, "Null pem" );
-        return ERR_NULL_HANDLER;
-    }/* if ( NULL == pem ) */
+    for (int i=0; i != certs.size(); i++)
+    {
+        CByteArray ba;
+        unsigned char *der = NULL;
+        int derLen = PEM_to_DER((char *)certs.at(i).c_str(), &der);
 
-    unsigned char *der = NULL;
-    int derLen = PEM_to_DER( pem, &der );
-    free( pem );
+       if ( derLen < 0 ) {
+         MWLOG_ERR( logBuf, "PEM -> DER conversion failed - len: %d", derLen );
+         return ERR_INV_CERTIFICATE;
 
-    if ( derLen < 0 ){
-        MWLOG_ERR( logBuf, "PEM -> DER conversion failed - len: %d", derLen );
-        return ERR_INV_CERTIFICATE;
-    }/* if ( derLen < 0 ) */
+       }
+       ba.Append( (const unsigned char *)der, (unsigned long)derLen );
+       out_cb.push_back(ba);
+    }
 
-    out_cb.ClearContents();
-    out_cb.Append( (const unsigned char *)der, (unsigned long)derLen );
-
+    
     /* Set variables */
     setUserId( in_userId );
 
     return ERR_NONE;
-}/* CMDServices::getCertificate() */
+}
 
 /*  *********************************************************
     ***    CMDServices::sendDataToSign()                  ***
     ********************************************************* */
 int CMDServices::sendDataToSign( std::string in_hash, std::string in_pin ){
     return CCMovelSign( in_hash, in_pin );
-}/* CMDServices::sendDataToSign() */
+}
 
 /*  *********************************************************
     ***    CMDServices::getSignature()                    ***
@@ -729,19 +717,19 @@ int CMDServices::getSignature( std::string in_code, CByteArray& out_cb ){
     if ( ret != ERR_NONE ){
         MWLOG_ERR( logBuf, "ValidateOtp failed" );
         return ret;
-    }/* if ( ret != ERR_NONE ) */
+    }
 
     if ( NULL == sign ){
         MWLOG_ERR( logBuf, "Null signature" );
         return ERR_NULL_HANDLER;
-    }/* if ( NULL == sign ) */
+    }
 
     if ( signLen <= 0 ){
         free( sign );
 
         MWLOG_ERR( logBuf, "Invalid signature length: %d", signLen );
         return ERR_SIZE;
-    }/* if ( signLen <= 0 ) */
+    }
 
     out_cb.ClearContents();
     out_cb.Append( (const unsigned char *)sign, (unsigned long)signLen );
@@ -749,7 +737,7 @@ int CMDServices::getSignature( std::string in_code, CByteArray& out_cb ){
     free( sign );
 
     return ERR_NONE;
-}/* CMDServices::getSignature() */
+}
 
 
-}/* namespace */
+}

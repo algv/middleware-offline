@@ -6,33 +6,15 @@ import "../../scripts/Constants.js" as Constants
 import eidguiV2 1.0
 
 PageCardIdentifyForm {
-    property alias propertyLabelText: labelText
-    Dialog {
-        id: errorDialog
-        width: 400
-        height: 200
-        visible: false
-
-        font.family: lato.name
-        // Center dialog in the main view
-        x: - mainMenuView.width - subMenuView.width
-           + mainView.width * 0.5 - errorDialog.width * 0.5
-        y: parent.height * 0.5 - errorDialog.height * 0.5
-
-        header: Label {
-              id: labelText
-              elide: Label.ElideRight
-              padding: 24
-              bottomPadding: 0
-              font.bold: true
-              font.pixelSize: 16
-              color: Constants.COLOR_MAIN_BLUE
-        }
-        standardButtons: DialogButtonBox.Ok
-    }
 
     Connections {
         target: gapi
+        onSignalGenericError: {
+            propertyBusyIndicator.running = false
+        }
+        onSignalReaderContext: {
+            propertyBusyIndicator.running = false
+        }
         onSignalCardDataChanged: {
             console.log("Data Card Identify --> Data Changed")
             //console.trace();
@@ -50,19 +32,95 @@ PageCardIdentifyForm {
             propertyTextBoxParentsFather.propertyDateField.text = gapi.getDataCardIdentifyValue(GAPI.Father)
             propertyTextBoxParentsMother.propertyDateField.text = gapi.getDataCardIdentifyValue(GAPI.Mother)
             propertyTextBoxNotes.propertyDateField.text = gapi.getDataCardIdentifyValue(GAPI.AccidentalIndications)
+            propertyPhoto.source = ""
+            propertyPhoto.cache = false
             propertyPhoto.source = "image://myimageprovider/photo.png"
             propertyBusyIndicator.running = false
         }
-
         onSignalCardAccessError: {
+            console.log("Card Identify Page onSignalCardAccessError")
+            if (error_code != GAPI.CardUserPinCancel){
+                if (error_code == GAPI.NoReaderFound) {
+                    mainFormID.propertyPageLoader.propertyGeneralTitleText.text =
+                            qsTranslate("Popup Card","STR_POPUP_ERROR")
+                    mainFormID.propertyPageLoader.propertyGeneralPopUpLabelText.text =
+                            qsTranslate("Popup Card","STR_POPUP_NO_CARD_READER")
+                }
+                else if (error_code == GAPI.NoCardFound) {
+                    mainFormID.propertyPageLoader.propertyGeneralTitleText.text =
+                            qsTranslate("Popup Card","STR_POPUP_ERROR")
+                    mainFormID.propertyPageLoader.propertyGeneralPopUpLabelText.text =
+                            qsTranslate("Popup Card","STR_POPUP_NO_CARD")
+                }
+                else if (error_code == GAPI.SodCardReadError) {
+                    mainFormID.propertyPageLoader.propertyGeneralTitleText.text =
+                            qsTranslate("Popup Card","STR_POPUP_ERROR")
+                    mainFormID.propertyPageLoader.propertyGeneralPopUpLabelText.text =
+                            qsTranslate("Popup Card","STR_SOD_VALIDATION_ERROR")
+                }
+                else {
+                    mainFormID.propertyPageLoader.propertyGeneralTitleText.text =
+                            qsTranslate("Popup Card","STR_POPUP_ERROR")
+                    mainFormID.propertyPageLoader.propertyGeneralPopUpLabelText.text =
+                            qsTranslate("Popup Card","STR_POPUP_CARD_ACCESS_ERROR")
+                }
+                mainFormID.propertyPageLoader.propertyGeneralPopUp.visible = true;
+            }
+
+            propertyTextBoxName.propertyDateField.text = ""
+            propertyTextBoxSurName.propertyDateField.text = ""
+            propertyTextBoxSex.propertyDateField.text = ""
+            propertyTextBoxHeight.propertyDateField.text = ""
+            propertyTextBoxNacionality.propertyDateField.text = ""
+            propertyTextBoxDateOfBirth.propertyDateField.text = ""
+            propertyTextBoxDocumentNum.propertyDateField.text = ""
+            propertyTextBoxExpirydate.propertyDateField.text = ""
+            propertyTextBoxCountry.propertyDateField.text = ""
+            propertyTextBoxParentsFather.propertyDateField.text = ""
+            propertyTextBoxParentsMother.propertyDateField.text = ""
+            propertyTextBoxNotes.propertyDateField.text = ""
+            propertyPhoto.source = ""
+            propertyPhoto.cache = false
             propertyBusyIndicator.running = false
-            if (error_code == GAPI.NoReaderFound) {
-                propertyLabelText.text = "Error: No card reader found!"
+        }
+        onSignalCardChanged: {
+            console.log("Card Identify Page onSignalCardChanged")
+            if (error_code == GAPI.ET_CARD_REMOVED) {
+                mainFormID.propertyPageLoader.propertyGeneralTitleText.text =
+                        qsTranslate("Popup Card","STR_POPUP_CARD_READ")
+                mainFormID.propertyPageLoader.propertyGeneralPopUpLabelText.text =
+                        qsTranslate("Popup Card","STR_POPUP_CARD_REMOVED")
+                propertyTextBoxName.propertyDateField.text = ""
+                propertyTextBoxSurName.propertyDateField.text = ""
+                propertyTextBoxSex.propertyDateField.text = ""
+                propertyTextBoxHeight.propertyDateField.text = ""
+                propertyTextBoxNacionality.propertyDateField.text = ""
+                propertyTextBoxDateOfBirth.propertyDateField.text = ""
+                propertyTextBoxDocumentNum.propertyDateField.text = ""
+                propertyTextBoxExpirydate.propertyDateField.text = ""
+                propertyTextBoxCountry.propertyDateField.text = ""
+                propertyTextBoxParentsFather.propertyDateField.text = ""
+                propertyTextBoxParentsMother.propertyDateField.text = ""
+                propertyTextBoxNotes.propertyDateField.text = ""
+                propertyPhoto.source = ""
+                propertyPhoto.cache = false
             }
-            else if (error_code == GAPI.NoCardFound) {
-                propertyLabelText.text = "Error: No Card Found!"
+            else if (error_code == GAPI.ET_CARD_CHANGED) {
+                mainFormID.propertyPageLoader.propertyGeneralTitleText.text =
+                         qsTranslate("Popup Card","STR_POPUP_CARD_READ")
+                mainFormID.propertyPageLoader.propertyGeneralPopUpLabelText.text =
+                        qsTranslate("Popup Card","STR_POPUP_CARD_CHANGED")
+                propertyBusyIndicator.running = true
+                gapi.startCardReading()
             }
-            errorDialog.visible = true
+            else{
+                mainFormID.propertyPageLoader.propertyGeneralTitleText.text =
+                        qsTranslate("Popup Card","STR_POPUP_CARD_READ")
+                mainFormID.propertyPageLoader.propertyGeneralPopUpLabelText.text =
+                        qsTranslate("Popup Card","STR_POPUP_CARD_READ_UNKNOWN")
+            }
+
+            mainFormID.propertyPageLoader.propertyGeneralPopUp.visible = true;
         }
 
     }

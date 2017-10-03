@@ -44,11 +44,9 @@
         <file>contentPages/services/PageServicesSignSimpleForm.ui.qml</file>
         <file>contentPages/definitions/PageDefinitionsApp.qml</file>
         <file>contentPages/definitions/PageDefinitionsAppForm.ui.qml</file>
-        <file>images/logo_cor400.png</file>
         <file>components/Accordion.qml</file>
         <file>contentPages/definitions/PageDefinitionsUpdates.qml</file>
         <file>contentPages/definitions/PageDefinitionsUpdatesForm.ui.qml</file>
-        <file>contentPages/security/PinCodesModel.qml</file>
         <file>components/TextBullet.qml</file>
         <file>components/CardRowTop.qml</file>
         <file>images/definitions_icon.png</file>
@@ -72,11 +70,17 @@
         <file>images/logo_CC.png</file>
         <file>components/TitleBar.qml</file>
         <file>components/FrameWindow.qml</file>
-        <file>images/flags/pt32.png</file>
-        <file>images/flags/uk32.png</file>
         <file>favicon.ico</file>
         <file>images/tooltip_grey.png</file>
         <file>components/PDFPreview.qml</file>
         <file>images/icons-move.png</file>
+        <file>images/pteid_signature_watermark.jpg</file>
+        <file>images/logo_compete2020.png</file>
+        <file>contentPages/card/PageCardPrint.qml</file>
+        <file>contentPages/card/PageCardPrintForm.ui.qml</file>
+        <file>images/pdf_document_header.png</file>
+        <file>contentPages/definitions/PageDefinitionsSCAP.qml</file>
+        <file>contentPages/definitions/PageDefinitionsSCAPForm.ui.qml</file>
+        <file>scripts/Functions.js</file>
     </qresource>
 </RCC>

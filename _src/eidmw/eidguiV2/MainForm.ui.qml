@@ -5,7 +5,7 @@ import QtQuick.Layouts 1.3
 import "scripts/Constants.js" as Constants
 import "components" as Components
 
-Item {
+Rectangle {
     anchors.fill: parent
 
     property alias propertyMainView: mainView
@@ -22,6 +22,11 @@ Item {
     property alias propertyPageLoader: pageLoaderID
 
     property alias propertyImageLogo : mouseAreaImageLogo
+
+    property bool propertShowAnimation: true
+
+    border.width: 1
+    border.color : Constants.COLOR_MAIN_BLUE
 
     /* Title bar */
     Components.TitleBar {
@@ -94,6 +99,9 @@ Item {
                 width: parent.width
                 height: parent.height * Constants.MAIN_MENU_RELATIVE_V_SIZE
                 boundsBehavior: Flickable.StopAtBounds
+                highlightFollowsCurrentItem: true
+                highlightResizeDuration: propertShowAnimation ? Constants.ANIMATION_LISTVIEW_RESIZE : 0
+                highlightMoveDuration : propertShowAnimation ? Constants.ANIMATION_LISTVIEW_MOVE : 0
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.verticalCenter: parent.verticalCenter
                 model: MainMenuModel {}
@@ -105,6 +113,9 @@ Item {
                 width: Constants.BOTTOM_MENU_WIDTH_SIZE
                 height: parent.height * Constants.MAIN_MENU_BOTTOM_RELATIVE_V_SIZE
                 boundsBehavior: Flickable.StopAtBounds
+                highlightFollowsCurrentItem: true
+                highlightResizeDuration: propertShowAnimation ? Constants.ANIMATION_LISTVIEW_RESIZE : 0
+                highlightMoveDuration : propertShowAnimation ? Constants.ANIMATION_LISTVIEW_MOVE : 0
                 y: parent.height * Constants.MAIN_MENU_BOTTOM_RELATIVE_V_POS
                 orientation: ListView.Horizontal
                 anchors.horizontalCenter: parent.horizontalCenter
@@ -135,7 +146,8 @@ Item {
                     height: parent.height
                     boundsBehavior: Flickable.StopAtBounds
                     highlightFollowsCurrentItem: true
-                    highlightMoveDuration : 200
+                    highlightResizeDuration: propertShowAnimation ? Constants.ANIMATION_LISTVIEW_RESIZE : 0
+                    highlightMoveDuration : propertShowAnimation ? Constants.ANIMATION_LISTVIEW_MOVE : 0
                     model: SubMenuModel {}
                     delegate: subMenuDelegate
                     highlight: Rectangle {
@@ -170,6 +182,7 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 PageLoader{
                     id: pageLoaderID
+                    propertyGeneralPopUp.visible: false
                 }
             }
         }

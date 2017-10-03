@@ -5,6 +5,7 @@ import "../../scripts/Constants.js" as Constants
 
 Item {
     property alias propertyTextLinkCC: textLinkCC
+    property alias propertyTextVersion: textVersion
 
     anchors.fill: parent
 
@@ -18,7 +19,7 @@ Item {
 
     Text {
         id: textAppName
-        text: "Aplicação oficial do " + mainWindow.title + " Português"
+        text: qsTranslate("PageHelpAbout","STR_HELP_TITLE")
         font.pixelSize: Constants.SIZE_TEXT_TITLE
         color: Constants.COLOR_TEXT_TITLE
         font.family: lato.name
@@ -29,7 +30,6 @@ Item {
 
     Text {
         id: textVersion
-        text: mainWindow.appVersion
         font.pixelSize: Constants.SIZE_TEXT_BODY
         font.family: lato.name
         anchors.top: textAppName.bottom
@@ -38,7 +38,7 @@ Item {
 
     Text {
         id: textDifficult
-        text: "Caso tenha dificuldades na utilização desta aplicação consulte:"
+        text: qsTranslate("PageHelpAbout","STR_HELP_LINK") + ": "
         font.pixelSize: Constants.SIZE_TEXT_BODY
         font.family: lato.name
         anchors.top: textVersion.bottom
@@ -60,7 +60,7 @@ Item {
 
     Text {
         id: textDevBy
-        text: "Desenvolvido pelo Estado Português"
+        text: qsTranslate("PageHelpAbout","STR_HELP_DEV_BY")
         font.pixelSize: Constants.SIZE_TEXT_BODY
         font.family: lato.name
         anchors.top: textLinkCC.bottom
@@ -69,7 +69,7 @@ Item {
 
     Text {
         id: textDevByAgency
-        text: "(Agência para a Modernização Administrativa, IP e Instituto dos Registos e do Notariado, IP)"
+        text: qsTranslate("PageHelpAbout","STR_HELP_DEV_AGENCY")
         font.pixelSize: Constants.SIZE_TEXT_BODY
         font.family: lato.name
         anchors.top: textDevBy.bottom
@@ -83,6 +83,7 @@ Item {
         y: parent.height * 0.1
         width: Constants.SIZE_IMAGE_LOGO_CC_WIDTH
         height: Constants.SIZE_IMAGE_LOGO_CC_HEIGHT
+        anchors.horizontalCenter: parent.horizontalCenter
         fillMode: Image.PreserveAspectFit
         source: "../../images/logo_CC.png"
         anchors.top: textDevByAgency.bottom
@@ -90,10 +91,10 @@ Item {
     }
     Image {
         id: imageSupported
-        width: Constants.SIZE_IMAGE_LOGO_SUPPORTED_WIDTH
-        height: Constants.SIZE_IMAGE_LOGO_SUPPORTED_HEIGHT
+        width: parent.width
+        anchors.horizontalCenter: parent.horizontalCenter
         fillMode: Image.PreserveAspectFit
-        source: "../../images/logo_cor400.png"
+        source: "../../images/logo_compete2020.png"
         anchors.top: imageCC.bottom
         anchors.topMargin: Constants.SIZE_ROW_V_SPACE
     }

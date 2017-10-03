@@ -17,28 +17,41 @@ Item {
 
     property variant filesArray: []
     property bool fileLoaded: false
+    property bool cardLoaded: false
 
+    property alias propertyRectMainRight: rectMainRight
     property alias propertyBusyIndicator: busyIndicator
     property alias propertyPDFPreview: pdfPreviewArea
     property alias propertyFileDialog: fileDialog
     property alias propertyFileDialogOutput: fileDialogOutput
+    property alias propertyFileDialogBatchOutput: fileDialogBatchOutput
+    property alias propertyFileDialogCMDOutput: fileDialogCMDOutput
     property alias propertyMouseAreaRectMainRigh: mouseAreaRectMainRigh
     property alias propertyMouseAreaItemOptionsFiles: mouseAreaItemOptionsFiles
     property alias propertyTextDragMsgListView: textDragMsgListView
+    property alias propertyTextDragMsgImg: textDragMsgImg
     property alias propertyListViewFiles: listViewFiles
     property alias propertyFilesListViewScroll: filesListViewScroll
     property alias propertyButtonAdd: buttonAdd
     property alias propertyButtonRemoveAll: buttonRemoveAll
     property alias propertyButtonSignWithCC: button_signCC
+    property alias propertyButtonSignCMD: button_signCMD
     property alias propertyDropArea: dropArea
+    property alias propertyDropFileArea: dropFileArea
     property alias propertyTextFieldReason: textFieldReason
     property alias propertyTextFieldLocal: textFieldLocal
     property alias propertySwitchSignTemp: switchSignTemp
+    property alias propertyCheckSignShow: checkSignShow
     property alias propertyCheckSignReduced: checkSignReduced
+    property alias propertyRectSignPageOptions: rectSignPageOptions
+    property alias propertyItemCheckPage: itemCheckPage
     property alias propertyRadioButtonPADES: radioButtonPADES
     property alias propertyRadioButtonXADES: radioButtonXADES
     property alias propertyMouseAreaToolTipPades: mouseAreaToolTipPades
     property alias propertyMouseAreaToolTipXades: mouseAreaToolTipXades
+    property alias propertySwitchSignAdd: switchSignAdd
+    property alias propertyTextAttributesMsg: textAttributesMsg
+    property alias propertyMouseAreaTextAttributesMsg: mouseAreaTextAttributesMsg
     // Calculate ToolTip Position
     property int propertyMouseAreaToolTipPadesX: Constants.SIZE_ROW_H_SPACE
                                                  + Constants.SIZE_TEXT_FIELD_H_SPACE
@@ -54,13 +67,16 @@ Item {
     property int propertyMouseAreaToolTipY: rectMainLeftFile.height
     property alias propertyTextSpinBox: textSpinBox
     property alias propertySpinBoxControl: spinBoxControl
+    property alias propertyCheckLastPage: checkLastPage
 
     BusyIndicator {
-       id: busyIndicator
-       running: false
-       anchors.centerIn: parent
-       // BusyIndicator should be on top of all other content
-       z: 1
+        id: busyIndicator
+        anchors.verticalCenterOffset: -50 // Avoid conflit with mouseAreaToolTipXades
+        anchors.horizontalCenterOffset: 0
+        running: false
+        anchors.centerIn: parent
+        // BusyIndicator should be on top of all other content
+        z: 1
     }
 
     Item {
@@ -71,37 +87,31 @@ Item {
         // Expanded menu need a Horizontal space to Main Menu
         x: Constants.SIZE_ROW_H_SPACE
 
-        DropArea {
-            id: dropArea
-            anchors.fill: parent
-        }
+
 
         FileDialog {
             id: fileDialog
-            title: "Escolha o ficheiro para assinar"
+            title: qsTranslate("Popup File","STR_POPUP_FILE_INPUT_MULTI")
             folder: shortcuts.home
             modality: Qt.WindowModal
             selectMultiple: true
-            nameFilters: ["PDF document (*.pdf)", "All files (*)"]
             Component.onCompleted: visible = false
         }
-
-/*        FileDialog {
-            id: fileDialogOutput
-            title: "Escolha o ficheiro de destino"
-            folder: shortcuts.home
-            modality: Qt.WindowModal
-            selectExisting: false
-            nameFilters: ["PDF document (*.pdf)", "All files (*)"]
-            Component.onCompleted: visible = false
-        }
-        */
 
         FileSaveDialog {
             id: fileDialogOutput
-            title: "Escolha o ficheiro de destino"
-            nameFilters: ["Images (*.pdf)", "All files (*)"]
-
+            title: qsTranslate("Popup File","STR_POPUP_FILE_OUTPUT")
+            nameFilters: ["PDF (*.pdf)", "All files (*)"]
+        }
+        FileSaveDialog {
+            id: fileDialogCMDOutput
+            title: qsTranslate("Popup File","STR_POPUP_FILE_OUTPUT")
+            nameFilters: ["PDF (*.pdf)", "All files (*)"]
+        }
+        FileDialog {
+            id: fileDialogBatchOutput
+            folder: shortcuts.home;
+            selectFolder: true
         }
 
         Item {
@@ -136,7 +146,7 @@ Item {
                 font.family: lato.name
                 color: Constants.COLOR_TEXT_LABEL
                 height: Constants.SIZE_TEXT_LABEL
-                text: "Selecione os ficheiros a assinar"
+                text: qsTranslate("Popup File","STR_POPUP_FILE_INPUT_MULTI")
             }
             Rectangle {
                 id: rectFile
@@ -173,7 +183,6 @@ Item {
                         Text {
                             id: textDragMsgListView
                             anchors.fill: parent
-                            text: "Arraste para esta zona o ficheiro a assinar \nou\n clique para procurar o ficheiro"
                             font.bold: true
                             wrapMode: Text.WordWrap
                             horizontalAlignment: Text.AlignHCenter
@@ -203,7 +212,7 @@ Item {
                         id: buttonAdd
                         width: Constants.WIDTH_BUTTON
                         height: parent.height
-                        text: "Adicionar ficheiro"
+                        text: qsTranslate("PageServicesSign","STR_SIGN_ADD_MULTI_BUTTON")
                         font.pixelSize: Constants.SIZE_TEXT_FIELD
                         font.family: lato.name
                         font.capitalization: Font.MixedCase
@@ -213,13 +222,18 @@ Item {
                         width: Constants.WIDTH_BUTTON
                         height: parent.height
                         anchors.right: itemBottonsFiles.right
-                        text: "Remover todos"
+                        text: qsTranslate("PageServicesSign","STR_SIGN_REMOVE_MULTI_BUTTON")
                         enabled: fileLoaded
                         font.pixelSize: Constants.SIZE_TEXT_FIELD
                         font.family: lato.name
                         font.capitalization: Font.MixedCase
                     }
                 }
+            }
+            DropArea {
+                id: dropFileArea
+                anchors.fill: parent
+                z: 1
             }
         }
         Item {
@@ -258,7 +272,7 @@ Item {
                 font.family: lato.name
                 color: Constants.COLOR_TEXT_LABEL
                 height: Constants.SIZE_TEXT_LABEL
-                text: "Configurações"
+                text: qsTranslate("PageServicesSign","STR_SIGN_SETTINGS")
             }
 
             Rectangle {
@@ -275,7 +289,7 @@ Item {
                     height: Constants.SIZE_TEXT_V_SPACE + rectFormatOptions.height
                             + textFieldReason.height + textFieldLocal.height
                             + switchSignTemp.height + switchSignAdd.height
-                            + columAttributes.height + rowPreserv.height
+                            + rectangleEntities.height + rowPreserv.height
                             + Constants.SIZE_TEXT_V_SPACE + Constants.SIZE_TEXT_V_SPACE
 
                     anchors.horizontalCenter: parent.horizontalCenter
@@ -288,7 +302,7 @@ Item {
                         anchors.topMargin: Constants.SIZE_TEXT_V_SPACE
                         Text {
                             id: textFormatSign
-                            text: "Formato"
+                            text: qsTranslate("PageServicesSign","STR_SIGN_FORMAT")
                             rightPadding: 0
                             padding: 0
                             verticalAlignment: Text.AlignVCenter
@@ -302,11 +316,12 @@ Item {
                             id: radioButtonPADES
                             anchors.left: textFormatSign.right
                             height: Constants.HEIGHT_RADIO_BOTTOM_COMPONENT
-                            text: "No documento"
+                            text: qsTranslate("PageServicesSign","STR_SIGN_WHERE")
+                            checked: true
                             leftPadding: 0
                             rightPadding: 0
                             anchors.leftMargin: 10
-                            enabled: fileLoaded
+                            enabled: true
                             font.capitalization: Font.MixedCase
                             opacity: enabled ? 1.0 : Constants.OPACITY_SERVICES_SIGN_ADVANCE_TEXT_DISABLED
                             contentItem: Text {
@@ -343,11 +358,11 @@ Item {
                             id: radioButtonXADES
                             anchors.left: rectToolTipPades.right
                             height: Constants.HEIGHT_RADIO_BOTTOM_COMPONENT
-                            text: "Em qualquer ficheiro"
+                            text: qsTranslate("PageServicesSign","STR_SIGN_ANY_FILE")
                             anchors.leftMargin: 10
                             leftPadding: 0
                             rightPadding: 0
-                            enabled: fileLoaded
+                            enabled: true
                             font.family: lato.name
                             font.pixelSize: Constants.SIZE_TEXT_FIELD
                             font.capitalization: Font.MixedCase
@@ -389,7 +404,7 @@ Item {
                         width: parent.width
                         font.italic: textFieldReason.text === "" ? true : false
                         anchors.top: rectFormatOptions.bottom
-                        placeholderText: "Motivo?"
+                        placeholderText: qsTranslate("PageServicesSign","STR_SIGN_REASON") + "?"
                         enabled: fileLoaded
                         font.family: lato.name
                         font.pixelSize: Constants.SIZE_TEXT_FIELD
@@ -400,7 +415,7 @@ Item {
                         width: parent.width
                         font.italic: textFieldLocal.text === "" ? true : false
                         anchors.top: textFieldReason.bottom
-                        placeholderText: "Localidade?"
+                        placeholderText: qsTranslate("PageServicesSign","STR_SIGN_LOCAL") + "?"
                         font.pixelSize: Constants.SIZE_TEXT_FIELD
                         enabled: fileLoaded
                         font.family: lato.name
@@ -410,7 +425,7 @@ Item {
                         id: switchSignTemp
                         height: Constants.HEIGHT_SWITCH_COMPONENT
                         anchors.top: textFieldLocal.bottom
-                        text: "Adicionar selo temporal"
+                        text: qsTranslate("PageServicesSign","STR_SIGN_ADD_TIMESTAMP")
                         enabled: fileLoaded
                         font.family: lato.name
                         font.pixelSize: Constants.SIZE_TEXT_FIELD
@@ -420,46 +435,56 @@ Item {
                         id: switchSignAdd
                         height: Constants.HEIGHT_SWITCH_COMPONENT
                         anchors.top: switchSignTemp.bottom
-                        text: "Adicionar atributos profissionais"
-                        enabled: fileLoaded
+                        text: qsTranslate("PageServicesSign","STR_SIGN_ADD_ATTRIBUTES")
+                        enabled: fileLoaded && cardLoaded
                         font.family: lato.name
                         font.pixelSize: Constants.SIZE_TEXT_FIELD
                         font.capitalization: Font.MixedCase
                     }
-                    Column {
-                        id: columAttributes
+                    Item {
+                        id: rectangleEntities
+                        width: parent.width
+                        height: 100
                         anchors.top: switchSignAdd.bottom
-                        width: parent.width - 2 * Constants.SIZE_TEXT_FIELD_H_SPACE
-                        height: checkBox1.height + checkBox2.height
-                        x: 6 * Constants.SIZE_TEXT_FIELD_H_SPACE
-                        visible: switchSignAdd.checked
+                        MouseArea {
+                            id: mouseAreaTextAttributesMsg
+                            anchors.fill: parent
+                            enabled: true
+                            hoverEnabled: true
+                            z:1
+                        }
 
-                        CheckBox {
-                            id: checkBox1
-                            text: "Engenheiro Civil"
-                            height: 25
+                        Text {
+                            id: textAttributesMsg
+                            text: qsTranslate("PageServicesSign","STR_ATTRIBUTES_EMPTY")
+                            verticalAlignment: Text.AlignVCenter
+                            color: Constants.COLOR_TEXT_LABEL
+                            height: Constants.HEIGHT_RADIO_BOTTOM_COMPONENT
                             font.family: lato.name
                             font.pixelSize: Constants.SIZE_TEXT_FIELD
                             font.capitalization: Font.MixedCase
+                            visible: false
+                            x: 54
                         }
-                        CheckBox {
-                            id: checkBox2
-                            text: "Socio da Empresa Obras Prontas"
-                            height: 25
-                            font.family: lato.name
-                            font.pixelSize: Constants.SIZE_TEXT_FIELD
-                            font.capitalization: Font.MixedCase
+                        ListView {
+                            id: listViewEntities
+                            anchors.fill: parent
+                            model: entityAttributesModel
+                            delegate: attributeListDelegate
+                            focus: true
+                            spacing: 2
                         }
+
                     }
                     Row {
                         id: rowPreserv
-                        anchors.top: columAttributes.bottom
+                        anchors.top: rectangleEntities.bottom
                         anchors.topMargin: Constants.SIZE_TEXT_V_SPACE
                         width: parent.width
-                        height: Constants.HEIGHT_SWITCH_COMPONENT
+                        height: 0
                         spacing: 5
                         x: 40
-                        visible: switchSignAdd.checked
+                        visible: false
 
                         Switch {
                             id: switchPreserv
@@ -474,7 +499,7 @@ Item {
                         Text {
                             id: textPreserv1
                             x: 35
-                            text: "Preservar"
+                            text: qsTranslate("PageServicesSign","STR_SIGN_ATTRIBUTES_SAVE")
                             verticalAlignment: Text.AlignVCenter
                             anchors.verticalCenter: parent.verticalCenter
                             font.bold: false
@@ -486,7 +511,7 @@ Item {
                         }
                         Text {
                             id: textPreserv2
-                            text: "durante"
+                            text: qsTranslate("PageServicesSign","STR_SIGN_ATTRIBUTES_SAVE_HOW_LONG")
                             verticalAlignment: Text.AlignVCenter
                             anchors.verticalCenter: parent.verticalCenter
                             font.bold: false
@@ -512,7 +537,9 @@ Item {
                         }
                         Text {
                             id: textPreservAnos
-                            text: comboBoxPreserve.currentIndex === 1 ? "ano" : "anos"
+                            text: comboBoxPreserve.currentIndex === 1 ?
+                                      qsTranslate("PageServicesSign","STR_SIGN_ATTRIBUTES_YEAR") :
+                                      qsTranslate("PageServicesSign","STR_SIGN_ATTRIBUTES_YEARS")
                             verticalAlignment: Text.AlignVCenter
                             anchors.verticalCenter: parent.verticalCenter
                             font.bold: false
@@ -562,7 +589,7 @@ Item {
                 font.family: lato.name
                 color: Constants.COLOR_TEXT_LABEL
                 height: Constants.SIZE_TEXT_LABEL
-                text: "Pré-Visualização"
+                text: qsTranslate("PageServicesSign","STR_SIGN_PREVIEW")
             }
 
             Rectangle {
@@ -577,7 +604,6 @@ Item {
                 Text {
                     id: textDragMsgImg
                     anchors.fill: parent
-                    text: "Arraste para esta zona o ficheiro a assinar \nou\n clique para procurar o ficheiro"
                     font.bold: true
                     wrapMode: Text.WordWrap
                     horizontalAlignment: Text.AlignHCenter
@@ -587,6 +613,11 @@ Item {
                     visible: !fileLoaded
                     font.family: lato.name
                     z: 1
+                }
+                DropArea {
+                    id: dropArea
+                    anchors.fill: parent
+                    z: 2
                 }
                 Components.PDFPreview {
                     anchors.fill: parent
@@ -606,7 +637,7 @@ Item {
         Item {
             id: rowBottom
             width: rectMainRight.width
-            height: 3 * Constants.HEIGHT_BOTTOM_COMPONENT
+            height: rectSignOptions.height + rectSignPageOptions.height + rectSign.height
             anchors.top: rectMainRight.bottom
             anchors.left: rectMainRight.left
 
@@ -615,6 +646,7 @@ Item {
                 width: parent.width
                 height: Constants.HEIGHT_BOTTOM_COMPONENT
                 anchors.left: parent.left
+                visible: rectMainRight.visible
                 Item {
                     id: itemCheckSignShow
                     width: parent.width * 0.6
@@ -622,12 +654,12 @@ Item {
                     anchors.top: parent.top
                     Switch {
                         id: checkSignShow
-                        text: "Assinatura visível"
+                        text: qsTranslate("PageServicesSign","STR_SIGN_VISIBLE")
                         height: Constants.HEIGHT_SWITCH_COMPONENT
                         font.family: lato.name
                         font.pixelSize: Constants.SIZE_TEXT_FIELD
                         font.capitalization: Font.MixedCase
-                        enabled: fileLoaded
+                        enabled: fileLoaded && propertyRadioButtonPADES.checked
                         checked: true
                     }
                 }
@@ -640,6 +672,7 @@ Item {
                 height: Constants.HEIGHT_BOTTOM_COMPONENT
                 anchors.left: parent.left
                 anchors.top: rectSignOptions.bottom
+                visible: rectMainRight.visible
 
                 Item {
                     id: itemCheckSignReduced
@@ -649,12 +682,12 @@ Item {
 
                     Switch {
                         id: checkSignReduced
-                        text: "Reduzida"
+                        text: qsTranslate("PageServicesSign","STR_SIGN_REDUCED")
                         height: Constants.HEIGHT_SWITCH_COMPONENT
                         font.family: lato.name
                         font.pixelSize: Constants.SIZE_TEXT_FIELD
                         font.capitalization: Font.MixedCase
-                        enabled: checkSignShow.checked && fileLoaded
+                        enabled: fileLoaded && propertyRadioButtonPADES.checked
                     }
                 }
 
@@ -668,12 +701,12 @@ Item {
                         id: pageText
                         x: 11
                         y: 8
-                        text: "Página:"
+                        text: qsTranslate("PageServicesSign","STR_SIGN_PAGE") + ":"
                         font.family: lato.name
                         font.pixelSize: Constants.SIZE_TEXT_LABEL
                         color: Constants.COLOR_MAIN_PRETO
                         font.capitalization: Font.MixedCase
-                        opacity: checkSignShow.checked && fileLoaded && !checkLastPage.checked
+                        opacity: fileLoaded && propertyRadioButtonPADES.checked && !checkLastPage.checked
                                  ? 1.0 : Constants.OPACITY_SERVICES_SIGN_ADVANCE_TEXT_DISABLED
                     }
 
@@ -687,7 +720,7 @@ Item {
                         width: parent.width - pageText.width - pageText.x
                         height: parent.height
                         anchors.leftMargin: 0
-                        enabled: checkSignShow.checked && fileLoaded && !checkLastPage.checked
+                        enabled: fileLoaded && propertyRadioButtonPADES.checked && !checkLastPage.checked
                         editable:  checkSignShow.checked && fileLoaded ? true : false
 
                         contentItem: TextInput {
@@ -696,7 +729,7 @@ Item {
                             font.family: lato.name
                             font.pixelSize: Constants.SIZE_TEXT_LABEL
                             color: Constants.COLOR_MAIN_PRETO
-                            opacity: checkSignShow.checked && fileLoaded && !checkLastPage.checked
+                            opacity: fileLoaded && propertyRadioButtonPADES.checked && !checkLastPage.checked
                                      ? 1.0 : Constants.OPACITY_SERVICES_SIGN_ADVANCE_TEXT_DISABLED
                             horizontalAlignment: Qt.AlignHCenter
                             verticalAlignment: Qt.AlignVCenter
@@ -718,7 +751,7 @@ Item {
                                 font.family: lato.name
                                 font.pixelSize: Constants.SIZE_TEXT_LABEL
                                 color: Constants.COLOR_MAIN_PRETO
-                                opacity: checkSignShow.checked && fileLoaded && !checkLastPage.checked
+                                opacity: fileLoaded && propertyRadioButtonPADES.checked && !checkLastPage.checked
                                          ? 1.0 : Constants.OPACITY_SERVICES_SIGN_ADVANCE_TEXT_DISABLED
                                 anchors.fill: parent
                                 fontSizeMode: Text.Fit
@@ -728,6 +761,7 @@ Item {
                         }
 
                         down.indicator: Rectangle {
+                            visible: false
                             x: spinBoxControl.mirrored ? parent.width - width : 0
                             height: parent.height
                             implicitWidth: 20
@@ -738,7 +772,7 @@ Item {
                                 font.family: lato.name
                                 font.pixelSize:  Constants.SIZE_TEXT_LABEL
                                 color: Constants.COLOR_MAIN_PRETO
-                                opacity: checkSignShow.checked && fileLoaded && !checkLastPage.checked
+                                opacity: fileLoaded && propertyRadioButtonPADES.checked && !checkLastPage.checked
                                          ? 1.0 : Constants.OPACITY_SERVICES_SIGN_ADVANCE_TEXT_DISABLED
                                 anchors.fill: parent
                                 fontSizeMode: Text.Fit
@@ -756,12 +790,12 @@ Item {
                     anchors.top: parent.top
                     Switch {
                         id: checkLastPage
-                        text: "Ultima"
+                        text: qsTranslate("PageServicesSign","STR_SIGN_LAST")
                         height: Constants.HEIGHT_SWITCH_COMPONENT
                         font.family: lato.name
                         font.pixelSize: Constants.SIZE_TEXT_FIELD
                         font.capitalization: Font.MixedCase
-                        enabled: checkSignShow.checked && fileLoaded
+                        enabled: fileLoaded && propertyRadioButtonPADES.checked
                     }
                 }
             }
@@ -769,16 +803,17 @@ Item {
             Item {
                 id: rectSign
                 width: parent.width
-                height: Constants.HEIGHT_BOTTOM_COMPONENT
+                height: Constants.HEIGHT_SIGN_BOTTOM_COMPONENT
                 anchors.left: parent.left
                 anchors.top: rectSignPageOptions.bottom
 
                 Button {
                     id: button_signCC
-                    text: "Assinar com CC"
+                    text: qsTranslate("PageServicesSign","STR_SIGN_SIGN_BUTTON") + "\n"
+                          + qsTranslate("PageServicesSign","STR_SIGN_CARD_BUTTON")
                     width: Constants.WIDTH_BUTTON
                     height: parent.height
-                    enabled: fileLoaded
+                    enabled: fileLoaded && cardLoaded
                     font.pixelSize: Constants.SIZE_TEXT_FIELD
                     font.family: lato.name
                     font.capitalization: Font.MixedCase
@@ -786,7 +821,8 @@ Item {
                 }
                 Button {
                     id: button_signCMD
-                    text: "Assinar com CMD"
+                    text: qsTranslate("PageServicesSign","STR_SIGN_SIGN_BUTTON") + "\n"
+                          + qsTranslate("PageServicesSign","STR_SIGN_CMD_BUTTON")
                     width: Constants.WIDTH_BUTTON
                     height: parent.height
                     enabled: fileLoaded

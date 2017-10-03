@@ -8,21 +8,38 @@ PageCardAdressForm {
 
     Connections {
         target: gapi
+        onSignalGenericError: {
+            propertyBusyIndicator.running = false
+        }
         onSignalAddressLoaded: {
             console.log("Address --> Data Changed")
-            propertyDistrict.propertyDateField.text = gapi.getAddressField(GAPI.District)
-            propertyMunicipality.propertyDateField.text = gapi.getAddressField(GAPI.Municipality)
-            propertyParish.propertyDateField.text = gapi.getAddressField(GAPI.Parish)
-            propertyStreetType.propertyDateField.text = gapi.getAddressField(GAPI.Streettype)
-            propertyStreetName.propertyDateField.text = gapi.getAddressField(GAPI.Streetname)
-            propertyDoorNo.propertyDateField.text = gapi.getAddressField(GAPI.Doorno)
-            propertyFloor.propertyDateField.text = gapi.getAddressField(GAPI.Floor)
-            propertyPlace.propertyDateField.text = gapi.getAddressField(GAPI.Place)
-            propertySide.propertyDateField.text = gapi.getAddressField(GAPI.Side)
-            propertyLocality.propertyDateField.text = gapi.getAddressField(GAPI.Locality)
-            propertyZip4.propertyDateField.text = gapi.getAddressField(GAPI.Zip4)
-            propertyZip3.propertyDateField.text = gapi.getAddressField(GAPI.Zip3)
-            propertyPostalLocality.propertyDateField.text = gapi.getAddressField(GAPI.PostalLocality)
+            if(m_foreign){
+                propertyItemForeignCitizen.visible = true
+                propertyItemNationalCitizen.visible = false
+                propertyForeignCountry.propertyDateField.text = gapi.getAddressField(GAPI.Foreigncountry)
+                propertyForeignAddress.propertyDateField.text = gapi.getAddressField(GAPI.Foreignaddress)
+                propertyForeignCity.propertyDateField.text = gapi.getAddressField(GAPI.Foreigncity)
+                propertyForeignRegion.propertyDateField.text = gapi.getAddressField(GAPI.Foreignregion)
+                propertyForeignLocality.propertyDateField.text = gapi.getAddressField(GAPI.Foreignlocality)
+                propertyForeignPostalCode.propertyDateField.text = gapi.getAddressField(GAPI.Foreignpostalcode)
+            }else{
+                propertyItemNationalCitizen.visible = true
+                propertyItemForeignCitizen.visible = false
+                propertyDistrict.propertyDateField.text = gapi.getAddressField(GAPI.District)
+                propertyMunicipality.propertyDateField.text = gapi.getAddressField(GAPI.Municipality)
+                propertyParish.propertyDateField.text = gapi.getAddressField(GAPI.Parish)
+                propertyStreetType.propertyDateField.text = gapi.getAddressField(GAPI.Streettype)
+                propertyStreetName.propertyDateField.text = gapi.getAddressField(GAPI.Streetname)
+                propertyDoorNo.propertyDateField.text = gapi.getAddressField(GAPI.Doorno)
+                propertyFloor.propertyDateField.text = gapi.getAddressField(GAPI.Floor)
+                propertyPlace.propertyDateField.text = gapi.getAddressField(GAPI.Place)
+                propertySide.propertyDateField.text = gapi.getAddressField(GAPI.Side)
+                propertyLocality.propertyDateField.text = gapi.getAddressField(GAPI.Locality)
+                propertyZip4.propertyDateField.text = gapi.getAddressField(GAPI.Zip4)
+                propertyZip3.propertyDateField.text = gapi.getAddressField(GAPI.Zip3)
+                propertyPostalLocality.propertyDateField.text = gapi.getAddressField(GAPI.PostalLocality)
+            }
+
             propertyBusyIndicator.running = false
 
             gapi.setAddressLoaded(true)
@@ -41,6 +58,93 @@ PageCardAdressForm {
             console.log("Address change --> update progress status with text = " + statusMessage)
             textMessageTop.text = statusMessage
         }
+        onSignalCardAccessError: {
+            console.log("Card Adress onSignalCardAccessError"+ error_code)
+            if (error_code != GAPI.CardUserPinCancel){
+                if (error_code == GAPI.NoReaderFound) {
+                    mainFormID.propertyPageLoader.propertyGeneralTitleText.text =
+                            qsTranslate("Popup Card","STR_POPUP_ERROR")
+                    mainFormID.propertyPageLoader.propertyGeneralPopUpLabelText.text =
+                            qsTranslate("Popup Card","STR_POPUP_NO_CARD_READER")
+                }
+                else if (error_code == GAPI.NoCardFound) {
+                    mainFormID.propertyPageLoader.propertyGeneralTitleText.text =
+                            qsTranslate("Popup Card","STR_POPUP_ERROR")
+                    mainFormID.propertyPageLoader.propertyGeneralPopUpLabelText.text =
+                            qsTranslate("Popup Card","STR_POPUP_NO_CARD")
+                }
+                else if (error_code == GAPI.SodCardReadError) {
+                    mainFormID.propertyPageLoader.propertyGeneralTitleText.text =
+                            qsTranslate("Popup Card","STR_POPUP_ERROR")
+                    mainFormID.propertyPageLoader.propertyGeneralPopUpLabelText.text =
+                            qsTranslate("Popup Card","STR_SOD_VALIDATION_ERROR")
+                }
+                else {
+                    mainFormID.propertyPageLoader.propertyGeneralTitleText.text =
+                            qsTranslate("Popup Card","STR_POPUP_ERROR")
+                    mainFormID.propertyPageLoader.propertyGeneralPopUpLabelText.text =
+                            qsTranslate("Popup Card","STR_POPUP_CARD_ACCESS_ERROR")
+                }
+                mainFormID.propertyPageLoader.propertyGeneralPopUp.visible = true;
+            }
+            propertyDistrict.propertyDateField.text = ""
+            propertyMunicipality.propertyDateField.text = ""
+            propertyParish.propertyDateField.text = ""
+            propertyStreetType.propertyDateField.text = ""
+            propertyStreetName.propertyDateField.text = ""
+            propertyDoorNo.propertyDateField.text = ""
+            propertyFloor.propertyDateField.text = ""
+            propertyPlace.propertyDateField.text = ""
+            propertySide.propertyDateField.text = ""
+            propertyLocality.propertyDateField.text = ""
+            propertyZip4.propertyDateField.text = ""
+            propertyZip3.propertyDateField.text = ""
+            propertyPostalLocality.propertyDateField.text = ""
+            propertyForeignCountry.propertyDateField.text = ""
+            propertyForeignAddress.propertyDateField.text = ""
+            propertyForeignCity.propertyDateField.text = ""
+            propertyForeignRegion.propertyDateField.text = ""
+            propertyForeignLocality.propertyDateField.text = ""
+            propertyForeignPostalCode.propertyDateField.text = ""
+            propertyBusyIndicator.running = false
+        }
+        onSignalCardChanged: {
+            console.log("Card Adress onSignalCardChanged")
+            if (error_code == GAPI.ET_CARD_REMOVED) {
+                propertyDistrict.propertyDateField.text = ""
+                propertyMunicipality.propertyDateField.text = ""
+                propertyParish.propertyDateField.text = ""
+                propertyStreetType.propertyDateField.text = ""
+                propertyStreetName.propertyDateField.text = ""
+                propertyDoorNo.propertyDateField.text = ""
+                propertyFloor.propertyDateField.text = ""
+                propertyPlace.propertyDateField.text = ""
+                propertySide.propertyDateField.text = ""
+                propertyLocality.propertyDateField.text = ""
+                propertyZip4.propertyDateField.text = ""
+                propertyZip3.propertyDateField.text = ""
+                propertyPostalLocality.propertyDateField.text = ""
+            }
+            else if (error_code == GAPI.ET_CARD_CHANGED) {
+                if(Constants.USE_SDK_PIN_UI_POPUP){
+                    var triesLeft = gapi.verifyAddressPin("")
+                    if (triesLeft === 3) {
+                        propertyBusyIndicator.running = true
+                        gapi.startReadingAddress()
+                    }
+                }else{
+                    dialogTestPin.open()
+                    textFieldPin.text = ""
+                }
+            }
+            else{
+                mainFormID.propertyPageLoader.propertyGeneralTitleText.text =
+                        qsTranslate("Popup Card","STR_POPUP_CARD_READ")
+                mainFormID.propertyPageLoader.propertyGeneralPopUpLabelText.text =
+                        qsTranslate("Popup Card","STR_POPUP_CARD_READ_UNKNOWN")
+                mainFormID.propertyPageLoader.propertyGeneralPopUp.visible = true;
+            }
+        }
     }
 
     Dialog {
@@ -55,7 +159,7 @@ PageCardAdressForm {
         y: parent.height * 0.5 - dialogBadPin.height * 0.5
 
         header: Label {
-            text: "Verificação de PIN"
+            text: qsTranslate("Popup PIN","STR_POPUP_CARD_PIN_VERIFY")
             elide: Label.ElideRight
             padding: 24
             bottomPadding: 0
@@ -107,7 +211,7 @@ PageCardAdressForm {
         y: parent.height * 0.5 - dialogTestPin.height * 0.5
 
         header: Label {
-            text: "Verificar o Pin da Morada"
+            text: qsTranslate("Popup PIN","STR_POPUP_CARD_PIN_VERIFY_ADDRESS")
             elide: Label.ElideRight
             padding: 24
             bottomPadding: 0
@@ -128,7 +232,7 @@ PageCardAdressForm {
                 anchors.horizontalCenter: parent.horizontalCenter
                 Text {
                     id: textPin
-                    text: "PIN da Morada"
+                    text: qsTranslate("Popup PIN","STR_POPUP_CARD_PIN_ADDRESS")
                     verticalAlignment: Text.AlignVCenter
                     anchors.verticalCenter: parent.verticalCenter
                     font.pixelSize: Constants.SIZE_TEXT_LABEL
@@ -143,7 +247,7 @@ PageCardAdressForm {
                     width: parent.width * 0.5
                     anchors.verticalCenter: parent.verticalCenter
                     font.italic: textFieldPin.text === "" ? true: false
-                    placeholderText: "PIN Atual?"
+                    placeholderText: qsTranslate("Popup PIN","STR_POPUP_CARD_PIN_CURRENT")
                     echoMode : TextInput.Password
                     validator: RegExpValidator { regExp: /[0-9]+/ }
                     maximumLength: 8
@@ -175,11 +279,15 @@ PageCardAdressForm {
                 gapi.startReadingAddress()
             }
             else if (triesLeft === 0) {
-                textBadPin.text = "PIN de morada bloqueado!"
+                textBadPin.text = qsTranslate("Popup PIN","STR_POPUP_CARD_PIN_ADDRESS_BLOCKED")
                 dialogBadPin.open()
             }
             else {
-                textBadPin.text = "O PIN introduzido está errado! \n\n" + "Restam "+ triesLeft + " tentativas."
+                textBadPin.text = qsTranslate("Popup PIN","STR_POPUP_CARD_PIN_WRONG")
+                        + " \n\n"
+                        + qsTranslate("Popup PIN","STR_POPUP_CARD_REMAIN")
+                        + " " + triesLeft + " "
+                        + qsTranslate("Popup PIN","STR_POPUP_CARD_TRIES")
                 dialogBadPin.open()
             }
         }
@@ -200,7 +308,7 @@ PageCardAdressForm {
 
         header: Label {
             id: labelConfirmOfAddressTextTitle
-            text: "Confirmação de Morada"
+            text: qsTr("STR_ADDRESS_CHANGE_CONFIRMATION")
             visible: true
             elide: Label.ElideRight
             padding: 24
@@ -221,7 +329,7 @@ PageCardAdressForm {
                 anchors.horizontalCenter: parent.horizontalCenter
                 Text {
                     id: textPinMsgConfirm
-                    text: "Por favor insira o número de processo e o código secreto recebido pelo correio"
+                    text: qsTr("STR_ADDRESS_CHANGE_TEXT")
                     verticalAlignment: Text.AlignVCenter
                     anchors.verticalCenter: parent.verticalCenter
                     font.pixelSize: Constants.SIZE_TEXT_LABEL
@@ -241,7 +349,7 @@ PageCardAdressForm {
                 anchors.horizontalCenter: parent.horizontalCenter
                 Text {
                     id: textPinCurrent
-                    text: "Nº de Processo de alteração de Morada"
+                    text:  qsTr("STR_ADDRESS_CHANGE_NUMBER")
                     verticalAlignment: Text.AlignVCenter
                     anchors.verticalCenter: parent.verticalCenter
                     font.pixelSize: Constants.SIZE_TEXT_LABEL
@@ -256,7 +364,7 @@ PageCardAdressForm {
                     width: parent.width * 0.5
                     anchors.verticalCenter: parent.verticalCenter
                     font.italic: textFieldNumProcess.text === "" ? true: false
-                    placeholderText: "Número de processo?"
+                    placeholderText: qsTr("STR_ADDRESS_CHANGE_NUMBER_OP")
                     font.family: lato.name
                     font.pixelSize: Constants.SIZE_TEXT_FIELD
                     clip: false
@@ -272,7 +380,7 @@ PageCardAdressForm {
                 anchors.horizontalCenter: parent.horizontalCenter
                 Text {
                     id: textPinNew
-                    text: "Código de Confirmação de Morada"
+                    text: qsTr("STR_ADDRESS_CHANGE_CODE")
                     verticalAlignment: Text.AlignVCenter
                     anchors.verticalCenter: parent.verticalCenter
                     font.pixelSize: Constants.SIZE_TEXT_LABEL
@@ -287,7 +395,7 @@ PageCardAdressForm {
                     width: parent.width * 0.5
                     anchors.verticalCenter: parent.verticalCenter
                     font.italic: textFieldConfirmAddress.text === "" ? true: false
-                    placeholderText: "Código de confirmação de Morada?"
+                    placeholderText: qsTr("STR_ADDRESS_CHANGE_CODE_OP")
                     font.family: lato.name
                     font.pixelSize: Constants.SIZE_TEXT_FIELD
                     clip: false
@@ -326,7 +434,7 @@ PageCardAdressForm {
 
         header: Label {
             id: labelConfirmOfAddressProgressTextTitle
-            text: "Confirmação de Morada"
+            text: qsTr("STR_ADDRESS_CHANGE_CONFIRMATION")
             visible: true
             elide: Label.ElideRight
             padding: 24
@@ -413,6 +521,7 @@ PageCardAdressForm {
     Component.onCompleted: {
         console.log("Page Card Address Completed")
         if (gapi.isAddressLoaded) {
+            console.log("Page Card Address isAddressLoaded")
             propertyBusyIndicator.running = true
             gapi.startReadingAddress()
         }else{

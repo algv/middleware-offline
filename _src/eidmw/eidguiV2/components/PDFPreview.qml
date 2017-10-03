@@ -16,6 +16,7 @@ Rectangle {
     property alias propertyDragSigDateText: sigDateText
     property alias propertyDragSigLocationText: sigLocationText
     property alias propertyDragSigImg: dragSigImage
+    property alias propertyDragSigWaterImg: dragSigWaterImage
 
     property real propertySigLineHeight: dragSigRect.height * 0.1
     property bool propertyReducedChecked: false
@@ -82,12 +83,22 @@ Rectangle {
                 Text {
                     id: sigReasonText
                     font.pixelSize: propertySigLineHeight
+                    font.italic: true
                     height: propertySigLineHeight
                     width: parent.width - 4
                     clip: true
                     font.family: lato.name
-                    color: Constants.COLOR_TEXT_BODY
+                    color: Constants.COLOR_TEXT_LABEL
                     text: ""
+                    anchors.topMargin: 2
+                    x: 2
+                    visible: false
+                }
+                Image {
+                    id: dragSigWaterImage
+                    height: dragSigRect.height * 0.4
+                    fillMode: Image.PreserveAspectFit
+                    anchors.top: sigReasonText.bottom
                     anchors.topMargin: 2
                     x: 2
                     visible: false
@@ -197,11 +208,13 @@ Rectangle {
                     if(propertyReducedChecked){
                         propertySigLineHeight = propertyDragSigRect.height * 0.2
                         propertyDragSigImg.height = 0
+                        propertyDragSigWaterImg.height = 0
                     }else{
                         propertySigLineHeight = propertyDragSigRect.height * 0.1
                         propertyDragSigReasonText.height = propertySigLineHeight
                         propertyDragSigLocationText.height = propertySigLineHeight
                         propertyDragSigImg.height = propertyDragSigRect.height * 0.3
+                        propertyDragSigWaterImg.height = propertyDragSigRect.height * 0.4
                     }
                 }
             }
@@ -223,16 +236,17 @@ Rectangle {
                 dragSigRect.y = dragTarget.lastCoord_y / dragTarget.lastScreenHeight * background_image.height
             }
         }
-
-        onDropped: {
-            coord_x = (drop.x - background_image.x) / background_image.width
-            coord_y = (drop.y + dragSigRect.height - background_image.y) / background_image.height
-            dragTarget.lastCoord_x = dragSigRect.x
-            dragTarget.lastCoord_y = dragSigRect.y
-            dragTarget.lastScreenWidth = background_image.width
-            dragTarget.lastScreenHeight = background_image.height
-        }
     }
+    function updateSignPreview(droped_x,droped_y){
+
+        dragTarget.coord_x = (droped_x - background_image.x) / background_image.width
+        dragTarget.coord_y = (droped_y + dragSigRect.height - background_image.y) / background_image.height
+        dragTarget.lastCoord_x = dragSigRect.x
+        dragTarget.lastCoord_y = dragSigRect.y
+        dragTarget.lastScreenWidth = background_image.width
+        dragTarget.lastScreenHeight = background_image.height
+    }
+
     function getData(){
         var time = Qt.formatDateTime(new Date(), "yy.MM.dd hh:mm:ss")
 

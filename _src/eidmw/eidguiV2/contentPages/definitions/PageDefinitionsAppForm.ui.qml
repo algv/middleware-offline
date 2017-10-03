@@ -7,6 +7,28 @@ import "../../scripts/Constants.js" as Constants
 import "../../components" as Components
 
 Item {
+    property alias propertyComboBoxReader: comboBoxReader
+    property alias propertyRectReader: rectReader
+    property alias propertyRectAppStart: rectAppStart
+    property alias propertyRectAppStartCheckBox: rectAppStartCheckBox
+    property alias propertyCheckboxAutoStart: checkboxAutoStart
+    property alias propertyRectAppLanguage: rectAppLanguage
+    property alias propertyRadioButtonPT: radioButtonPT
+    property alias propertyRadioButtonUK: radioButtonUK
+    property alias propertyRectAppLook: rectAppLook
+    property alias propertyCheckboxShowAnime: checkboxShowAnime
+    property alias propertyRectAppCertificates: rectAppCertificates
+    property alias propertyCheckboxRegister: checkboxRegister
+    property alias propertyCheckboxRemove: checkboxRemove
+    property alias propertyRectAppTimeStamp: rectAppTimeStamp
+    property alias propertyCheckboxTimeStamp: checkboxTimeStamp
+    property alias propertyTextFieldTimeStamp: textFieldTimeStamp
+    property alias propertyCheckboxProxy: checkboxProxy
+    property alias propertyTextFieldAdress: textFieldAdress
+    property alias propertyTextFieldPort: textFieldPort
+    property alias propertyCheckboxAutProxy: checkboxAutProxy
+    property alias propertyTextFieldAutUser: textFieldAutUser
+    property alias propertyTextFieldAutPass: textFieldAutPass
 
     anchors.fill: parent
 
@@ -38,7 +60,7 @@ Item {
                 font.family: lato.name
                 color: Constants.COLOR_TEXT_LABEL
                 height: Constants.SIZE_TEXT_LABEL
-                text: "Leitor de Cartões"
+                text: qsTranslate("PageDefinitionsApp","STR_CARD_READER_TITLE") + controler.autoTr
             }
             DropShadow {
                 anchors.fill: rectReaderCombo
@@ -73,7 +95,6 @@ Item {
                     height: 3 * Constants.SIZE_TEXT_FIELD
                     anchors.verticalCenter: parent.verticalCenter
                     anchors.horizontalCenter: parent.horizontalCenter
-                    model: [ "Bit4id minilector 00 00", "Bit4id minilector 00 02", "Bit4id minilector 00 03"]
                     font.family: lato.name
                     font.pixelSize: Constants.SIZE_TEXT_FIELD
                     font.capitalization: Font.MixedCase
@@ -96,7 +117,7 @@ Item {
                 font.family: lato.name
                 color: Constants.COLOR_TEXT_LABEL
                 height: Constants.SIZE_TEXT_LABEL
-                text: "Início"
+                text: qsTranslate("PageDefinitionsApp","STR_START_TITLE") + controler.autoTr
             }
             DropShadow {
                 anchors.fill: rectAppStartCheckBox
@@ -121,28 +142,17 @@ Item {
                 id: rectAppStartCheckBox
                 width: parent.width
                 color: "white"
-                height: checkboxAutoRead.height + Constants.SIZE_TEXT_V_SPACE
+                height: 25 + Constants.SIZE_TEXT_V_SPACE
                 anchors.top : dateAppStart.bottom
                 anchors.topMargin: Constants.SIZE_TEXT_V_SPACE
 
                 CheckBox {
-                    id: checkboxAutoRead
-                    text: "Leitura automática do cartão"
+                    id: checkboxAutoStart
+                    text: qsTranslate("PageDefinitionsApp","STR_AUTO_START_OP") + controler.autoTr
                     height: 25
                     font.family: lato.name
                     font.pixelSize: Constants.SIZE_TEXT_FIELD
                     font.capitalization: Font.MixedCase
-                    anchors.topMargin: Constants.SIZE_TEXT_V_SPACE
-                    checked: true
-                }
-                CheckBox {
-                    id: checkboxStart
-                    text: "Iniciar minimizada"
-                    height: 25
-                    font.family: lato.name
-                    font.pixelSize: Constants.SIZE_TEXT_FIELD
-                    font.capitalization: Font.MixedCase
-                    x: rectAppStartCheckBox.width * 0.5
                     anchors.topMargin: Constants.SIZE_TEXT_V_SPACE
                 }
             }
@@ -163,7 +173,7 @@ Item {
                 font.family: lato.name
                 color: Constants.COLOR_TEXT_LABEL
                 height: Constants.SIZE_TEXT_LABEL
-                text: "Idioma"
+                text: qsTranslate("PageDefinitionsApp","STR_LANGUAGE_TITLE") + controler.autoTr
             }
             DropShadow {
                 anchors.fill: rectAppLanguageCheckBox
@@ -195,38 +205,19 @@ Item {
                 RadioButton {
                     id: radioButtonPT
                     height: Constants.HEIGHT_RADIO_BOTTOM_COMPONENT
-                    text: "Português"
-                    checked: true
+                    text: qsTranslate("PageDefinitionsApp","STR_PT_NAME_OP") + controler.autoTr
                     font.family: lato.name
                     font.pixelSize: Constants.SIZE_TEXT_FIELD
                     font.capitalization: Font.MixedCase
-                }
-                Image {
-                    id: imagePT
-                    height: radioButtonPT.height
-                    fillMode: Image.PreserveAspectFit
-                    source: "../../images/flags/pt32.png"
-                    anchors.left: radioButtonPT.right
-                    opacity: radioButtonPT.checked ?
-                                 1 : Constants.OPACITY_DIFINITIONS_APP_LANGUAGE_IMAGE_DISABLED
                 }
                 RadioButton {
                     id: radioButtonUK
                     height: Constants.HEIGHT_RADIO_BOTTOM_COMPONENT
                     x: rectAppLanguageCheckBox.width * 0.5
-                    text: "Inglês"
+                    text: qsTranslate("PageDefinitionsApp","STR_UK_NAME_OP") + controler.autoTr
                     font.family: lato.name
                     font.pixelSize: Constants.SIZE_TEXT_FIELD
                     font.capitalization: Font.MixedCase
-                }
-                Image {
-                    id: imageUK
-                    height: radioButtonPT.height
-                    fillMode: Image.PreserveAspectFit
-                    source: "../../images/flags/uk32.png"
-                    anchors.left: radioButtonUK.right
-                    opacity: radioButtonUK.checked ?
-                                 1 : Constants.OPACITY_DIFINITIONS_APP_LANGUAGE_IMAGE_DISABLED
                 }
             }
         }
@@ -246,7 +237,7 @@ Item {
                 font.family: lato.name
                 color: Constants.COLOR_TEXT_LABEL
                 height: Constants.SIZE_TEXT_LABEL
-                text: "Aparência"
+                text: qsTranslate("PageDefinitionsApp","STR_APP_LOOK_TITLE") + controler.autoTr
             }
             DropShadow {
                 anchors.fill: rectAppLookCheckBox
@@ -271,42 +262,18 @@ Item {
                 id: rectAppLookCheckBox
                 width: parent.width
                 color: "white"
-                height: checkboxShowNot.height
-                        + checkboxShowPhoto.height
-                        + 2 * Constants.SIZE_TEXT_V_SPACE
+                height: 25 + Constants.SIZE_TEXT_V_SPACE
                 anchors.top : dateAppLook.bottom
                 anchors.topMargin: Constants.SIZE_TEXT_V_SPACE
 
                 CheckBox {
-                    id: checkboxShowNot
-                    text: "Apresentar notificações"
-                    height: 25
-                    font.family: lato.name
-                    font.pixelSize: Constants.SIZE_TEXT_FIELD
-                    font.capitalization: Font.MixedCase
-                    anchors.topMargin: Constants.SIZE_TEXT_V_SPACE
-                    checked: true
-                }
-                CheckBox {
-                    id: checkboxShowPhoto
-                    text: "Mostrar fotografia ao iniciar"
-                    height: 25
-                    font.family: lato.name
-                    font.pixelSize: Constants.SIZE_TEXT_FIELD
-                    font.capitalization: Font.MixedCase
-                    anchors.top: checkboxShowNot.bottom
-                    anchors.topMargin: Constants.SIZE_TEXT_V_SPACE
-                }
-                CheckBox {
                     id: checkboxShowAnime
-                    text: "Activar menu animações"
+                    text: qsTranslate("PageDefinitionsApp","STR_SHOW_ANIME_OP") + controler.autoTr
                     height: 25
                     font.family: lato.name
                     font.pixelSize: Constants.SIZE_TEXT_FIELD
                     font.capitalization: Font.MixedCase
                     anchors.topMargin: Constants.SIZE_TEXT_V_SPACE
-                    x: rectAppLookCheckBox.width * 0.5
-                    checked: true
                 }
             }
         }
@@ -326,7 +293,7 @@ Item {
                 font.family: lato.name
                 color: Constants.COLOR_TEXT_LABEL
                 height: Constants.SIZE_TEXT_LABEL
-                text: "Certificados"
+                text: qsTranslate("PageDefinitionsApp","STR_CERTIFICATES_TITLE") + controler.autoTr
             }
             DropShadow {
                 anchors.fill: rectAppCertificatesCheckBox
@@ -359,17 +326,16 @@ Item {
 
                 CheckBox {
                     id: checkboxRegister
-                    text: "Registar certificados com a inserção do cartão"
+                    text: qsTranslate("PageDefinitionsApp","STR_CERTIFICATES_REGISTER_OP") + controler.autoTr
                     height: 25
                     font.family: lato.name
                     font.pixelSize: Constants.SIZE_TEXT_FIELD
                     font.capitalization: Font.MixedCase
                     anchors.topMargin: Constants.SIZE_TEXT_V_SPACE
-                    checked: true
                 }
                 CheckBox {
                     id: checkboxRemove
-                    text: "Remover certificados com a remoção do cartão"
+                    text: qsTranslate("PageDefinitionsApp","STR_CERTIFICATES_REMOVE_OP") + controler.autoTr
                     height: 25
                     font.family: lato.name
                     font.pixelSize: Constants.SIZE_TEXT_FIELD
@@ -395,7 +361,7 @@ Item {
                 font.family: lato.name
                 color: Constants.COLOR_TEXT_LABEL
                 height: Constants.SIZE_TEXT_LABEL
-                text: "Selos Temporais"
+                text: qsTranslate("PageDefinitionsApp","STR_TIMESTAMP_TITLE") + controler.autoTr
             }
             DropShadow {
                 anchors.fill: rectAppTimeStampCheckBox
@@ -427,7 +393,7 @@ Item {
 
                 CheckBox {
                     id: checkboxTimeStamp
-                    text: "Utilizar selo temporal"
+                    text: qsTranslate("PageDefinitionsApp","STR_TIMESTAMP_OP") + controler.autoTr
                     height: 25
                     font.family: lato.name
                     font.pixelSize: Constants.SIZE_TEXT_FIELD
@@ -446,8 +412,7 @@ Item {
                         id: textFieldTimeStamp
                         width: parent.width
                         font.italic: textFieldTimeStamp.text === "" ? true: false
-                        placeholderText: "URL do servidor de selos temporais?"
-                        inputMethodHints: Qt.ImhDigitsOnly
+                        placeholderText: qsTranslate("PageDefinitionsApp","STR_TIMESTAMP_URL_OP") + controler.autoTr
                         font.family: lato.name
                         font.pixelSize: Constants.SIZE_TEXT_FIELD
                         clip: false
@@ -475,7 +440,7 @@ Item {
                 font.family: lato.name
                 color: Constants.COLOR_TEXT_LABEL
                 height: Constants.SIZE_TEXT_LABEL
-                text: "Configurações de rede"
+                text: qsTranslate("PageDefinitionsApp","STR_NETWORK_TITLE") + controler.autoTr
             }
             DropShadow {
                 anchors.fill: rectAppNetworkCheckBox
@@ -507,7 +472,7 @@ Item {
 
                 CheckBox {
                     id: checkboxProxy
-                    text: "Utilizar servidor Proxy"
+                    text: qsTranslate("PageDefinitionsApp","STR_NETWORK_PROXY_OP") + controler.autoTr
                     height: 25
                     font.family: lato.name
                     font.pixelSize: Constants.SIZE_TEXT_FIELD
@@ -526,8 +491,7 @@ Item {
                         id: textFieldAdress
                         width: parent.width
                         font.italic: textFieldAdress.text === "" ? true: false
-                        placeholderText: "Endereço?"
-                        validator: RegExpValidator { regExp: /[0-9A-Fa-f.:]+/ }
+                        placeholderText: qsTranslate("PageDefinitionsApp","STR_NETWORK_PROXY_ADDRESS_OP") + controler.autoTr
                         font.family: lato.name
                         font.pixelSize: Constants.SIZE_TEXT_FIELD
                         enabled: checkboxProxy.checked
@@ -547,7 +511,7 @@ Item {
                         id: textFieldPort
                         width: parent.width
                         font.italic: textFieldPort.text === "" ? true: false
-                        placeholderText: "Porto?"
+                        placeholderText: qsTranslate("PageDefinitionsApp","STR_NETWORK_PROXY_PORT_OP") + controler.autoTr
                         validator: RegExpValidator { regExp: /[0-9]+/ }
                         font.family: lato.name
                         font.pixelSize: Constants.SIZE_TEXT_FIELD
@@ -562,7 +526,7 @@ Item {
                 CheckBox {
                     id: checkboxAutProxy
                     x: parent.width * 0.40
-                    text: "Utilizar autenticação de Proxy"
+                    text: qsTranslate("PageDefinitionsApp","STR_NETWORK_AUTH_OP") + controler.autoTr
                     height: 25
                     font.family: lato.name
                     font.pixelSize: Constants.SIZE_TEXT_FIELD
@@ -581,7 +545,7 @@ Item {
                         id: textFieldAutUser
                         width: parent.width
                         font.italic: textFieldAutUser.text === "" ? true: false
-                        placeholderText: "Utilizador?"
+                        placeholderText: qsTranslate("PageDefinitionsApp","STR_NETWORK_AUTH_USERNAME_OP") + controler.autoTr
                         font.family: lato.name
                         font.pixelSize: Constants.SIZE_TEXT_FIELD
                         clip: false
@@ -602,7 +566,7 @@ Item {
                         id: textFieldAutPass
                         width: parent.width
                         font.italic: textFieldAutPass.text === "" ? true: false
-                        placeholderText: "Palavra-passe?"
+                        placeholderText: qsTranslate("PageDefinitionsApp","STR_NETWORK_AUTH_PASSWORD_OP") + controler.autoTr
                         echoMode : TextInput.Password
                         font.family: lato.name
                         font.pixelSize: Constants.SIZE_TEXT_FIELD

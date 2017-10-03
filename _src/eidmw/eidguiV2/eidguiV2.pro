@@ -6,17 +6,33 @@ QT += quick quickcontrols2 concurrent
 QT += core-private
 QT += gui-private
 QT += widgets
+QT += printsupport
 
 CONFIG += c++11
 
 SOURCES += main.cpp \
     appcontroller.cpp \
     gapi.cpp \
-    filesavedialog.cpp
+    SCAPServices/SCAPAttributeSupplierBindingProxy.cpp \
+    SCAPServices/SCAPC.cpp \
+    SCAPServices/SCAPPDFSignatureSoapBindingProxy.cpp \
+    pdfsignatureclient.cpp \
+    ErrorConn.cpp \
+    stdsoap2.cpp \
+    scapsignature.cpp \
+    scapcompanies.cpp \
+    filesavedialog.cpp \
+    genpur.cpp
 
 INCLUDEPATH += /usr/include/poppler/qt5/
+INCLUDEPATH += ../CMD/services
+INCLUDEPATH += ../applayer
+INCLUDEPATH += ../common
+INCLUDEPATH += ../cardlayer
+INCLUDEPATH += ../_Builds
 
-LIBS += -L../lib -lpteidlib -lpoppler-qt5
+
+LIBS += -L../lib -lpteidlib -lssl -lcrypto -lpoppler-qt5 -lCMDServices
 
 # Additional import path used to resolve QML modules in Qt Creator's code model
 QML_IMPORT_PATH =
@@ -24,6 +40,21 @@ RESOURCES += \
         resources.qrc \
         qtquickcontrols2.conf
 
+TRANSLATIONS = eidmw_nl.ts \
+               eidmw_en.ts \
+
+lupdate_only{
+SOURCES += main.qml \
+            MainMenuModel.qml \
+            MainMenuBottomModel.qml \
+            contentPages/card/*.qml \
+            contentPages/definitions/*.qml \
+            contentPages/help/*.qml \
+            contentPages/home/*.qml \
+            contentPages/security/*.qml \
+            contentPages/services/*.qml
+
+}
 # Additional import path used to resolve QML modules just for Qt Quick Designer
 QML_DESIGNER_IMPORT_PATH =
 
@@ -38,14 +69,19 @@ DEFINES += QT_DEPRECATED_WARNINGS
 # You can also select to disable deprecated APIs only up to a certain version of Qt.
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
+#Needed for the gsoap binding proxies
+DEFINES += WITH_OPENSSL
+
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin
 else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
 
-DISTFILES +=
 
 HEADERS += \
     appcontroller.h \
     gapi.h \
-    filesavedialog.h
+    filesavedialog.h \
+    scapsignature.h \
+    Settings.h \
+    genpur.h

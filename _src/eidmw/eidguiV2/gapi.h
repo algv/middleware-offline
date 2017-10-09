@@ -14,6 +14,7 @@
 #include <QPrintDialog>
 #include "Settings.h"
 #include "genpur.h"
+#include "certificates.h"
 
 //MW libraries
 #include "eidlib.h"
@@ -241,6 +242,8 @@ public:
     static void declareQMLTypes() {
         qmlRegisterType<GAPI>("eidguiV2", 1, 0, "GAPI");
     }
+    GUISettings    m_Settings;
+    CERTIFICATES    m_Certificates;
 
 public slots:
     // Slots to Gui request values
@@ -266,7 +269,7 @@ public slots:
                          QString reason, QString location, double isTimestamp, double isSmall);
     void startSigningBatchPDF(QList<QString> loadedFileBatchPath, QString outputFile, int page, double coord_x, double coord_y,
                          QString reason, QString location, double isTimestamp, double isSmall);
-    unsigned int getPDFpageCount(QString loadedFilePath);
+    int getPDFpageCount(QString loadedFilePath);
 
     void startSigningXADES(QString loadedFilePath, QString outputFile, double isTimestamp);
 
@@ -354,8 +357,11 @@ signals:
     void signalPdfPrintFail();
     void signalLanguageChangedError();
 
+    // Import Certificates
+    void signalImportCertificatesFail();
+    void signalRemoveCertificatesFail();
+
 private:
-    GUISettings    m_Settings;
     bool LoadTranslationFile( GenPur::UI_LANGUAGE NewLanguage );
     void setDataCardIdentify(QMap<GAPI::IDInfoKey, QString> m_data);
     void connectToCard();

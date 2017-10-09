@@ -65,6 +65,22 @@ Load language error. Please reinstall the application"
                     qsTranslate("Popup Card","STR_ERROR_CODE") + error_code
             mainFormID.propertyPageLoader.propertyGeneralPopUp.visible = true;
         }
+        onSignalImportCertificatesFail: {
+            console.log("Signal onSignalImportCertificatesFail")
+            mainFormID.propertyPageLoader.propertyGeneralTitleText.text =
+                    qsTranslate("Popup Card","STR_POPUP_ERROR")
+            mainFormID.propertyPageLoader.propertyGeneralPopUpLabelText.text =
+                    qsTranslate("Popup Card","STR_CERTIFICATES_IMPORT_ERROR_MSG")
+            mainFormID.propertyPageLoader.propertyGeneralPopUp.visible = true;
+        }
+        onSignalRemoveCertificatesFail: {
+            console.log("Signal onSignalRemoveCertificatesFail")
+            mainFormID.propertyPageLoader.propertyGeneralTitleText.text =
+                    qsTranslate("Popup Card","STR_POPUP_ERROR")
+            mainFormID.propertyPageLoader.propertyGeneralPopUpLabelText.text =
+                    qsTranslate("Popup Card","STR_CERTIFICATES_REMOVE_ERROR_MSG")
+            mainFormID.propertyPageLoader.propertyGeneralPopUp.visible = true;
+        }
         onSignalLanguageChangedError: {
             mainFormID.propertyPageLoader.propertyGeneralTitleText.text =
                     "Erro / Error"
@@ -381,6 +397,50 @@ Load language error. Please reinstall the application"
                 }
             },
             Transition {
+                from: "STATE_EXPAND"
+                to: "STATE_HOME"
+                NumberAnimation
+                {
+                    target: mainFormID.propertySubMenuView
+                    property: "opacity"
+                    easing.type: Easing.Linear
+                    to: 0;
+                    duration: mainFormID.propertShowAnimation ? Constants.ANIMATION_CHANGE_OPACITY : 0
+                }
+                NumberAnimation
+                {
+                    target: mainFormID.propertyContentPagesView
+                    property: "opacity"
+                    easing.type: Easing.Linear
+                    to: 0;
+                    duration: mainFormID.propertShowAnimation ? Constants.ANIMATION_CHANGE_OPACITY : 0
+                }
+                NumberAnimation
+                {
+                    target: mainFormID.propertyMainMenuView
+                    property: "width"
+                    easing.type: Easing.OutQuad
+                    to: mainFormID.propertyMainView.width;
+                    duration: mainFormID.propertShowAnimation ? Constants.ANIMATION_MOVE_VIEW : 0
+                }
+                NumberAnimation
+                {
+                    target: mainFormID.propertySubMenuView
+                    property: "width"
+                    easing.type: Easing.OutQuad
+                    to: 0;
+                    duration: mainFormID.propertShowAnimation ? Constants.ANIMATION_MOVE_VIEW : 0
+                }
+                NumberAnimation
+                {
+                    target: mainFormID.propertyContentPagesView
+                    property: "width"
+                    easing.type: Easing.OutQuad
+                    to: 0
+                    duration: mainFormID.propertShowAnimation ? Constants.ANIMATION_MOVE_VIEW : 0
+                }
+            },
+            Transition {
                 from: "STATE_NORMAL"
                 to: "STATE_EXPAND"
                 NumberAnimation
@@ -445,8 +505,11 @@ Load language error. Please reinstall the application"
             }
         ]
         Component.onCompleted: {
-            mainFormID.state = "STATE_FIRST_RUN"
-            //mainFormID.state = "STATE_HOME"
+            if(controler.getNotShowHelpStartUp()){
+                mainFormID.state = "STATE_HOME"
+            }else{
+                mainFormID.state = "STATE_FIRST_RUN"
+            }
 
             //Open Advanced Signature on startup
             if (gapi.getShortcutFlag() > 0) {
@@ -475,7 +538,9 @@ Load language error. Please reinstall the application"
             // Do not select any option
             mainFormID.propertyMainMenuListView.currentIndex = -1
             mainFormID.propertyMainMenuBottomListView.currentIndex = -1
-            console.log("MainForm Completed")
+            console.log("MainForm Completed testmode: "+controler.getTestMode())
+            if(controler.getTestMode())
+                mainWindow.title = mainWindow.title + "   [ " + qsTr("STR_RUN_MODE") + " ]"
         }
         propertyImageLogo {
             onClicked: {

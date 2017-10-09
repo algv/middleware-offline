@@ -14,12 +14,11 @@
 #ifdef WIN32
 #include <windows.h>
 #include <stdio.h>
-#include "verinfo.h"
 #include <QSysInfo>
 #include <QNetworkProxy>
-#else
-#include "pteidversions.h"
 #endif
+
+#include "pteidversions.h"
 
 #ifndef WIN32
 #include <unistd.h>
@@ -60,6 +59,10 @@ AppController::AppController(GUISettings& settings,QObject *parent) :
     qDebug() << "C++: AppController started. App version: " << m_Settings.getGuiVersion() +" - "+ SVN_REVISION_STR;
 }
 
+bool AppController::getTestMode(void){
+    return m_Settings.getTestMode();
+}
+
 QString AppController::getAppVersion(void){
 
     return m_Settings.getGuiVersion() +" - "+ SVN_REVISION_STR;
@@ -69,7 +72,14 @@ bool AppController::isAnimationsEnabled(void){
 
     return m_Settings.getShowAnimations();
 }
+bool AppController::getNotShowHelpStartUp(void){
 
+    return m_Settings.getNotShowHelpStartUp();
+}
+void AppController::setNotShowHelpStartUp(bool notshowhelpStartUp){
+
+    m_Settings.setNotShowHelpStartUp(notshowhelpStartUp);
+}
 void AppController::initTranslation(){
 
     QString     appPath = QCoreApplication::applicationDirPath();
@@ -455,19 +465,8 @@ bool AppController::VerifyUpdates(std::string filedata)
     std::string distrover;
     std::string archver;
 
-#ifdef WIN32
-    QString filename = QCoreApplication::arguments().at(0);
-    CFileVersionInfo VerInfo;
-    char version[256];
-    if(VerInfo.Open(filename.toLatin1()))
-    {
-        VerInfo.QueryStringValue(VI_STR_FILEVERSION, version);
-    }
-    QString ver = QString::fromLatin1(version);
-
-#else
     QString ver (WIN_GUI_VERSION_STRING);
-#endif
+
 
     QStringList list1 = ver.split(",");
 

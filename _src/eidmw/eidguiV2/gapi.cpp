@@ -1212,13 +1212,13 @@ void GAPI::startSigningBatchPDF(QList<QString> loadedFileBatchPath, QString outp
             QtConcurrent::run(this, &GAPI::doSignBatchPDF, params);
 }
 
-unsigned int GAPI::getPDFpageCount(QString loadedFilePath) {
+int GAPI::getPDFpageCount(QString loadedFilePath) {
 
     PTEID_PDFSignature sig_handler(loadedFilePath.toUtf8().data());
 
     int pageCount = sig_handler.getPageCount();
 
-    return (unsigned int) pageCount;
+    return pageCount;
 }
 
 void GAPI::startSigningXADES(QString loadedFilePath, QString outputFile, double isTimestamp) {
@@ -1524,7 +1524,7 @@ void GAPI::getSCAPEntityAttributes(QList<int> entityIDs) {
     QList<QString> attribute_list;
     PTEID_EIDCard * card = NULL;
     getCardInstance(card);
-    if (card == NULL){
+    if (card == NULL) {
         emit signalEntityAttributesLoadedError();
         return;
     }
@@ -1538,14 +1538,13 @@ void GAPI::getSCAPEntityAttributes(QList<int> entityIDs) {
 
     std::vector<ns2__AttributesType *> attributes = scapServices.getAttributes(*card, supplier_ids);
 
-    if (attributes.size() == 0)
-    {
+    if (attributes.size() == 0) {
         emit signalEntityAttributesLoadedError();
         return;
     }
 
-    for(uint i = 0; i < attributes.size() ; i++)
-    {
+    for(uint i = 0; i < attributes.size() ; i++) {
+
        std::string attrSupplier = attributes.at(i)->ATTRSupplier->Name;
        std::vector<std::string> childAttributes = getChildAttributes(attributes.at(i), false);
 
@@ -1555,13 +1554,11 @@ void GAPI::getSCAPEntityAttributes(QList<int> entityIDs) {
         return;   
        }
 
-       if (childAttributes.size() > 1)
-       {
-           qDebug() << "TODO: multiple attributes from the same supplier is not supported yet...";
-       }
+       for(uint j = 0; j < childAttributes.size() ; j++) {
 
-       attribute_list.append(QString::fromStdString(attrSupplier));
-       attribute_list.append(QString::fromStdString(childAttributes.at(0)));
+           attribute_list.append(QString::fromStdString(attrSupplier));
+           attribute_list.append(QString::fromStdString(childAttributes.at(j)));
+       }
     }
 
     emit signalEntityAttributesLoaded(attribute_list);
@@ -1596,18 +1593,15 @@ void GAPI::getSCAPCompanyAttributes() {
        PTEID_LOG(PTEID_LOG_LEVEL_DEBUG, "eidgui", "Attribute from supplier: %s containing %d child attributes", attrSupplier.c_str(), childAttributes.size()) ;
 
        if (childAttributes.size() == 0) {
-        qDebug() << "Zero child attributes in AttributeResponseValues!";
-        emit signalCompanyAttributesLoadedError();
-        return; 
+         qDebug() << "Zero child attributes in AttributeResponseValues!";
+         emit signalCompanyAttributesLoadedError();
+         return;
        }
 
-       if (childAttributes.size() > 1)
-       {
-           qDebug() << "TODO: multiple attributes from the same supplier is not supported yet...";
-       }
-
-       attribute_list.append(QString::fromStdString(attrSupplier));
-       attribute_list.append(QString::fromStdString(childAttributes.at(0)));
+        for(uint j = 0; j < childAttributes.size(); j++) {
+            attribute_list.append(QString::fromStdString(attrSupplier));
+            attribute_list.append(QString::fromStdString(childAttributes.at(j)));
+        }
     }
 
     emit signalCompanyAttributesLoaded(attribute_list);
@@ -1631,18 +1625,15 @@ void GAPI::getSCAPAttributesFromCache(int queryType, bool isShortDescription) {
         attributes.insert(attributes.end(), attributes2.begin(), attributes2.end());
     }
 
-    for(uint i = 0; i < attributes.size() ; i++)
-    {
+    for(uint i = 0; i < attributes.size() ; i++) {
+        
        std::string attrSupplier = attributes.at(i)->ATTRSupplier->Name;
        std::vector<std::string> childAttributes = getChildAttributes(attributes.at(i), isShortDescription);
 
-       if (childAttributes.size() > 1)
-       {
-           qDebug() << "TODO: multiple attributes from the same supplier is not supported yet...";
+       for(uint j = 0; j < childAttributes.size() ; j++) {
+          attribute_list.append(QString::fromStdString(attrSupplier));
+          attribute_list.append(QString::fromStdString(childAttributes.at(j)));
        }
-
-       attribute_list.append(QString::fromStdString(attrSupplier));
-       attribute_list.append(QString::fromStdString(childAttributes.at(0)));
     }
     if (queryType == 1)
         emit signalCompanyAttributesLoaded(attribute_list);
@@ -1910,6 +1901,15 @@ void cardEventCallback(long lRet, unsigned long ulState, CallBackData* pCallBack
             //------------------------------------
             // TODO: remove the certificates
             //------------------------------------
+            if (pCallBackData->getMainWnd()->m_Settings.getRemoveCert())
+            {
+                bool bImported = pCallBackData->getMainWnd()->m_Certificates.RemoveCertificates(pCallBackData->getReaderName());
+
+                if(!bImported){
+                    qDebug() << "RemoveCertificates fail";
+					emit  pCallBackData->getMainWnd()->signalRemoveCertificatesFail();
+                }
+            }
 
             //------------------------------------
             // send an event to the main app to show the popup message
@@ -1936,6 +1936,19 @@ void cardEventCallback(long lRet, unsigned long ulState, CallBackData* pCallBack
             pCallBackData->getMainWnd()->signalCardChanged(GAPI::ET_CARD_CHANGED);
             pCallBackData->getMainWnd()->setAddressLoaded(false);
             pCallBackData->getMainWnd()->resetReaderSelected();
+
+            //------------------------------------
+            // register certificates when needed
+            //------------------------------------
+			if (pCallBackData->getMainWnd()->m_Settings.getRegCert())
+            {
+                bool bImported = pCallBackData->getMainWnd()->m_Certificates.ImportCertificates(pCallBackData->getReaderName());
+
+                if(!bImported){
+                    qDebug() << "ImportCertificates fail";
+					emit  pCallBackData->getMainWnd()->signalImportCertificatesFail();
+                }
+            }
         }
     }
     catch (...)

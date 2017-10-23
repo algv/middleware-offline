@@ -92,8 +92,6 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LibPNG", "..\FreeImagePTEiD
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "FreeImage", "..\FreeImagePTEiD\FreeImage.2013.vcxproj", "{9CF14E97-F045-4A1F-951A-445CA1316338}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "wintestApp", "wintestApp\wintestApp.vcxproj", "{241CC207-60ED-4FF4-826D-E1F23782DADA}"
-EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ScapSignature", "..\scap-client-v2\scap-client.vcxproj", "{B3A05E82-1921-3FC3-9B2A-EF964405796D}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "eidguiV2", "..\eidguiV2\eidguiV2.vcxproj", "{8669C59A-52C0-32D6-A32D-91546481FAEA}"
@@ -350,15 +348,6 @@ Global
 		{9CF14E97-F045-4A1F-951A-445CA1316338}.Release|Win32.Build.0 = Release|Win32
 		{9CF14E97-F045-4A1F-951A-445CA1316338}.Release|x64.ActiveCfg = Release|x64
 		{9CF14E97-F045-4A1F-951A-445CA1316338}.Release|x64.Build.0 = Release|x64
-		{241CC207-60ED-4FF4-826D-E1F23782DADA}.Debug|Mixed Platforms.ActiveCfg = Debug|Win32
-		{241CC207-60ED-4FF4-826D-E1F23782DADA}.Debug|Mixed Platforms.Build.0 = Debug|Win32
-		{241CC207-60ED-4FF4-826D-E1F23782DADA}.Debug|Win32.ActiveCfg = Debug|Win32
-		{241CC207-60ED-4FF4-826D-E1F23782DADA}.Debug|Win32.Build.0 = Debug|Win32
-		{241CC207-60ED-4FF4-826D-E1F23782DADA}.Debug|x64.ActiveCfg = Debug|Win32
-		{241CC207-60ED-4FF4-826D-E1F23782DADA}.Release|Mixed Platforms.ActiveCfg = Release|Win32
-		{241CC207-60ED-4FF4-826D-E1F23782DADA}.Release|Mixed Platforms.Build.0 = Release|Win32
-		{241CC207-60ED-4FF4-826D-E1F23782DADA}.Release|Win32.ActiveCfg = Release|Win32
-		{241CC207-60ED-4FF4-826D-E1F23782DADA}.Release|x64.ActiveCfg = Release|Win32
 		{B3A05E82-1921-3FC3-9B2A-EF964405796D}.Debug|Mixed Platforms.ActiveCfg = Debug|Win32
 		{B3A05E82-1921-3FC3-9B2A-EF964405796D}.Debug|Mixed Platforms.Build.0 = Debug|Win32
 		{B3A05E82-1921-3FC3-9B2A-EF964405796D}.Debug|Win32.ActiveCfg = Debug|Win32

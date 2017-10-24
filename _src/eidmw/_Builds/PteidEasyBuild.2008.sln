@@ -292,7 +292,6 @@ Global
 		{13BA0068-A852-4123-84D8-ED786D196991}.Release|Mixed Platforms.Build.0 = Release|x64
 		{13BA0068-A852-4123-84D8-ED786D196991}.Release|Win32.ActiveCfg = Release|x64
 		{13BA0068-A852-4123-84D8-ED786D196991}.Release|x64.ActiveCfg = Release|x64
-		{13BA0068-A852-4123-84D8-ED786D196991}.Release|x64.Build.0 = Release|x64
 		{E3536C28-A7F1-4B53-8E52-7D2232F9E098}.Debug|Mixed Platforms.ActiveCfg = Debug|Win32
 		{E3536C28-A7F1-4B53-8E52-7D2232F9E098}.Debug|Mixed Platforms.Build.0 = Debug|Win32
 		{E3536C28-A7F1-4B53-8E52-7D2232F9E098}.Debug|Win32.ActiveCfg = Debug|Win32

@@ -4,8 +4,8 @@
      xmlns:util="http://schemas.microsoft.com/wix/UtilExtension">
 	<?include ..\..\..\svn_revision.wxs ?>
 
-	<?define var.OfficialProductVersion =2.4.0?>
-	<?define var.ProductVersion =2.4.$(var.RevisionNumber)?>
+	<?define var.OfficialProductVersion = 2.4.6?>
+	<?define var.ProductVersion = 2.4.$(var.RevisionNumber)?>
 	<?define var.FullProductVersion =$(var.OfficialProductVersion).$(var.RevisionNumber)?>
 
 	<?define var.UpgradeCode ={41D2DFA4-7754-465C-9379-55CDBADE082D}?>
@@ -28,7 +28,7 @@
 				 InstallerVersion="405"
 				 Keywords="Portugal e-ID Middleware Installer"
 				 Platform="x64"
-         Comments="Portuguese eID Middleware 2.4.0 SVN Revision $(var.RevisionNumber)"
+         Comments="Portuguese eID Middleware 2.4.6 SVN Revision $(var.RevisionNumber)"
 				 Manufacturer="Portuguese Government"
 				 Compressed="yes"
 				 InstallPrivileges="elevated" />
@@ -40,7 +40,8 @@
 		<?else?>
 			<?define var.PTEID_DIR_MSM=$(env.PTEID_DIR_MSM)?>
 		<?endif?>
-    
+
+    <?define var.PTEID_QT_PLATFORMPLUGINS=$(env.PTEID_DIR_QT_4_X64)\plugins\platforms\?>
     <?define var.PTEID_QT_IMAGEFORMATS=$(env.PTEID_DIR_QT_4_X64)\plugins\imageformats\?>
     <?define var.PTEID_QT_PRINTSUPPORT=$(env.PTEID_DIR_QT_4_X64)\plugins\printsupport\?>
 	    
@@ -111,6 +112,8 @@
 		<Condition Message="!(loc.OldMiddlewareErrorMsg)" >
 			<![CDATA[Installed OR (NOT OLDMIDDLEWAREINSTALLED AND NOT OLDMIDDLEWAREINSTALLED2)]]>
 		</Condition>
+    
+    
 
 		<Directory Id="TARGETDIR" Name="SourceDir">
 
@@ -121,6 +124,7 @@
 			</Directory>
 
 			<Directory Id="ProgramFiles64Folder">
+      
 				<Directory Id="MINIDRIVERROOTFOLDER" Name="PTeID Minidriver"/>
 				<Directory Id="APPLICATIONROOTFOLDER" Name="Portugal Identity Card">
 					<Directory Id="IMAGEFORMATS" Name="imageformats" />
@@ -182,7 +186,7 @@
 
       <DirectoryRef Id="QT5PLATFORMS">
           <Component Id="qt5PlatformDll" Guid="{C65667C8-D72C-4CD4-BF7F-1D2DAC5B0BDA}">
-              <File Id="qwindows.dll" Name="qwindows.dll" KeyPath="yes" Source="$(var.PTEID_BUILD_FOLDER_X64)\qwindows.dll" />
+              <File Id="qwindows.dll" Name="qwindows.dll" KeyPath="yes" Source="$(var.PTEID_QT_PLATFORMPLUGINS)\qwindows.dll" />
           </Component>
       </DirectoryRef>
 
@@ -211,8 +215,8 @@
 			<Component Id="Certs" Guid="{750F471B-6A83-4118-A0AF-2A138B770AD6}">
 		        <File Source="..\..\certs\CartaodeCidadao001.der" KeyPath="yes" />
 		        <File Source="..\..\certs\CartaodeCidadao002.der" />
-            <File Source="..\..\certs\CartaodeCidadao003.der" />
-		       <!--  <File Source="..\..\certs\ECRaizEstado_novo_assinado_GTE.der" /> -->
+                <File Source="..\..\certs\CartaodeCidadao003.der" />
+				<File Source="..\..\certs\CartaodeCidadao004.der" />
 		        <File Source="..\..\certs\ECRaizEstado_MC.der" />
 		        <File Source="..\..\certs\Multicert_Root_01.der" />
 		        <File Source="..\..\certs\BaltimoreCyberTrustRoot.der" />
@@ -296,11 +300,6 @@
           <File Source="..\..\..\scap-client-v2\scapsignature_pt.qm" />
 				</Component>
 
-        <Component Id="Runtime35ThirdPartyOpenSSL" Guid="{A98B4895-7CCF-4A91-ACE2-433B8D4363F8}" SharedDllRefCount="yes">
-          <File Id="libeay_64.dll" Source="$(var.PTEID_BUILD_FOLDER_X64)libeay32.dll" KeyPath="yes"/>
-          <File Id="ssleay_64.dll" Source="$(var.PTEID_BUILD_FOLDER_X64)ssleay32.dll" />
-        </Component>
-
 				<Component Id="GuiLang" Guid="{6B03ED1B-DF24-4CE6-A70C-476AF4C0941B}" SharedDllRefCount="yes">
 			          <File Source="..\..\..\eidgui\eidmw_en.qm" KeyPath="yes" />
 			          <File Source="..\..\..\eidgui\eidmw_nl.qm" />
@@ -308,13 +307,13 @@
 
 				<Component Id="Qt" Guid="{AF5AF018-EE70-4EA9-98BA-9C2947F19060}" SharedDllRefCount="yes">
           <!-- QT5  -->
-          <File Source="$(var.PTEID_BUILD_FOLDER_X64)Qt5Core.dll" KeyPath="yes" />
-          <File Source="$(var.PTEID_BUILD_FOLDER_X64)Qt5Gui.dll" />
-          <File Source="$(var.PTEID_BUILD_FOLDER_X64)Qt5Network.dll" />
-          <File Source="$(var.PTEID_BUILD_FOLDER_X64)Qt5Widgets.dll" />
-          <File Source="$(var.PTEID_BUILD_FOLDER_X64)Qt5Xml.dll" />
-          <File Source="$(var.PTEID_BUILD_FOLDER_X64)Qt5Concurrent.dll" />
-          <File Source="$(var.PTEID_BUILD_FOLDER_X64)Qt5PrintSupport.dll" />
+          <File Source="$(env.PTEID_DIR_QT_4_X64)\bin\Qt5Core.dll" KeyPath="yes" />
+          <File Source="$(env.PTEID_DIR_QT_4_X64)\bin\Qt5Gui.dll" />
+          <File Source="$(env.PTEID_DIR_QT_4_X64)\bin\Qt5Network.dll" />
+          <File Source="$(env.PTEID_DIR_QT_4_X64)\bin\Qt5Widgets.dll" />
+          <File Source="$(env.PTEID_DIR_QT_4_X64)\bin\Qt5Xml.dll" />
+          <File Source="$(env.PTEID_DIR_QT_4_X64)\bin\Qt5Concurrent.dll" />
+          <File Source="$(env.PTEID_DIR_QT_4_X64)\bin\Qt5PrintSupport.dll" />
 				</Component>
 
 				<Component Id="License" Guid="{C00AF621-E882-4805-BA9C-B90AA5DBBCB6}" SharedDllRefCount="yes">
@@ -381,6 +380,8 @@
 			          <File Id="pteidapplayer_64.dll"  Source="$(var.PTEID_BUILD_FOLDER_X64)pteidapplayer.dll" KeyPath="yes" />
 			          <File Id="pteidcardlayer_64.dll" Source="$(var.PTEID_BUILD_FOLDER_X64)pteidcardlayer.dll" />
                 <File Id="pteidlibj_64.dll"        Source="$(var.PTEID_BUILD_FOLDER_X64)pteidlibj.dll"/>
+                <File Id="libeay_64.dll" Source="$(var.PTEID_BUILD_FOLDER_X64)libeay32.dll" />
+                <File Id="ssleay_64.dll" Source="$(var.PTEID_BUILD_FOLDER_X64)ssleay32.dll" />
                 <File Id="pteidlibCS_Wrapper_64.dll" Source="$(var.PTEID_BUILD_FOLDER_X64)pteidlibCS_Wrapper.dll" />
 			          <File Id="pteidcommon_64.dll"    Source="$(var.PTEID_BUILD_FOLDER_X64)pteidcommon.dll" />
 			          <File Id="pteidDlgsWin32_64.dll" Source="$(var.PTEID_BUILD_FOLDER_X64)pteidDlgsWin32.dll" />
@@ -441,15 +442,15 @@
 			</DirectoryRef>
 
 
-			<DirectoryRef Id="TARGETDIR">
-				<Component Id="SCardSvrService" Guid="{C3BC9746-0843-41b2-BDDA-3192772974CE}" Permanent="yes">
-					<!-- Start SCardSvr Service during startup -->
-					<RegistryValue Root="HKLM" Key="System\CurrentControlSet\Services\SCardSvr" Type="integer" Name="Start" Value="2" KeyPath="yes"/>
-					<!-- Start SCardSvr Service now -->
-					<!-- <ServiceControl Id="StartSCardSvrService" Name="SCardSvr" Start="install" /> -->
-				</Component>
-        
-        <!-- 
+    <DirectoryRef Id="TARGETDIR">
+      <Component Id="SCardSvrService" Guid="{C3BC9746-0843-41b2-BDDA-3192772974CE}" Permanent="yes">
+        <!-- Start SCardSvr Service during startup -->
+        <RegistryValue Root="HKLM" Key="System\CurrentControlSet\Services\SCardSvr" Type="integer" Name="Start" Value="2" KeyPath="yes"/>
+        <!-- Start SCardSvr Service now -->
+        <!-- <ServiceControl Id="StartSCardSvrService" Name="SCardSvr" Start="install" /> -->
+      </Component>
+
+      <!-- 
 				<Component Id="REGISTERXPI" Win64="no" Guid="{946B85B6-99CC-4893-8A42-E7EC6FFE0D87}">
 					<RegistryKey Root="HKLM"
 								 Key="SOFTWARE\Mozilla\Firefox\Extensions"
@@ -459,44 +460,44 @@
 					</RegistryKey>
 				</Component>
         -->
-        
-				<Component Id="REGISTERMINIDRIVER_64" Guid="{3BCA1B2C-08AF-4727-AD85-1C60025656EA}" Win64="yes">
-					<RegistryKey Root="HKLM"
-							  Key="SOFTWARE\Microsoft\Cryptography\Calais\SmartCards\Pteid (IAS)"
-							  Action="createAndRemoveOnUninstall">
-						<RegistryValue Type="string" Name="80000001" Value="pteidmdrv64.dll" KeyPath="yes"/>
-						<RegistryValue Type="binary" Name="ATR" Value="3B959540FFD000540130" KeyPath="no"/>
-						<RegistryValue Type="binary" Name="ATRMask" Value="fffffffffffffffffffc" KeyPath="no"/>
-						<RegistryValue Type="string" Name="Crypto Provider" Value="Microsoft Base Smart Card Crypto Provider" KeyPath="no"/>
-						<RegistryValue Type="string" Name="Smart Card Key Storage Provider" Value="Microsoft Smart Card Key Storage Provider" KeyPath="no"/>
-					</RegistryKey>
-					
-					<RemoveRegistryKey Root="HKLM" Action="removeOnInstall"
-						Key="SOFTWARE\Microsoft\Cryptography\Calais\SmartCards\_Portugal eID (IAS)" />
-					<RemoveRegistryKey Root="HKLM" Action="removeOnInstall"
-						Key="SOFTWARE\Wow6432Node\Microsoft\Cryptography\Calais\SmartCards\_Portugal eID (GemSafe)" />
-					<RemoveRegistryKey Root="HKLM" Action="removeOnInstall"
-						Key="SOFTWARE\Wow6432Node\Microsoft\Cryptography\Calais\SmartCards\_Portugal eID (IAS)" />
-					<RemoveRegistryKey Root="HKLM" Action="removeOnInstall"
-						Key="SOFTWARE\Wow6432Node\Microsoft\Cryptography\Calais\SmartCards\_Portugal eID (IAS) 1" />
-					<RemoveRegistryKey Root="HKLM" Action="removeOnInstall"
-						Key="SOFTWARE\Wow6432Node\Microsoft\Cryptography\Calais\SmartCards\_Portugal eID (GemSafe) 1" />
-					<RemoveRegistryKey Root="HKLM" Action="removeOnInstall"
-						Key="SOFTWARE\Microsoft\Cryptography\Calais\SmartCards\_Portugal eID (GemSafe) 1"/>
-					<RemoveRegistryKey Root="HKLM" Action="removeOnInstall"
-						Key="SOFTWARE\Microsoft\Cryptography\Calais\SmartCards\_Portugal eID (IAS) 1"/>
-					
-					<RegistryKey Root="HKLM"
-					   Key="SOFTWARE\Microsoft\Cryptography\Calais\SmartCards\Pteid (Gemsafe)"
-					   Action="createAndRemoveOnUninstall">
-						<RegistryValue Type="string" Name="80000001" Value="pteidmdrv64.dll" KeyPath="no"/>
-						<RegistryValue Type="binary" Name="ATR" Value="3B7D95000080318065B08311000083009000" KeyPath="no"/>
-						<RegistryValue Type="binary" Name="ATRMask" Value="ffffffffffffffffffffffff0000ffffffff" KeyPath="no"/>
-						<RegistryValue Type="string" Name="Crypto Provider" Value="Microsoft Base Smart Card Crypto Provider" KeyPath="no"/>
-						<RegistryValue Type="string" Name="Smart Card Key Storage Provider" Value="Microsoft Smart Card Key Storage Provider" KeyPath="no"/>
-					</RegistryKey>
 
-					<!--
+      <Component Id="REGISTERMINIDRIVER_64" Guid="{3BCA1B2C-08AF-4727-AD85-1C60025656EA}" Win64="yes">
+        <RegistryKey Root="HKLM"
+              Key="SOFTWARE\Microsoft\Cryptography\Calais\SmartCards\Pteid (IAS)"
+              Action="createAndRemoveOnUninstall">
+          <RegistryValue Type="string" Name="80000001" Value="pteidmdrv64.dll" KeyPath="yes"/>
+          <RegistryValue Type="binary" Name="ATR" Value="3B959540FFD000540130" KeyPath="no"/>
+          <RegistryValue Type="binary" Name="ATRMask" Value="fffffffffffffffffffc" KeyPath="no"/>
+          <RegistryValue Type="string" Name="Crypto Provider" Value="Microsoft Base Smart Card Crypto Provider" KeyPath="no"/>
+          <RegistryValue Type="string" Name="Smart Card Key Storage Provider" Value="Microsoft Smart Card Key Storage Provider" KeyPath="no"/>
+        </RegistryKey>
+
+        <RemoveRegistryKey Root="HKLM" Action="removeOnInstall"
+          Key="SOFTWARE\Microsoft\Cryptography\Calais\SmartCards\_Portugal eID (IAS)" />
+        <RemoveRegistryKey Root="HKLM" Action="removeOnInstall"
+          Key="SOFTWARE\Wow6432Node\Microsoft\Cryptography\Calais\SmartCards\_Portugal eID (GemSafe)" />
+        <RemoveRegistryKey Root="HKLM" Action="removeOnInstall"
+          Key="SOFTWARE\Wow6432Node\Microsoft\Cryptography\Calais\SmartCards\_Portugal eID (IAS)" />
+        <RemoveRegistryKey Root="HKLM" Action="removeOnInstall"
+          Key="SOFTWARE\Wow6432Node\Microsoft\Cryptography\Calais\SmartCards\_Portugal eID (IAS) 1" />
+        <RemoveRegistryKey Root="HKLM" Action="removeOnInstall"
+          Key="SOFTWARE\Wow6432Node\Microsoft\Cryptography\Calais\SmartCards\_Portugal eID (GemSafe) 1" />
+        <RemoveRegistryKey Root="HKLM" Action="removeOnInstall"
+          Key="SOFTWARE\Microsoft\Cryptography\Calais\SmartCards\_Portugal eID (GemSafe) 1"/>
+        <RemoveRegistryKey Root="HKLM" Action="removeOnInstall"
+          Key="SOFTWARE\Microsoft\Cryptography\Calais\SmartCards\_Portugal eID (IAS) 1"/>
+
+        <RegistryKey Root="HKLM"
+           Key="SOFTWARE\Microsoft\Cryptography\Calais\SmartCards\Pteid (Gemsafe)"
+           Action="createAndRemoveOnUninstall">
+          <RegistryValue Type="string" Name="80000001" Value="pteidmdrv64.dll" KeyPath="no"/>
+          <RegistryValue Type="binary" Name="ATR" Value="3B7D95000080318065B08311000083009000" KeyPath="no"/>
+          <RegistryValue Type="binary" Name="ATRMask" Value="ffffffffffffffffffffffff0000ffffffff" KeyPath="no"/>
+          <RegistryValue Type="string" Name="Crypto Provider" Value="Microsoft Base Smart Card Crypto Provider" KeyPath="no"/>
+          <RegistryValue Type="string" Name="Smart Card Key Storage Provider" Value="Microsoft Smart Card Key Storage Provider" KeyPath="no"/>
+        </RegistryKey>
+
+        <!--
 						SmartCardName="SOFTWARE\Microsoft\Cryptography\Calais\SmartCards\_Portugal eID (GemSafe)"
 SmartCardName_101="SOFTWARE\Microsoft\Cryptography\Calais\SmartCards\_Portugal eID (IAS)"
 SmartCardNameWOW64="SOFTWARE\Wow6432Node\Microsoft\Cryptography\Calais\SmartCards\_Portugal eID (GemSafe)"
@@ -508,80 +509,83 @@ SmartCardNameWOW64_1="SOFTWARE\Wow6432Node\Microsoft\Cryptography\Calais\SmartCa
 SmartCardNameWOW64_101_1="SOFTWARE\Wow6432Node\Microsoft\Cryptography\Calais\SmartCards\_Portugal eID (IAS) 1"
 						
 						-->
-						
-				</Component>
 
-				<Component Id="RegistryXadesFileType" Guid="{414DF15C-6CE6-4181-95B4-D83F16903BA5}">
-					<RegistryKey Root="HKLM"
-							Key="SOFTWARE\Classes\.ccsigned"
-								 Action="createAndRemoveOnUninstall">
-						<RegistryValue Type="string" Value="PteidASICSignature"/>
-					</RegistryKey>
-					<RegistryKey Root="HKLM"
-							Key="SOFTWARE\Classes\PteidASICSignature" Action="createAndRemoveOnUninstall">
-						<RegistryKey
-							Key="shell\Open\command"
-								 Action="createAndRemoveOnUninstall">
-							<RegistryValue Type="string" Value="C:\Program Files\Portugal Identity Card\DSS\dss-standalone.exe pt &quot;%1&quot;"/>
-						</RegistryKey>
-						<RegistryKey Key="DefaultIcon"  Action="createAndRemoveOnUninstall">
-							<RegistryValue Type="string" Value="[ProgramFiles64Folder]Portugal Identity Card\assinatura.ico"/>
-						</RegistryKey>
-					<RegistryValue Type="string" Value="Cartão de Cidadão Digital Signature"/>
-				</RegistryKey>
-					
-			</Component>
+      </Component>
 
-				<Component Id="RegistryPteidSystem" Guid="{414DF15C-6CE6-4181-95B4-D83F16903BA3}">
-					<RegistryKey Root="HKLM"
-						Key="SOFTWARE\PTEID"
-						Action="createAndRemoveOnUninstall">
-						<RegistryKey Key="certificatevalidation" Action="createAndRemoveOnUninstall">
-							<RegistryValue Type="integer" Name="cert_validation_ocsp" Value="0"/>
-							<RegistryValue Type="integer" Name="cert_validation_crl" Value="0"/>
-						</RegistryKey>
-
-						<RegistryKey Key="certificatecache" Action="createAndRemoveOnUninstall">
-							<RegistryValue Type="string" Name="cert_cachefile" Value="[ProgramFiles64Folder]Portugal Identity Card\eidstore\crl\.cache.csc"/>
-						</RegistryKey>
-
-						<RegistryKey Key="crl" Action="createAndRemoveOnUninstall">
-							<RegistryValue Type="string" Name="crl_cachedir" Value="[ProgramFiles64Folder]Portugal Identity Card\eidstore\crl"/>
-						</RegistryKey>
-
-						<RegistryKey Key="general" Action="createAndRemoveOnUninstall">
-							<RegistryValue Type="string" Name="language" Value="nl"/>
-							<RegistryValue Type="string" Name="install_dirname" Value="[ProgramFiles64Folder]Portugal Identity Card"/>
-							<RegistryValue Type="string" Name="certs_dir" Value="[ProgramFiles64Folder]Portugal Identity Card\eidstore\certs"/>
-            				<RegistryValue Type="string" Name="certs_dir_test" Value="[ProgramFiles64Folder]Portugal Identity Card\eidstore\certs_test"/>
-							<RegistryValue Type="integer" Name="show_java_apps" Value="0"/>
-						</RegistryKey>
-
-						<RegistryKey Key="logging" Action="createAndRemoveOnUninstall">
-							<RegistryValue Type="string" Name="log_dirname" Value="[ProgramFiles64Folder]Portugal Identity Card\log"/>
-						</RegistryKey>
-
-						<RegistryKey Key="configuretool" Action="createAndRemoveOnUninstall">
-							<RegistryValue Type="integer" Name="start_with_windows" Value="1"/>
-							<RegistryValue Type="integer" Name="start_minimized" Value="0"/>
-							<RegistryValue Type="integer" Name="show_toolbar" Value="1"/>
-							<RegistryValue Type="integer" Name="show_picture" Value="0"/>
-							<RegistryValue Type="integer" Name="show_notification" Value="1"/>
-							<RegistryValue Type="integer" Name="automatic_cardreading" Value="1"/>
-							<RegistryValue Type="integer" Name="cardreader" Value="0"/>
-							<RegistryValue Type="integer" Name="registrate_certificate" Value="1"/>
-						</RegistryKey>
-					</RegistryKey>
-					
-				</Component>
-
-        <Component Id="RegisterPteidAutoStart" Guid="{414DF15C-6CE6-4181-95B4-D83F16903BA6}">
-          <RegistryKey Root="HKCU" Key="SOFTWARE\Microsoft\Windows\CurrentVersion\Run">
-            <RegistryValue Type="string" Name="pteid" Value="&quot;[APPLICATIONROOTFOLDER]pteidgui.exe&quot;"/>
+      <Component Id="RegistryXadesFileType" Guid="{414DF15C-6CE6-4181-95B4-D83F16903BA5}">
+        <RegistryKey Root="HKLM"
+            Key="SOFTWARE\Classes\.ccsigned"
+               Action="createAndRemoveOnUninstall">
+          <RegistryValue Type="string" Value="PteidASICSignature"/>
+        </RegistryKey>
+        <RegistryKey Root="HKLM"
+            Key="SOFTWARE\Classes\PteidASICSignature" Action="createAndRemoveOnUninstall">
+          <RegistryKey
+            Key="shell\Open\command"
+               Action="createAndRemoveOnUninstall">
+            <RegistryValue Type="string" Value="C:\Program Files\Portugal Identity Card\DSS\dss-standalone.exe pt &quot;%1&quot;"/>
           </RegistryKey>
-        </Component>
+          <RegistryKey Key="DefaultIcon"  Action="createAndRemoveOnUninstall">
+            <RegistryValue Type="string" Value="[ProgramFiles64Folder]Portugal Identity Card\assinatura.ico"/>
+          </RegistryKey>
+          <RegistryValue Type="string" Value="Cartão de Cidadão Digital Signature"/>
+        </RegistryKey>
 
-			</DirectoryRef>
+      </Component>
+
+      <Component Id="RegistryPteidSystem" Guid="{414DF15C-6CE6-4181-95B4-D83F16903BA3}">
+        <RegistryKey Root="HKLM"
+          Key="SOFTWARE\PTEID"
+          Action="createAndRemoveOnUninstall">
+          <RegistryKey Key="certificatevalidation" Action="createAndRemoveOnUninstall">
+            <RegistryValue Type="integer" Name="cert_validation_ocsp" Value="0"/>
+            <RegistryValue Type="integer" Name="cert_validation_crl" Value="0"/>
+          </RegistryKey>
+
+          <RegistryKey Key="certificatecache" Action="createAndRemoveOnUninstall">
+            <RegistryValue Type="string" Name="cert_cachefile" Value="[ProgramFiles64Folder]Portugal Identity Card\eidstore\crl\.cache.csc"/>
+          </RegistryKey>
+
+          <RegistryKey Key="crl" Action="createAndRemoveOnUninstall">
+            <RegistryValue Type="string" Name="crl_cachedir" Value="[ProgramFiles64Folder]Portugal Identity Card\eidstore\crl"/>
+          </RegistryKey>
+
+          <RegistryKey Key="general" Action="createAndRemoveOnUninstall">
+            <RegistryValue Type="string" Name="language" Value="nl"/>
+            <RegistryValue Type="string" Name="install_dirname" Value="[ProgramFiles64Folder]Portugal Identity Card"/>
+            <RegistryValue Type="string" Name="certs_dir" Value="[ProgramFiles64Folder]Portugal Identity Card\eidstore\certs"/>
+            <RegistryValue Type="string" Name="certs_dir_test" Value="[ProgramFiles64Folder]Portugal Identity Card\eidstore\certs_test"/>
+            <RegistryValue Type="integer" Name="show_java_apps" Value="0"/>
+          </RegistryKey>
+
+          <RegistryKey Key="logging" Action="createAndRemoveOnUninstall">
+            <RegistryValue Type="string" Name="log_dirname" Value="[ProgramFiles64Folder]Portugal Identity Card\log"/>
+          </RegistryKey>
+
+          <RegistryKey Key="configuretool" Action="createAndRemoveOnUninstall">
+            <RegistryValue Type="integer" Name="start_with_windows" Value="1"/>
+            <RegistryValue Type="integer" Name="start_minimized" Value="0"/>
+            <RegistryValue Type="integer" Name="show_toolbar" Value="1"/>
+            <RegistryValue Type="integer" Name="show_picture" Value="0"/>
+            <RegistryValue Type="integer" Name="show_notification" Value="1"/>
+            <RegistryValue Type="integer" Name="automatic_cardreading" Value="1"/>
+            <RegistryValue Type="integer" Name="cardreader" Value="0"/>
+            <RegistryValue Type="integer" Name="registrate_certificate" Value="1"/>
+          </RegistryKey>
+        </RegistryKey>
+
+
+      </Component>
+
+
+      <Component Id="RegisterPteidAutoStart" Guid="{414DF15C-6CE6-4181-95B4-D83F16903BA6}">
+        <RegistryKey Root="HKCU" Key="SOFTWARE\Microsoft\Windows\CurrentVersion\Run">
+          <RegistryValue Type="string" Name="pteid" Value="&quot;[APPLICATIONROOTFOLDER]pteidgui.exe&quot;"/>
+        </RegistryKey>
+      </Component>
+
+    </DirectoryRef>
+      
 
 			<DirectoryRef Id="ApplicationProgramsFolder">
 				<Component Id="PteidGuiShortcut" Guid="{CBD0F388-EAE5-4FA1-8C38-EC223928FF13}">
@@ -590,6 +594,7 @@ SmartCardNameWOW64_101_1="SOFTWARE\Wow6432Node\Microsoft\Cryptography\Calais\Sma
 							  Description="!(loc.PteidGuiDescr)"
 							  Target="[APPLICATIONROOTFOLDER]pteidgui.exe"
 							  WorkingDirectory="APPLICATIONROOTFOLDER"/>
+          
 					<Shortcut Id="EidViewerShortcut"
 							  Name="Cartão de Cidadão"
 							  Directory="DesktopFolder"
@@ -633,25 +638,24 @@ SmartCardNameWOW64_101_1="SOFTWARE\Wow6432Node\Microsoft\Cryptography\Calais\Sma
 				<ComponentRef Id="CrlDir"/>
 				<ComponentRef Id="HttpDir"/>
         <ComponentRef Id="ImagePlugins"/>
-				<!--<ComponentRef Id="CrlPortugal"/> -->
+
 				<ComponentRef Id="DirectoryCache"/>
 				<ComponentRef Id="License"/>
 				<ComponentRef Id="LogDir"/>
 				<ComponentRef Id="DSSApp"/>
-
-				<!-- System32 -->
+        <!-- System32 -->
 
 				<ComponentRef Id="Runtime35"/>
 				<ComponentRef Id="Runtime35_64"/>
-				<ComponentRef Id="Runtime35ThirdPartyOpenSSL"/>
-		<!-- 		<ComponentRef Id="Runtime35ThirdPartyOpenSSL_64"/> -->
+        <!--<ComponentRef Id="Runtime35ThirdPartyOpenSSL"/> -->
+		    <!--<ComponentRef Id="Runtime35ThirdPartyOpenSSL_64"/> -->
 				<ComponentRef Id="Runtime35ThirdPartyXerces"/>
 				<ComponentRef Id="Runtime35ThirdPartyXerces_64"/>
 
 				<!-- Registry -->
 				<ComponentRef Id="RegistryPteidSystem"/>
-        <ComponentRef Id="RegisterPteidAutoStart"/>
-				<ComponentRef Id="RegistryXadesFileType"/>
+         <ComponentRef Id="RegisterPteidAutoStart"/>
+        <ComponentRef Id="RegistryXadesFileType"/>
 
 				<Feature Id="GUI"
 						  Title="!(loc.PteidGui)"

@@ -47,7 +47,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <iostream>
-//For auto_ptr
+//For unique_ptr
 #include <memory>
 #include <sstream>
 #include <string>
@@ -367,7 +367,7 @@ void Catalog::prepareSignature(PDFRectangle *rect, const char * name, Ref *first
 
 	//Add name and version of the Signature Creation App to the Build_Prop->App Dictionary
 	build_prop_app.dictAdd(copyString("REx"), obj1.initString(
-		new GooString(PTEID_PRODUCT_VERSION"-"SVN_REVISION_STR)));
+		new GooString(PTEID_PRODUCT_VERSION "-" SVN_REVISION_STR)));
 	build_prop_app.dictAdd(copyString("Name"), obj1.initName("Portugal eID Middleware"));
 #ifdef _WIN32	
 	build_prop_app.dictAdd(copyString("OS"), obj1.initName("Win"));
@@ -964,7 +964,7 @@ void Catalog::addSignatureAppearance(Object *signature_field, const char *name, 
 
 	double assinado_por_length = 51.0;
 	//Change to bold font for the signer name
-	std::auto_ptr<GooString> str1(GooString::format(isPTLanguage ? strings_pt[0] : strings_en[0],
+	std::unique_ptr<GooString> str1(GooString::format(isPTLanguage ? strings_pt[0] : strings_en[0],
 		assinado_por_length, (int)font_size));
 
 	n2_commands->append(str1.get());
@@ -985,21 +985,21 @@ void Catalog::addSignatureAppearance(Object *signature_field, const char *name, 
 
 	if (lines < 2)
 	{
-		std::auto_ptr<GooString> str2(GooString::format("{0:f} -10 Td\r\n", -assinado_por_length));
+		std::unique_ptr<GooString> str2(GooString::format("{0:f} -10 Td\r\n", -assinado_por_length));
 		n2_commands->append(str2.get()); 
 	}
 	else
 		n2_commands->append("0 -10 Td\r\n");
 
 	//Back to regular font
-	std::auto_ptr<GooString> str3(GooString::format("/F1 {0:d} Tf\r\n", (int)font_size));
+	std::unique_ptr<GooString> str3(GooString::format("/F1 {0:d} Tf\r\n", (int)font_size));
 	n2_commands->append(str3.get());
 
-	std::auto_ptr<GooString> str4(GooString::format(isPTLanguage ? strings_pt[1] : strings_en[1],
+	std::unique_ptr<GooString> str4(GooString::format(isPTLanguage ? strings_pt[1] : strings_en[1],
 				civil_number));
 	n2_commands->append(str4.get());
 
-	std::auto_ptr<GooString> str5(GooString::format(isPTLanguage ? strings_pt[2] : strings_en[2],
+	std::unique_ptr<GooString> str5(GooString::format(isPTLanguage ? strings_pt[2] : strings_en[2],
 		date_str));
 	n2_commands->append(str5.get());
 

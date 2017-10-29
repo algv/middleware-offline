@@ -22,7 +22,7 @@
 %endif
 %endif
 
-%define svn_revision 4973
+%define svn_revision 5239
 
 Name:           pteid-mw
 BuildRequires:  pcsc-lite-devel make swig automake autoconf libtool
@@ -36,11 +36,11 @@ Requires: pcsc-ccid xerces-c
 %endif
 
 %if 0%{?suse_version}
-BuildRequires:	java-1_8_0-openjdk-devel
+BuildRequires:  java-1_8_0-openjdk-devel
 Requires:       java-1_8_0-openjdk
 BuildRequires:  libpoppler-qt5-devel
-BuildRequires:	libqt5-qtbase-devel
-BuildRequires:	libqt5-qttools-devel
+BuildRequires:  libqt5-qtbase-devel
+BuildRequires:  libqt5-qttools-devel
 
 BuildRequires:  libxml-security-c-devel
 %endif
@@ -51,21 +51,21 @@ BuildConflicts: brp-check-suse
 BuildRequires:  java-1.8.0-openjdk-devel
 Requires:       java-1.8.0-openjdk
 
-BuildRequires:	qt5-qtbase-devel
-BuildRequires:	qt5-qttools-devel
+BuildRequires:  qt5-qtbase-devel
+BuildRequires:  qt5-qttools-devel
 
 BuildRequires:  xml-security-c-devel
 BuildRequires:  poppler-qt5-devel
 BuildRequires:  cairo-devel gcc gcc-c++ xerces-c-devel openssl-devel
 BuildRequires:  qt-devel pcsc-lite-ccid curl-devel
-Requires:	pcsc-lite-ccid
+Requires: pcsc-lite-ccid
 %endif
 
-Conflicts:	cartao_de_cidadao
+Conflicts:  cartao_de_cidadao
 
 License:        GPLv2+
 Group:          System/Libraries
-Version:        2.4.0.%{svn_revision}
+Version:        2.4.6.%{svn_revision}
 %if 0%{?fedora}
 Release:        1%{?dist}
 %else
@@ -75,8 +75,8 @@ Summary:        Portuguese eID middleware
 Url:            https://svn.gov.pt/projects/ccidadao/
 Vendor:         Portuguese Government
 BuildRoot:      %{_tmppath}/%{name}-%{version}-build
-Source0:        pteid-mw_2.4.0svn%{svn_revision}-1.tar.gz
-Source1:	pteid-mw-gui.desktop
+Source0:        pteid-mw_2.4.6svn%{svn_revision}-1.tar.gz
+Source1:        pteid-mw-gui.desktop
 Source2:        pteid-scalable.svg
 Source3:        pteid-signature.png
 Source4:        pteid-dss.desktop
@@ -98,7 +98,7 @@ Identity Card (Cartão de Cidadão) in order to authenticate securely
 in certain websites and/or sign documents.
 
 %prep
-%setup -q -n pteid-mw_2.4.0svn%{svn_revision}
+%setup -q -n pteid-mw_2.4.6svn%{svn_revision}
 
 %if 0%{?fedora} || 0%{?centos_ver}
 sed -i 's/$QT4DIR/"$QT4DIR"/g' configure_fedora.sh
@@ -206,9 +206,6 @@ ln -s -f /usr/local/lib/libpteidapplayer.so.2.0.0 /usr/local/lib/libpteidapplaye
 ln -s -f /usr/local/lib/libpteidlib.so.2.0.0 /usr/local/lib/libpteidlib.so
 ln -s -f /usr/local/lib/libpteidlib.so.2.0.0 /usr/local/lib/libpteidlib.so.2
 ln -s -f /usr/local/lib/libpteidlib.so.2.0.0 /usr/local/lib/libpteidlib.so.2.0
-ln -s -f /usr/local/lib/libpteidlibJava_Wrapper.so.2.0.0 /usr/local/lib/libpteidlibJava_Wrapper.so
-ln -s -f /usr/local/lib/libpteidlibJava_Wrapper.so.2.0.0 /usr/local/lib/libpteidlibJava_Wrapper.so.2
-ln -s -f /usr/local/lib/libpteidlibJava_Wrapper.so.2.0.0 /usr/local/lib/libpteidlibJava_Wrapper.so.2.0
 
 ln -s /usr/share/pixmaps/pteid-signature.png /usr/share/icons/hicolor/64x64/mimetypes/application-x-signedcc.png
 ln -s /usr/share/pixmaps/pteid-signature.png /usr/share/icons/hicolor/64x64/mimetypes/gnome-mime-application-x-signedcc.png
@@ -253,7 +250,7 @@ echo "/usr/local/lib" > /etc/ld.so.conf.d/pteid.conf
 # MDV still uses old pcscd services
 if [ -x /etc/init.d/pcscd ]
 then
-	/etc/init.d/pcscd restart
+  /etc/init.d/pcscd restart
 fi
 
 %if 0%{?fedora} >= 16
@@ -265,7 +262,7 @@ systemctl restart pcscd.service
 %if 0%{?suse_version}  > 1140
 if [ -x /etc/init.d/pcscd ]
 then
-	/etc/init.d/pcscd restart
+  /etc/init.d/pcscd restart
 fi
 %endif
 gtk-update-icon-cache %{_datadir}/icons/hicolor &>/dev/null || :
@@ -293,9 +290,6 @@ rm -rf /usr/local/lib/libpteidapplayer.so.2.0
 rm -rf /usr/local/lib/libpteidlib.so
 rm -rf /usr/local/lib/libpteidlib.so.2
 rm -rf /usr/local/lib/libpteidlib.so.2.0
-rm -rf /usr/local/lib/libpteidlibJava_Wrapper.so
-rm -rf /usr/local/lib/libpteidlibJava_Wrapper.so.2
-rm -rf /usr/local/lib/libpteidlibJava_Wrapper.so.2.0
 
 rm -rf /usr/share/icons/hicolor/64x64/mimetypes/application-x-signedcc.png
 rm -rf /usr/share/icons/hicolor/64x64/mimetypes/gnome-mime-application-x-signedcc.png
@@ -325,6 +319,12 @@ fi
 /usr/local/share/certs
 
 %changelog
+* Fri Oct 27 2017 Andre Guerreiro <andre.guerreiro@caixamagica.pt>
+  New SVN snapshot: revision 5239 - PKCS#11 corrections and new ECRaizEstado certificate
+
+* Thu Sep 28 2017 Andre Guerreiro <andre.guerreiro@caixamagica.pt>
+  New SVN snapshot: revision 5176 - Java SDK compatibility work and new CC 004 cert
+
 * Tue Jul 25 2017 Andre Guerreiro <andre.guerreiro@caixamagica.pt>
   New SVN snapshot: revision 4973 - Address Change bugfixes and add missing eidlib headers
 
@@ -334,7 +334,7 @@ fi
 * Tue Jul 04 2017 Andre Guerreiro <andre.guerreiro@caixamagica.pt>
   New SVN snapshot: revision 4943 - New Production CA Certificates - ECRaizEstado and Multicert Root CA
 
-* Thu Jun 09 2017 Andre Guerreiro <andre.guerreiro@caixamagica.pt>
+* Fri Jun 09 2017 Andre Guerreiro <andre.guerreiro@caixamagica.pt>
   New SVN snapshot: revision 4823
 
 * Thu Apr 27 2017 Andre Guerreiro <andre.guerreiro@caixamagica.pt>
@@ -359,7 +359,7 @@ fi
   New SVN snapshot: revision 4309
   Remove libgsoap dependency
 
-* Wed Dec 22 2016 Andre Guerreiro <andre.guerreiro@caixamagica.pt>
+* Thu Dec 22 2016 Andre Guerreiro <andre.guerreiro@caixamagica.pt>
   New SVN snapshot: revision 4301
   Add new dependency on QT5, drop SCAP hacks
 
@@ -382,7 +382,7 @@ fi
 * Tue Nov 18 2014 Andre Guerreiro <andre.guerreiro@caixamagica.pt>
   New SVN snapshot: revision 3771
 
-* Wed Oct 14 2014 Andre Guerreiro <andre.guerreiro@caixamagica.pt>
+* Tue Oct 14 2014 Andre Guerreiro <andre.guerreiro@caixamagica.pt>
   New SVN snapshot: revision 3715 (Without changes related to the PDF Signature redesign and new features)
 
 * Wed Oct 08 2014 Andre Guerreiro <andre.guerreiro@caixamagica.pt>
@@ -403,7 +403,7 @@ fi
 * Fri Dec 13 2013 Andre Guerreiro <andre.guerreiro@caixamagica.pt>
   New SVN snapshot: revision 3484 - Fixed locking issue on SignPDF
 
-* Fri Dec 09 2013 Andre Guerreiro 
+* Mon Dec 09 2013 Andre Guerreiro 
   New SVN snapshot: revision 3468 - Fix CAP Pin change functionality
 
 * Fri Nov 22 2013 Andre Guerreiro <andre.guerreiro@caixamagica.pt>
@@ -421,7 +421,7 @@ fi
 * Wed Sep 11 2013 Andre Guerreiro <andre.guerreiro@caixamagica.pt>
   New SVN snapshot : revision 3400 - GUI Changes as requested by AMA, various bugfixes and new CA Certificates
 
-* Wed Jan 31 2013 Andre Guerreiro <andre.guerreiro@caixamagica.pt>
+* Thu Jan 31 2013 Andre Guerreiro <andre.guerreiro@caixamagica.pt>
   New SVN snapshot : revision 3271 - Fix in PKCS11 module to support acroread SHA-256 signatures
 
 * Wed Jan 30 2013 Andre Guerreiro <andre.guerreiro@caixamagica.pt>

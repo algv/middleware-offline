@@ -164,7 +164,7 @@
 
 :debug
 @echo [INFO] Opening Visual Studio solution: "%SOLUTION%"
-@"%PTEID_DIR_VS%\Common7\IDE\devenv.exe"  /log "C:\Users\agrr\VS_Log.txt" "%SOLUTION%"
+@"%PTEID_DIR_VS%\Common7\IDE\devenv.exe" "%SOLUTION%"
 @goto end
 
 :end

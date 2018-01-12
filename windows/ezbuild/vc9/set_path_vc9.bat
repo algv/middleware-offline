@@ -19,13 +19,13 @@
 
 :: Tools
 ::======
+@set PTEID_DIR_SWIG=
 @set PTEID_DIR_7ZIP=C:\Program Files\7-Zip
 @set PTEID_DIR_PLATFORMSDK=C:\Program Files (x86)\Windows Kits\8.1
 @set PTEID_DIR_VS=C:\Program Files (x86)\Microsoft Visual Studio 12.0
 @set PTEID_DIR_DOXYGEN=C:\Program Files\doxygen
-@set PTEID_DIR_SWIG=C:\Users\agrr\Downloads\swigwin-2.0.12
-@set PTEID_DIR_JDK=C:\Program Files\Java\jdk1.8.0_111
-@set PTEID_DIR_WIX=C:\Program Files (x86)\WiX Toolset v3.10
+@set PTEID_DIR_JDK=
+@set PTEID_DIR_WIX=
 @set PTEID_DIR_MSM=C:\Program Files (x86)\Common Files\Merge Modules
 @set PTEID_DRIVERS_DDK=C:\WinDDK\7600.16385.1
 

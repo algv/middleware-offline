@@ -16,17 +16,23 @@ Existem SDK's para as linguagens C, JAVA e .NET C#.
 1. Instalação das dependências
 As dependências para a compilação do Middleware em Linux (nomes de pacotes para a distribuição Ubuntu), são as seguintes:
 
+```bash
 libpcsclite-dev default-jdk qtbase5-dev qt5-qmake qt5-default libssl-dev libxerces-c-dev swig libcurl4-openssl-dev libpoppler-qt5-dev libxml-security-c-dev
+```
 
 2. Compilar o projecto na directoria eidmw
 
+```bash
 cd eidmw
 ./configure
 make
+```
 
 3. Caso pretenda instalar a aplicação
 
+```bash
 make install
+```
 
 A aplicação utilitária será instalada em: /usr/local/bin/pteidgui
 

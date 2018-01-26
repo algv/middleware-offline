@@ -13,18 +13,18 @@ Existem SDK's para as linguagens C, JAVA e .NET C#.
 
 ### Linux
 
-1 - Instalação das dependências
+1. Instalação das dependências
 As dependências para a compilação do Middleware em Linux (nomes de pacotes para a distribuição Ubuntu), são as seguintes:
 
 libpcsclite-dev default-jdk qtbase5-dev qt5-qmake qt5-default libssl-dev libxerces-c-dev swig libcurl4-openssl-dev libpoppler-qt5-dev libxml-security-c-dev
 
-2 - Compilar o projecto na directoria eidmw
+2. Compilar o projecto na directoria eidmw
 
 cd eidmw
 ./configure
 make
 
-3 - Caso pretenda instalar a aplicação
+3. Caso pretenda instalar a aplicação
 
 make install
 
@@ -50,8 +50,7 @@ Ferramentas adicionais a instalar: - 7-zip
 - Windows Platform SDK
 
 Após configurado o ambiente conforme acima descrito,efetuar os seguintes passos:
-1- Checkout do código fonte: https://svn.gov.pt/projects/ccidadao/repository/middleware-offline/trunk/
-2- Configurar os caminhos para as dependências (x86 e x64) e ferramentas no ficheiro windows\ezbuild\vc9\set_path_vc9.bat
-3- Abrir a Solução de VS2013 através do script windows\ezbuild\vc9\ezbuild_sln_vc9.bat
-4- Seleccionar a configuração "Release | Win32" ou "Release | x64"
-5- Compilar o projecto através do menu "Build solution" 
+1. Configurar os caminhos para as dependências (x86 e x64) e ferramentas no ficheiro windows\ezbuild\vc9\set_path_vc9.bat
+2. Abrir a Solução de VS2013 através do script windows\ezbuild\vc9\ezbuild_sln_vc9.bat
+3. Seleccionar a configuração "Release | Win32" ou "Release | x64"
+4. Compilar o projecto através do menu "Build solution" 
